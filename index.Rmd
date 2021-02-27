@@ -1,10 +1,10 @@
 ---
-title: "Reports"
+title: "Brief Reports"
 site: distill::distill_website
 listing: 
   posts:
     - nzavs
-    - mus_sh
+    - mus
 ---
 
 ```{r setup, include=FALSE}
