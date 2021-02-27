@@ -13,10 +13,6 @@ twitter:
 collections:
   posts:
     feed_item_max: false
-  labs:
-    feed_item_max: false
-  workbooks:
-    feed_item_max: false
 navbar:
   source_url: https://github.com/go-bayes/reports
   search: false

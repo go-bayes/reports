@@ -15,29 +15,9 @@ output:
 bibliography: bib.bib
 ---
 
-<!-- --- -->
-<!-- title: "Time and Age Confounding in Panel Studies" -->
-<!-- author: "Joseph Bulbulia" -->
-<!-- date: "`r Sys.Date()`" -->
-<!-- output: -->
-<!--   tufte::tufte_html: -->
-<!--     tufte_variant: "envisioned" -->
-<!--     citation_package: natbib -->
-<!-- bibliography: bib.bib -->
-<!-- link-citations: yes -->
-<!-- --- -->
 
 
 ```{r setup, include=FALSE}
-## TUFTE WEBSITE: http://motioninsocial.com/tufte/
-# invalidate cache when the tufte version changes
-# knitr::opts_chunk$set(cache.extra = packageVersion('tufte'),
-#                       message=FALSE, 
-#                       warning=FALSE,
-#                       collapse =TRUE,
-#                       echo=FALSE)
-# options(htmltools.dir.version = FALSE)
-# 
 knitr::opts_chunk$set(message=FALSE,
                       warning=FALSE,
                       collapse =TRUE,
