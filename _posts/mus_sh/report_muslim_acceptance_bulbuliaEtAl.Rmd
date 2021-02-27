@@ -1,0 +1,1111 @@
+---
+title: "Attitudes to Muslims in New Zealand"
+description: |
+author:
+  - name: Joseph Bulbulia
+    url: https://josephbulbulia.netlify.app
+    affiliation: Victoria University of Wellington
+    affiliation_url: https://www.wgtn.ac.nz
+    orcid_id: 0000-0002-5861-2056
+date: 2021-FEB-28
+output:
+  distill::distill_article:
+    self_contained: false
+    toc: true
+bibliography: bib.bib
+---
+
+<!-- --- -->
+<!-- title: "Time and Age Confounding in Panel Studies" -->
+<!-- author: "Joseph Bulbulia" -->
+<!-- date: "`r Sys.Date()`" -->
+<!-- output: -->
+<!--   tufte::tufte_html: -->
+<!--     tufte_variant: "envisioned" -->
+<!--     citation_package: natbib -->
+<!-- bibliography: bib.bib -->
+<!-- link-citations: yes -->
+<!-- --- -->
+
+
+```{r setup, include=FALSE}
+## TUFTE WEBSITE: http://motioninsocial.com/tufte/
+# invalidate cache when the tufte version changes
+# knitr::opts_chunk$set(cache.extra = packageVersion('tufte'),
+#                       message=FALSE, 
+#                       warning=FALSE,
+#                       collapse =TRUE,
+#                       echo=FALSE)
+# options(htmltools.dir.version = FALSE)
+# 
+knitr::opts_chunk$set(message=FALSE,
+                      warning=FALSE,
+                      collapse =TRUE,
+                      echo=FALSE)
+```
+```{r, include=FALSE}
+library("tidyverse")
+library("here")
+library("equatiomatic")
+library("lubridate")
+library("ggplot2")
+library("ggthemes") #themes
+library("ggpubr")
+library("viridis")
+library("patchwork")
+library("ggforce")
+```
+
+
+```{r, cache = TRUE}
+#import data
+df<-readRDS(here::here("data","df"))
+```
+
+
+## The New Zealand Attitudes and Values Study
+
+
+New Zealand ranks among the world’s most tolerant societies [@Oecd2011-qv].
+
+<aside>
+The NZAVS measures tolerance using validated "affective thermometers."
+</aside>
+
+However, Muslims are New Zealand's least accepted minority group [@Shaver2016-fs] [@shaver2017news; @hawi2019terrorism; @yogeeswaran2019exploring;  [@greaves2020comparative; @sibley2020prejudice; @highland2019attitudes;@hawi2019terrorism]. 
+
+The tragic 2019 Christchurch mosque attacks raised awareness of Muslim adversity, and were followed by gains in Muslim acceptance . This gave Muslims hope. Yet acceptance changed at different rates within New Zealanders, and among a sizeable minority, prejudice remained entrenched. The New Zealand Attitudes and Values Study (NZAVS) is a pioneering nationally representative panel study started in 2009 [@nzavs2021]. 
+
+
+```{r timeline, fig.width=12, fig.height=8, fig.fullwidth = TRUE, fig.cap="Sampling from the electoral role,  combines with repeated measures within the same people across New Zealand's social diversity to affer confidence.", cache = TRUE}
+datrep <- df %>%
+  dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30) + TSCORE) %>%
+  count(day = floor_date(timeline, "day")) %>%
+  dplyr::mutate(Year = factor(ifelse(
+    day < "2010-01-01",
+    2009,
+    ifelse(
+      day < "2011-01-01",
+      2010,
+      ifelse(
+        day < "2012-01-01",
+        2011,
+        ifelse(
+          day < "2013-01-01",
+          2012,
+          ifelse(
+            day < "2014-01-01",
+            2013,
+            ifelse(
+              day < "2015-01-01",
+              2014,
+              ifelse(
+                day < "2016-01-01",
+                2015,
+                ifelse(
+                  day < "2017-01-01",
+                  2016,
+                  ifelse(
+                    day < "2018-01-01",
+                    2017,
+                    ifelse(day < "2019-01-01", 2018,
+                           ifelse(day < "2020-01-01", 2019, 2020))
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  ))) %>%
+  arrange(day)
+
+# create date lines
+ceq <- as.Date("2011-02-22")
+keq <- as.Date("2016-11-14")
+ter <- as.Date("2019-03-15")
+cov <- as.Date("2020-03-24")
+
+# get number for dates
+ceqD <- which(datrep$day %in% ceq)
+keqD <- which(datrep$day %in% keq)
+terD <- which(datrep$day %in% ter)
+covD <- which(datrep$day %in% cov)
+
+
+# create dates
+
+d1 <- as.numeric(datrep$day[ceqD])
+d2 <- as.numeric(datrep$day[keqD])
+d3 <- as.numeric(datrep$day[terD])
+d4 <- as.numeric(datrep$day[covD])
+
+# create break points
+cuts <-
+  data.frame(
+    Big_Events = c(
+      "Christchurch Earthquake",
+      "Kaikoura Earthquake",
+      "Mosque Attacks",
+      "Stringent COVID-19 LockDown"
+    ),
+    vals = c(d1, d2, d3, d4),
+    stringsAsFactors = FALSE
+  )
+
+
+ggplot2::ggplot(datrep, aes(day, n)) +
+  geom_col(aes(fill = Year)) + scale_x_date(date_labels = "%b/%Y")  +
+  geom_vline(
+    mapping = aes(xintercept = vals,
+                  colour = Big_Events),
+    data = cuts,
+    linetype = "dashed",
+    show.legend = TRUE
+  )  +
+  xlab("NZAVS daily counts") + ylab("Count of Responses") + ggtitle("New Zealand Attitudes and Values Study Daily Response Counts\n Years 2009-2020; N = 61,535")  + theme_classic()  +  scale_fill_viridis_d() + theme(legend.position = "top")
+
+# another approach
+# ggplot(datrep, aes(day, n)) +
+#  # geom_col(aes(fill = Year)) + scale_x_date(date_labels = "%b/%Y")  +
+#   geom_vline(
+#     xintercept = as.numeric(datrep$day[ceqD]),
+#     col = "red",
+#     linetype = "dashed"
+#   ) +
+#   geom_vline(
+#     xintercept = as.numeric(datrep$day[keqD]),
+#     col = "red",
+#     linetype = "dashed"
+#   ) +
+#   geom_vline(
+#     xintercept = as.numeric(datrep$day[terD]),
+#     col = "red",
+#     linetype = "dashed"
+#   ) +
+#   geom_vline(
+#     xintercept = as.numeric(datrep$day[covD]),
+#     col = "red",
+#     linetype = "dashed"
+#   ) +
+#   xlab("NZAVS daily counts") + ylab("Count of Responses") + ggtitle("NZAVS Daily Counts")  + theme_blank()  +  scale_fill_viridis_d()
+```
+
+
+## Trends in acceptance of Muslims 2012-2020 
+
+
+```{r dataprep, cache=TRUE}
+#data preparation for graphs -- filtering out key warmth indicators
+dat<-df
+dt <- dat %>%
+  dplyr::filter(YearMeasured == 1)  %>%
+  dplyr::filter(Wave == 2019 |
+                  Wave == 2018 |
+                  Wave == 2017 |
+                  Wave == 2016 |
+                  Wave == 2015|
+                  Wave == 2014|
+                  Wave == 2013|
+                  Wave == 2012) %>%
+  dplyr::group_by(Id) %>% filter(n() > 2) %>%
+  dplyr::ungroup(Id)  %>%
+  dplyr::select(Id, TSCORE, Warm.Muslims)%>%
+  dplyr::filter(!is.na(Warm.Muslims)) %>%
+  dplyr::mutate(
+    wm_s = scale(Warm.Muslims),
+    days = as.integer(TSCORE),
+    yr_0 = ((days - min(days)) / 365),
+    yrs = (days / 365),
+    yr_a = 3545/365,
+  ) %>%
+  dplyr::mutate(Pre_PostATTACK = factor(ifelse(
+    TSCORE >= 3545, "post_attack",
+    "pre_attack"
+  )))%>%
+  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack","post_attack")))
+
+dm <- dat %>%
+  dplyr::filter(YearMeasured == 1)  %>%
+  dplyr::filter(Wave == 2019 |
+                  Wave == 2018 |
+                  Wave == 2017 |
+                  Wave == 2016 |
+                  Wave == 2015|
+                  Wave == 2014|
+                  Wave == 2013|
+                  Wave == 2012) %>%
+  dplyr::group_by(Id) %>% filter(n() > 2) %>%
+  dplyr::ungroup(Id)  %>%
+  dplyr::select(Id, TSCORE, Warm.Maori)%>%
+  dplyr::filter(!is.na(Warm.Maori)) %>%
+  dplyr::mutate(
+    wm_s = scale(Warm.Maori),
+    days = as.integer(TSCORE),
+    yr_0 = ((days - min(days)) / 365),
+    yrs = (days / 365),
+    yr_a = 3545/365,
+  ) %>%
+  dplyr::mutate(Pre_PostATTACK = factor(ifelse(
+    TSCORE >= 3545, "post_attack",
+    "pre_attack"
+  )))%>%
+  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack","post_attack")))
+
+
+di <- dat %>%
+  dplyr::filter(YearMeasured == 1)  %>%
+  dplyr::filter(Wave == 2019 |
+                  Wave == 2018 |
+                  Wave == 2017 |
+                  Wave == 2016 |
+                  Wave == 2015|
+                  Wave == 2014|
+                  Wave == 2013|
+                  Wave == 2012) %>%
+  dplyr::group_by(Id) %>% filter(n() > 2) %>%
+  dplyr::ungroup(Id)  %>%
+  dplyr::select(Id, TSCORE, Warm.Immigrants)%>%
+  dplyr::filter(!is.na(Warm.Immigrants)) %>%
+  dplyr::mutate(
+    wm_s = scale(Warm.Immigrants),
+    days = as.integer(TSCORE),
+    yr_0 = ((days - min(days)) / 365),
+    yrs = (days / 365),
+    yr_a = 3545/365,
+  ) %>%
+  dplyr::mutate(Pre_PostATTACK = factor(ifelse(
+    TSCORE >= 3545, "post_attack",
+    "pre_attack"
+  )))%>%
+  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack","post_attack")))
+
+dnz <- dat %>%
+  dplyr::filter(YearMeasured == 1)  %>%
+  dplyr::filter(Wave == 2019 |
+                  Wave == 2018 |
+                  Wave == 2017 |
+                  Wave == 2016 |
+                  Wave == 2015|
+                  Wave == 2014|
+                  Wave == 2013|
+                  Wave == 2012) %>%
+  dplyr::group_by(Id) %>% filter(n() > 2) %>%
+  dplyr::ungroup(Id)  %>%
+  dplyr::select(Id, TSCORE, Warm.NZEuro)%>%
+  dplyr::filter(!is.na(Warm.NZEuro)) %>%
+  dplyr::mutate(
+    wm_s = scale(Warm.NZEuro),
+    days = as.integer(TSCORE),
+    yr_0 = ((days - min(days)) / 365),
+    yrs = (days / 365),
+    yr_a = 3545/365,
+  ) %>%
+  dplyr::mutate(Pre_PostATTACK = factor(ifelse(
+    TSCORE >= 3545, "post_attack",
+    "pre_attack"
+  )))%>%
+  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack","post_attack")))
+```
+
+```{r warmthtime, fig.width=12, fig.height=6, fig.cap="\\label{fig:warmthtime}Within-person prejudice change pre/post attacks towards (a) Muslims, (b) #Immigrants, (c) Māori, (d) NZ Europeans. Redline indicates mosque attacks. Greenline indicates maximum warmth to Muslims, which was strongly boosted post-attacks, yet lags behind other groups", cache = TRUE, fig.fullwidth = TRUE}
+ld <- ggplot(data = dt,
+             aes(x = yrs,
+                 y = Warm.Muslims))
+
+lds_0 <-ld + geom_line(alpha = .005) +
+  stat_summary(
+    geom = "point",
+    fun = mean,
+    size = .1,
+    alpha = .2
+  ) +
+  geom_smooth() + 
+  theme_minimal() + labs("")   + theme(
+    legend.position = "right",
+    legend.text = element_text(size = 6),
+    legend.title = element_text(color = "Black", size = 8)
+  ) + scale_colour_viridis_d(option = "plasma") +   geom_vline(xintercept= 9.71, linetype="dashed", color = "red") +
+   geom_hline(yintercept= 4.4, color = "green") +
+  ylab("Warmth (1-7)") +
+  labs(title="Warmth to Muslims") + 
+   xlab("Years 2011-2020, N = 22,254") 
+# + 
+#    theme(plot.title = element_text(color="black", size=20,face="bold"),
+# axis.title.x = element_text(color="black", size=20,face="bold"),
+# axis.title.y = element_text(color="black", size=20,face="bold"))
+
+#  labs(title = "NZAVS longitudinal evidence for accellerated acceptance of 
+# Muslims following 15 March 2019 Attacks (red line); N = 22,254, years 2010-2020)")
+
+li <- ggplot(data = di,
+             aes(x = yrs,
+                 y = Warm.Immigrants))
+
+
+li_0 <-li + geom_line(alpha = .005) +
+  stat_summary(
+    geom = "point",
+    fun = mean,
+    size = .1,
+    alpha = .2
+  ) +
+  geom_smooth() + 
+  theme_minimal() + labs("")   + theme(
+    legend.position = "right",
+    legend.text = element_text(size = 6),
+    legend.title = element_text(color = "Black", size = 8)
+  ) + scale_colour_viridis_d(option = "plasma") +   
+  geom_vline(xintercept= 9.71, linetype="dashed", color = "red") +
+   geom_hline(yintercept= 4.4, color = "green") +
+  ylab("Warmth (1-7)") +
+  labs(title="Warmth to Immigrants") + 
+    xlab("Years 2011-2020, N = 22,254") 
+# + 
+#    theme(plot.title = element_text(color="black", size=20,face="bold"),
+# axis.title.x = element_text(color="black", size=20,face="bold"),
+# axis.title.y = element_text(color="black", size=20,face="bold"))
+
+## maori
+lm <- ggplot(data = dm,
+             aes(x = yrs,
+                 y = Warm.Maori))
+
+lm_m <-lm + geom_line(alpha = .005) +
+  stat_summary(
+    geom = "point",
+    fun = mean,
+    size = .1,
+    alpha = .2
+  ) +
+  geom_smooth() + 
+  theme_minimal() + labs("")   + theme(
+    legend.position = "right",
+    legend.text = element_text(size = 6),
+    legend.title = element_text(color = "Black", size = 8)
+  ) + scale_colour_viridis_d(option = "plasma") +   
+  geom_vline(xintercept= 9.71, linetype="dashed", color = "red") +
+   geom_hline(yintercept= 4.4, color = "green") +
+  ylab("Warmth (1-7)") +
+  labs(title="Warmth to Māori")+
+    xlab("Years 2011-2020, N = 22,254") 
+# + 
+#    theme(plot.title = element_text(color="black", size=20,face="bold"),
+# axis.title.x = element_text(color="black", size=20,face="bold"),
+# axis.title.y = element_text(color="black", size=20,face="bold"))
+
+
+
+# Europeans
+lnz <- ggplot(data = dnz,
+             aes(x = yrs,
+                 y = Warm.NZEuro))
+
+lnz_0 <-lnz + geom_line(alpha = .005) +
+    stat_summary(
+    geom = "point",
+    fun = mean,
+    size = .1,
+    alpha = .2
+  ) +
+  geom_smooth() + 
+  theme_classic() + labs("")   + theme(
+    legend.position = "right",
+    legend.text = element_text(size = 6),
+    legend.title = element_text(color = "Black", size = 8)
+  ) + scale_colour_viridis_d(option = "plasma") +   
+  geom_vline(xintercept= 9.71, linetype="dashed", color = "red") +
+   geom_hline(yintercept= 4.4, color = "green") +
+  ylab("Warmth (1-7)") + 
+  labs(title="Warmth to NZ Europeans") +
+  xlab("Years 2011-2020, N = 22,254") 
+#    theme(plot.title = element_text(color="black", size=20,face="bold"),
+# axis.title.x = element_text(color="black", size=20,face="bold"),
+# axis.title.y = element_text(color="black", size=20,face="bold"))
+
+timeline<-lds_0 + li_0 + lm_m + lnz_0 +  plot_layout(guides = 'collect') + plot_layout(nrow = 1, byrow = FALSE)
+##  plot_annotation(title = "Timeline of attitudes to different groups in New Zealand years 2011-2020: Source: NZAVS, N = 22,254", subtitle = "Alpha for points on graph were set to .02 to avoid overplotting.", tag_levels = 'a') + 
+
+# Graph 
+timeline
+
+# subtitle = "Within-person prejudice change pre/post attacks towards (a) Muslims, (b) #Immigrants, (c) Māori, (d) NZ Europeans. 
+#Redline indicates mosque attacks. Greenline indicates maximum warmth to Muslims, which was strongly boosted post-attacks, yet lags behind other groups.
+#This project will assess whether Muslim warmth continues to climb, stabalises, or regresses to the pre-attack trend. It will also enable independent monitoring of government policy effectiveness for intereventions.
+```
+
+
+## Natural Experiment
+
+
+
+
+```{r pptimeline, cache=TRUE, fig.fullwidth = TRUE, fig.width=12, fig.height=8}
+## timeline
+rarep<-df%>%
+  dplyr::filter(YearMeasured == 1) %>%
+  dplyr::filter(Wave == 2017 | Wave == 2018 | Wave == 2019) %>%
+  dplyr::group_by(Id) %>% filter(n() == 3) %>%
+  dplyr::filter(Wave == 2017 | Wave == 2018 | Wave == 2019) %>%
+  droplevels() %>%
+  dplyr::ungroup(Id) %>%
+  dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30)+ TSCORE)%>%
+  dplyr:::count(day = floor_date(timeline, "day"))%>%
+  dplyr::mutate(Condition = factor(ifelse(day < "2018-06-18", -1, 
+                                          ifelse(day >="2018-06-18" & day < "2019-03-15", 0,
+                                                 ifelse( day >="2019-03-15" & day < "2019-06-18",1 , 
+                                                         2))),
+                                                 labels= c("PRE-ATTACK Baseline wv9 N = 11,455","PRE-ATTACK CONTROL rep measure wv10: n = 8111","IMMEDIATE POST-ATTACK rep measure wv10: PostAttack n = 3355", "DELAY POST-ATTACK Repeated measure post attack 2019: N= 11,287")))%>%
+  arrange(day)
+#table(rarep$Condition)
+# get data of change of baseline
+dates_vline1<- as.Date("2018-06-18")
+
+# get attack date
+dates_vline2<- as.Date("2019-03-15")
+dates_vline3<- as.Date("2019-06-18")
+
+# for line in a graph
+dates_vline2b<-which(rarep$day %in% dates_vline2)
+dates_vline1b<-which(rarep$day %in% dates_vline1)
+dates_vline3b<-which(rarep$day %in% dates_vline3)
+
+lds2 <- ggplot(rarep, aes(day, n)) +
+  geom_col(aes(fill = Condition)) + scale_x_date(date_labels = "%b/%Y",
+                                                 limits = c(as.Date("2017-08-25"), as.Date("2020-10-15")))  +
+   scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) + 
+  geom_vline(xintercept = as.numeric(rarep$day[dates_vline2b]),
+             col = "red",
+             linetype = "dashed") +
+  # geom_vline(xintercept = as.numeric(rarep$day[dates_vline1b]), col ="black",linetype="dashed") +
+  # geom_vline(xintercept = as.numeric(rarep$day[dates_vline3b]), col ="black",linetype="dashed") +
+  xlab("NZAVS Waves years 2017 - 2020 daily counts") + ylab("Count of Responses") + 
+  #ggtitle("Mosque attacks on NZAVS timeline (N = 11,330 repeatedly sampled in NZAVS Waves 9,10,11)") # + 
+  theme_classic() +
+  annotate(
+    "rect",
+    xmin = as.Date("2017-08-25"),
+    xmax = dates_vline1,
+    ymin = 0,
+    ymax = 900,
+    alpha = 0
+  ) +
+  annotate(
+    "rect",
+    xmin = dates_vline2,
+    xmax = dates_vline3,
+    ymin = 0,
+    ymax = 900,
+    alpha = .3,
+    fill = "darkred"
+  ) +
+  annotate(
+    "rect",
+    xmin = dates_vline1,
+    xmax = dates_vline2,
+    ymin = 0,
+    ymax = 900,
+    alpha = .3
+  ) +
+  annotate(
+    "rect",
+    xmin = dates_vline3,
+    xmax = as.Date("2020-10-15"),
+    ymin = 0,
+    ymax = 900,
+    alpha = .05,
+    fill = "red"
+  ) +
+  annotate(
+    "text",
+    x = as.Date("2018-10-15"),
+    y = 980,
+    label = "Wave 10
+           repeated pre-attacks"
+  ) +
+  annotate(
+    "text",
+    x = as.Date("2018-01-15"),
+    y = 980,
+    label = "Wave 9
+           baseline (control)"
+  ) +
+  annotate(
+    "text",
+    x = as.Date("2019-04-30"),
+    y = 980,
+    label = "Wave 10
+           repeated post attacks"
+  ) +
+  annotate(
+    "text",
+    x = as.Date("2020-02-15"),
+    y = 980,
+    label = "Wave 11
+           repeated during the year following attacks"
+  ) +
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-02-15"),
+    y = 750,
+    xend = as.Date("2018-10-15"),
+    yend = 750,
+    curvature = -.3,
+    arrow = arrow(length = unit(2, "mm"))
+  ) + 
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-02-15"),
+    y = 750,
+    xend = as.Date("2019-05-15"),
+    yend = 750,
+    curvature = -.3,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate("text",
+           x = as.Date("2018-02-01"),
+           y = 750,
+           label = "0") +
+  annotate("text",
+           x = as.Date("2018-11-05"),
+           y = 750,
+           label = "+1") +
+  annotate(
+    geom = "curve",
+    x = as.Date("2019-05-15"),
+    y = 800,
+    xend = as.Date("2020-05-15"),
+    yend = 750,
+    curvature = -.3,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate("text",
+           x = as.Date("2019-06-05"),
+           y = 750,
+           label = "+1") +
+  annotate("text",
+           x = as.Date("2020-05-30"),
+           y = 750,
+           label = "+2") +
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-11-15"),
+    y = 800,
+    xend = as.Date("2020-05-15"),
+    yend = 750,
+    curvature = -.3,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  theme(
+    legend.position = "top",
+    legend.text = element_text(size = 6),
+    legend.title = element_text(color = "Black", size = 8)
+  ) +
+  scale_fill_viridis_d(option = "plasma")
+
+### USE GRAPH OF TIMELINE
+lds2
+```
+
+
+```{r danalysisdata, cach=TRUE}
+km2 <- df %>%
+  dplyr::filter(YearMeasured == 1) %>%
+  dplyr::filter(Wave == 2017 | Wave == 2018 | Wave == 2019) %>%
+  dplyr::group_by(Id) %>% filter(n() == 3) %>%
+  dplyr::filter(Wave == 2017 | Wave == 2018 | Wave == 2019) %>%
+  droplevels() %>%
+  dplyr::ungroup(Id) %>%
+  dplyr::select(
+    Id,
+    Age,
+    TSCORE,
+    EthnicCats,
+    Warm.Muslims,
+    Warm.Immigrants,
+    Warm.Asians,
+    Wave,
+    Warm.Maori,
+    Warm.NZEuro,
+    Muslim,
+    Euro,
+    Relid,
+    Religious,
+    Pol.Orient,
+    TSCORE,
+    WSCORE
+  ) %>%
+  # dplyr::filter(!is.na(Warm.Muslims)) %>%
+  dplyr::mutate(Pre_PostATTACK = as.factor(ifelse(
+    TSCORE >= 3545 & Wave == 2018,
+    "pst_wv10",
+    ifelse(
+      TSCORE >= 3545 & Wave == 2019,
+      "pst_wv11",
+      ifelse(TSCORE < 3545 & Wave == 2018, "pr_wv10",
+             "baseline_wv10")
+    )
+  ))) %>%
+  dplyr::mutate(Atack = ifelse(TSCORE >= 3545, "Post_Attack", "Pre_Attack"))%>%
+  dplyr::mutate(days = as.integer(TSCORE),
+                years = days / 365) %>%
+  dplyr::filter(Muslim == 0) %>%
+  dplyr::mutate(
+    cons_s = scale(Pol.Orient),
+    r_s = scale(Relid),
+    a_s = scale(Age) ) # We are merely including these vars for "controls" -- they only policitical consrv will be of interest
+
+#length(unique((km2$Id)))# 11470
+
+#library(table1)  # make pretty tables quickly
+#table1::table1(~Muslim|Wave, data = km, overall=F)# there are 31 muslims in 2017
+```
+
+```{r natexperiment, fig.fullwidth = TRUE, fig.width=12, fig.height=6, cache=TRUE}
+## timeline
+rarep<-df%>%
+  dplyr::filter(YearMeasured == 1) %>%
+  dplyr::filter(Wave == 2017 | Wave == 2018 | Wave == 2019) %>%
+  dplyr::group_by(Id) %>% filter(n() == 3) %>%
+  dplyr::filter(Wave == 2017 | Wave == 2018 | Wave == 2019) %>%
+  droplevels() %>%
+  dplyr::ungroup(Id) %>%
+  dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30)+ TSCORE)%>%
+  count(day = floor_date(timeline, "day"))%>%
+  dplyr::mutate(Condition = factor(ifelse(day < "2018-06-18", -1, 
+                                          ifelse(day >="2018-06-18" & day < "2019-03-15", 0,
+                                                 ifelse( day >="2019-03-15" & day < "2019-06-18",1 , 
+                                                         2))),
+                                                 labels= c("PRE-ATTACK Baseline wv9 N = 11,455","PRE-ATTACK CONTROL rep measure wv10: n = 8111","IMMEDIATE POST-ATTACK rep measure wv10: PostAttack n = 3355", "DELAY POST-ATTACK Repeated measure post attack 2019: N= 11287 ")))%>%
+  arrange(day)
+
+# get data of change of baseline
+dates_vline1<- as.Date("2018-06-18")
+
+# get attack date
+dates_vline2<- as.Date("2019-03-15")
+dates_vline3<- as.Date("2019-06-18")
+
+# for line in a graph
+dates_vline2b<-which(rarep$day %in% dates_vline2)
+dates_vline1b<-which(rarep$day %in% dates_vline1)
+dates_vline3b<-which(rarep$day %in% dates_vline3)
+
+lds2 <- ggplot(rarep, aes(day, n)) +
+  geom_col(aes(fill = Condition)) + scale_x_date(date_labels = "%b/%Y",
+                                                 limits = c(as.Date("2017-08-25"), as.Date("2020-10-15")))  +
+  scale_y_continuous(limits = c(0, 1000))  +
+  geom_vline(xintercept = as.numeric(rarep$day[dates_vline2b]),
+             col = "red",
+             linetype = "dashed") +
+  # geom_vline(xintercept = as.numeric(rarep$day[dates_vline1b]), col ="black",linetype="dashed") +
+  # geom_vline(xintercept = as.numeric(rarep$day[dates_vline3b]), col ="black",linetype="dashed") +
+  xlab("NZAVS Waves years 2017 - 2020 daily counts") + ylab("Count of Responses") + 
+  #ggtitle("Mosque attacks on NZAVS timeline (N = 11,330 repeatedly sampled in NZAVS Waves 9,10,11)") # + 
+  theme_classic() +
+  annotate(
+    "rect",
+    xmin = as.Date("2017-08-25"),
+    xmax = dates_vline1,
+    ymin = 0,
+    ymax = 900,
+    alpha = 0
+  ) +
+  annotate(
+    "rect",
+    xmin = dates_vline2,
+    xmax = dates_vline3,
+    ymin = 0,
+    ymax = 900,
+    alpha = .3,
+    fill = "darkred"
+  ) +
+  annotate(
+    "rect",
+    xmin = dates_vline1,
+    xmax = dates_vline2,
+    ymin = 0,
+    ymax = 900,
+    alpha = .3
+  ) +
+  annotate(
+    "rect",
+    xmin = dates_vline3,
+    xmax = as.Date("2020-10-15"),
+    ymin = 0,
+    ymax = 900,
+    alpha = .05,
+    fill = "red"
+  ) +
+  annotate(
+    "text",
+    x = as.Date("2018-10-15"),
+    y = 980,
+    label = "Wave 10
+           repeated pre-attacks"
+  ) +
+  annotate(
+    "text",
+    x = as.Date("2018-01-15"),
+    y = 980,
+    label = "Wave 9
+           baseline (control)"
+  ) +
+  annotate(
+    "text",
+    x = as.Date("2019-04-30"),
+    y = 980,
+    label = "Wave 10
+           repeated post attacks"
+  ) +
+  annotate(
+    "text",
+    x = as.Date("2020-02-15"),
+    y = 980,
+    label = "Wave 11
+           repeated during the year following attacks"
+  ) +
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-02-15"),
+    y = 750,
+    xend = as.Date("2018-10-15"),
+    yend = 750,
+    curvature = -.3,
+    arrow = arrow(length = unit(2, "mm"))
+  ) + 
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-02-15"),
+    y = 750,
+    xend = as.Date("2019-05-15"),
+    yend = 750,
+    curvature = -.3,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate("text",
+           x = as.Date("2018-02-01"),
+           y = 750,
+           label = "0") +
+  annotate("text",
+           x = as.Date("2018-11-05"),
+           y = 750,
+           label = "+1") +
+  annotate(
+    geom = "curve",
+    x = as.Date("2019-05-15"),
+    y = 800,
+    xend = as.Date("2020-05-15"),
+    yend = 750,
+    curvature = -.3,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate("text",
+           x = as.Date("2019-06-05"),
+           y = 750,
+           label = "+1") +
+  annotate("text",
+           x = as.Date("2020-05-30"),
+           y = 750,
+           label = "+2") +
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-11-15"),
+    y = 800,
+    xend = as.Date("2020-05-15"),
+    yend = 750,
+    curvature = -.3,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  theme(
+    legend.position = "top",
+    legend.text = element_text(size = 6),
+    legend.title = element_text(color = "Black", size = 8)
+  ) +
+  scale_fill_viridis_d(option = "plasma")
+dev.off()
+### USE GRAPH OF TIMELINE
+lds2
+```
+
+
+## Model
+
+```{r models, cache=TRUE}
+library(lme4)
+library(ggeffects)
+m1 <- lmer(Warm.Muslims ~   Pre_PostATTACK +
+             EthnicCats +
+             a_s +
+             r_s +
+             cons_s +
+             (1 |
+                Id) ,
+           data = km2)
+
+# Check model
+# parameters::model_parameters(m1) %>%
+
+p1 <-plot(ggeffects::ggpredict(m1, terms = "Pre_PostATTACK", ci = .89)) + xlab("pre-attack") + ylab("Warmth to Muslims (1-7)") + labs(title = "Warm Muslims") +
+  scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + xlab("Attack Timeline")
+
+
+
+m2 <- lmer(Warm.NZEuro ~    Pre_PostATTACK +
+             EthnicCats +
+             a_s +
+             r_s +
+             cons_s +   (1 | Id) ,
+           data = km2)
+p2 <- plot(ggeffects::ggpredict(m2, terms = "Pre_PostATTACK", ci = .89)) +
+       # add.data = TRUE,
+       # dot.alpha = 0.03,
+       # jitter = .1) + 
+       xlab("Attack Timeline") + ylab("Warmth to NZ Europeans (1-7)") + labs(title = "Warm NZ Euros") +
+       scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d()
+
+
+m3 <- lmer(Warm.Maori ~    Pre_PostATTACK +
+             EthnicCats +
+             a_s +
+             r_s +
+             cons_s +   (1 | Id) ,
+           # dependence owing to the week of response
+           data = km2)
+p3 <-
+  plot(ggeffects::ggpredict(m3, terms = "Pre_PostATTACK", ci = .89)) + xlab("pre-attack") + ylab("Warmth to Māori (1-7)") + labs(title = "Warm Māori") +
+  scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + xlab("Attack Timeline")
+
+
+m4 <- lmer(Warm.Immigrants ~   Pre_PostATTACK +
+             EthnicCats +
+             a_s +
+             r_s +
+             cons_s +   (1 | Id),
+           data = km2)
+
+
+p4 <- plot(ggeffects::ggpredict(m4, terms = "Pre_PostATTACK", ci = .89)) + xlab("pre-attack") + ylab("Warmth to Immigrants (1-7)") + labs(title = "Warm Immigrants") +
+  scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + xlab("Attack Timeline")
+
+m5 <- lmer(Warm.Asians ~    Pre_PostATTACK + 
+             EthnicCats + 
+             a_s +
+             r_s +
+             cons_s +  (1 | Id) ,
+           # dependence owing to the week of response
+           data = km2)
+
+
+
+p5 <-
+  plot(ggeffects::ggpredict(m5, terms = "Pre_PostATTACK", ci = .89)) + xlab("pre-attack") + ylab("Warmth to Asians (1-7)") + labs(title = "Warm Asians") +
+  scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + xlab("Attack Timeline")
+
+p5b <-
+  plot(ggeffects::ggpredict(m5, terms = c("cons_s[all]","Pre_PostATTACK [all]"), ci = .89), add.data = TRUE, dot.alpha = 0.02, jitter = .2 ) +
+    scale_y_continuous(limits = c(1, 7)) + 
+ xlab("Political Conservativism (Standard Deviation Units") + 
+  ylab("Warmth to Asians (1-7)") + labs(title = "Warm Asians")  + scale_colour_viridis_d() + xlab("Attack Timeline") 
+
+
+# 
+# lds3 <-
+#   (p1 +  p4 + p3 + p2) + plot_annotation(title = "Increase in Warmth to Muslims After Shootings",
+#                                          subtitle = "However, Muslim acceptance lags behind other minority groups",
+#                                          tag_levels = 'a') +   plot_layout(guides = 'collect') + plot_layout(nrow = 1, byrow = FALSE)
+# 
+# lds3a <-
+#   (p1 +  p4 + p3 + p2) + plot_annotation(tag_levels = 'a') +   plot_layout(guides = 'collect') + plot_layout(nrow = 1, byrow = FALSE)
+```
+
+
+```{r  graphsmodels, fig.fullwidth = TRUE, fig.width=12, fig.height=6, cache=TRUE}
+desc <- 'Large boost in Muslim acceptance following shootings; However Muslim acceptance still lags behind.'
+p1a<- p1 +   ggforce::geom_mark_ellipse(aes( label = 'Pre/Post Attack', description = desc), colour = "red") 
+p2a<- p2 +   ggforce::geom_mark_ellipse(aes( label = 'Pre/Post Attack'))
+p3a<- p3 +   ggforce::geom_mark_ellipse(aes( label = 'Pre/Post Attack'))
+p4a<- p4 +   ggforce::geom_mark_ellipse(aes( label = 'Pre/Post Attack'))
+
+
+lds3<-(p1a +  p4a + p3a + p2a) + plot_annotation(title = "Increase in Warmth to Muslims After Shootings",
+                                 subtitle = "However, Muslim acceptance lags behind other minority groups", tag_levels = 'a') +   plot_layout(guides = 'collect') + plot_layout(nrow = 1, byrow = FALSE)
+
+lds3
+```
+
+
+
+```{r  models_politics, cache = TRUE}
+m6 <- lmer(Warm.Muslims ~  cons_s * Pre_PostATTACK +  EthnicCats + 
+             a_s +
+             r_s + (1|Id) , # dependence owing to the week of response
+           data=km2)
+
+p6 <- plot(ggeffects::ggpredict(m6, terms = c("Pre_PostATTACK [all]", "cons_s[all]"), ci = .89)) + xlab("Conservativism") + ylab("Warmth Muslims") + labs(title = "Warmth to Muslims Increased the most among political conservatives:
+however, only to the midrange of the warmth scale: there's lots of headroom") + scale_colour_viridis_d()
+
+####### 
+p7 <- plot(ggeffects::ggpredict(m6, terms = c("cons_s[all]","Pre_PostATTACK [all]"), ci = .89), add.data = TRUE, dot.alpha = 0.02, jitter = .2 ) + scale_y_continuous(limits = c(.5,7.5)) +
+  xlab("Political Conservativism (SD)") + ylab("Warmth Muslims (1-7") + 
+  labs(title = "Warmth to Muslims") + scale_colour_viridis_d() 
+
+#p7 +  ggforce::geom_mark_ellipse(aes(fill = "Pre_PostATTACK", label = "Pre_PostATTACK")) 
+#p7 +   ggforce::facet_zoom(xlim = c(0, .2), ylim = c(4, 4.5), horizontal = FALSE)
+desc <- "Post Shooting Difference"
+
+p71<-p7 + annotate("rect", 
+              xmin = 2., 
+              xmax = 2.5, 
+              ymin = 3.5, 
+              ymax = 4.1,
+              alpha = .2, 
+              colour = "red") + 
+  annotate(
+    "rect",
+    xmin = -2.,
+    xmax = -1.5,
+    ymin = 4.4,
+    ymax = 4.8,
+    alpha = .2,
+    colour = "red"
+  ) + 
+  annotate(
+    "text",
+    x = 0,
+    y = 7.2,
+    label = " Greater relative growth in 
+    acceptance among conservatives",
+    colour = "brown3"
+  ) + 
+  annotate(
+    geom = "curve",
+    x = -1,
+    y = 6.7,
+    xend = -1.75,
+    yend = 4.9,
+    curvature = 0,
+    arrow = arrow(length = unit(2, "mm")),
+    colour = "red"
+  ) +
+   annotate(
+    geom = "curve",
+    x = 1,
+    y = 6.7,
+    xend = 2.25,
+    yend = 4.2,
+    curvature = 0,
+    arrow = arrow(length = unit(2, "mm")),
+    colour = "red"
+  )
+
+## Compare this to warmth to maori
+
+m8 <- lmer(Warm.Maori ~  cons_s * Pre_PostATTACK +  EthnicCats + 
+             a_s +
+             r_s +(1|Id) , # dependence owing to the week of response
+           data=km2)
+
+p8 <- plot(ggeffects::ggpredict(m8, terms = c("cons_s[all]","Pre_PostATTACK [all]"), ci = .89), 
+          add.data = TRUE, dot.alpha = 0.02, jitter = .2 ) + scale_y_continuous(limits = c(.5,7.5)) +
+  xlab("Political Conservativism (SD)") + ylab("Warmth Māori (1-7") + 
+  labs(title = "Warmth to Māori") + scale_colour_viridis_d()
+
+
+## Warmth to NZEuRO
+m9 <- lmer(Warm.NZEuro ~  cons_s * Pre_PostATTACK +  EthnicCats + 
+             a_s +
+             r_s +(1|Id) , # dependence owing to the week of response
+           data=km2)
+
+p9 <- plot(ggeffects::ggpredict(m9, terms = c("cons_s[all]","Pre_PostATTACK [all]"), ci = .89), 
+          add.data = TRUE, dot.alpha = 0.02, jitter = .2 ) + scale_y_continuous(limits = c(.5,7.5)) +
+  xlab("Political Conservativism (SD)") + ylab("Warmth NZ Europeans (1-7") + 
+  labs(title = "Warmth to NZ Europeans") + scale_colour_viridis_d()
+
+
+m10 <- lmer(Warm.Immigrants ~  cons_s * Pre_PostATTACK +  EthnicCats + 
+             a_s +
+             r_s +(1|Id) , # dependence owing to the week of response
+           data=km2)
+
+p10 <- plot(ggeffects::ggpredict(m10, terms = c("cons_s[all]","Pre_PostATTACK [all]"), ci = .89), 
+          add.data = TRUE, dot.alpha = 0.02, jitter = .2 ) + scale_y_continuous(limits = c(.5,7.5)) +
+  xlab("Political Conservativism (SD)") + ylab("Warmth Immigrants (1-7") + 
+  labs(title = "Warmth to Immigrants") + scale_colour_viridis_d()
+
+
+# Graph
+# p71 + p10 + p8 + p9 +  plot_layout(nrow = 1, byrow = FALSE) + plot_annotation(title = "Warmth to Muslims and other groups by political conservatvisms pre/post shootings
+# (N = 11330, repeated measures 2018-2020)", subtitle = "Muslim acceptance lags behind other minority groups (graph shows all predicted responses)", tag_levels = 'a') +   plot_layout(guides = 'collect')  
+#   
+# p71 <-p71 + theme(legend.position = "top")
+# 
+# p10 <-p10 + theme(legend.position = "top")
+# p8 <-p8 + theme(legend.position = "top")
+# p9 <-p9 + theme(legend.position = "top")
+#
+```
+
+
+```{r  graphsmodelsPol, fig.fullwidth = TRUE, fig.width=12, fig.height=6, cache = TRUE}
+
+lds4 <-p71 + p10 + p8 + p9 +  plot_layout(nrow = 1, byrow = FALSE) + plot_annotation(title = "Warmth to Muslims and other groups by political conservatvisms pre/post shootings
+(N = 11330, repeated measures 2018-2020)", subtitle = "Muslim acceptance lags behind other minority groups (graph shows all predicted responses)", tag_levels = 'a') +   plot_layout(guides = 'collect')  
+lds4
+```
+
+
+```{r  dagpol, include = FALSE, eval = FALSE}
+## ADD FIG
+## 
+dg2 <- dagify(
+  wm ~ pp+  cs + ml + news + U + yr + rel + edu + a + eth + ur,
+  cs ~ ml + rel + a,
+  rel ~ ml + rel + a + eth,
+  pp ~ yr,
+  a ~ yr,
+  ur ~ eth + a + edu + time,
+  rel ~ yr + ur,
+  edu ~ ml + eth + ur,
+  news ~ pp + yr,
+  U ~ pp + cs + ml + news + yr  + rel + edu + a + ur,
+  exposure =  "yr",
+  outcome =   "wm",
+  labels = c("wm" = "Warmth Muslims",
+             "a" = "age",
+             "eth" = "ethnicity",
+             "pp" = "pre/postattacks",
+             "cs" = "political conservativism",
+             "edu" = "education",
+             "ur" = "urban",
+             "yr" = "time",
+             "rel" = "religion",
+             "news" = "media",
+             "ml" = "male",
+            "U" = "Soc Networks")
+) %>%
+  tidy_dagitty()
+
+dplot1 <-ggdag::ggdag_collider(dg2, use_labels = "label", text = FALSE) + theme_dag_blank() +
+  labs(title = "Causal analysis of Muslim Acceptance requires care to avoid confounding")
+dplot1
+
+f5 <-ggdag::ggdag_collider(dg2, use_labels = "label", text = FALSE) + theme_dag_blank() +
+  labs(title = "")
+f5
+
+## BETTER
+(lds_0 + dplot1)/ lds2 /  lds3 / lds4  + plot_annotation(tag_levels = 'a')
+
+marsden_fig1v2 # 1750 x 2000
+
+```
+
+
+
+
+
+
+

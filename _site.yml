@@ -1,0 +1,12 @@
+name: "reports"
+title: "Reports"
+description: |
+  Reports
+output_dir: "docs"
+navbar:
+  right:
+    - text: "Reports"
+      href: index.html
+    - text: "About"
+      href: about.html
+output: distill::distill_article
