@@ -1,6 +1,6 @@
 ---
 title: "About"
-description: |
+description:
 author:
   - name: Joseph Bulbulia
     url: https://josephbulbulia.netlify.app
@@ -12,10 +12,20 @@ output:
   distill::distill_article:
     self_contained: false
     toc: true
+--- 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ## Purpose
 
-The purpose of this site 
+The purpose of this site is to convey science, broadly conceived, to the community, broadly conceived. 
+
+## Views 
+
+The views expressed here are entirely my own. They do not necessarily reflect the views of any institution with which I am affiliated. 
+
+
+
+
+My contact: joseph.bulbulia@vuw.ac.nz

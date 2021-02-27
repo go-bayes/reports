@@ -1,0 +1,194 @@
+---
+title: "New Zealand Attitudes and Values Study"
+description: |
+author:
+  - name: Joseph Bulbulia
+    url: https://josephbulbulia.netlify.app
+    affiliation: Victoria University of Wellington
+    affiliation_url: https://www.wgtn.ac.nz
+    orcid_id: 0000-0002-5861-2056
+date: 2021-FEB-28
+output:
+  distill::distill_article:
+    self_contained: false
+    toc: true
+bibliography: bib.bib
+---
+
+<!-- --- -->
+<!-- title: "Time and Age Confounding in Panel Studies" -->
+<!-- author: "Joseph Bulbulia" -->
+<!-- date: "`r Sys.Date()`" -->
+<!-- output: -->
+<!--   tufte::tufte_html: -->
+<!--     tufte_variant: "envisioned" -->
+<!--     citation_package: natbib -->
+<!-- bibliography: bib.bib -->
+<!-- link-citations: yes -->
+<!-- --- -->
+
+
+```{r setup, include=FALSE}
+## TUFTE WEBSITE: http://motioninsocial.com/tufte/
+# invalidate cache when the tufte version changes
+# knitr::opts_chunk$set(cache.extra = packageVersion('tufte'),
+#                       message=FALSE, 
+#                       warning=FALSE,
+#                       collapse =TRUE,
+#                       echo=FALSE)
+# options(htmltools.dir.version = FALSE)
+# 
+knitr::opts_chunk$set(message=FALSE,
+                      warning=FALSE,
+                      collapse =TRUE,
+                      echo=FALSE)
+```
+```{r, include=FALSE}
+library("tidyverse")
+library("here")
+library("equatiomatic")
+library("lubridate")
+library("ggplot2")
+library("ggthemes") #themes
+library("ggpubr")
+library("viridis")
+library("patchwork")
+library("ggforce")
+```
+
+
+```{r, cache = TRUE}
+#import data
+df<-readRDS(here::here("data","df"))
+```
+
+
+## The New Zealand Attitudes and Values Study
+
+The New Zealand Attitudes and Values Study (NZAVS) is a pioneering nationally representative panel study started by Professor Chris G Sibley in 2009 [@nzavs2021]. 
+
+
+```{r timeline, fig.width=12, fig.height=8, fig.fullwidth = TRUE, fig.cap="Sampling from the electoral role,  combines with repeated measures within the same people across New Zealand's social diversity to affer confidence.", cache = TRUE}
+datrep <- df %>%
+  dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30) + TSCORE) %>%
+  count(day = floor_date(timeline, "day")) %>%
+  dplyr::mutate(Year = factor(ifelse(
+    day < "2010-01-01",
+    2009,
+    ifelse(
+      day < "2011-01-01",
+      2010,
+      ifelse(
+        day < "2012-01-01",
+        2011,
+        ifelse(
+          day < "2013-01-01",
+          2012,
+          ifelse(
+            day < "2014-01-01",
+            2013,
+            ifelse(
+              day < "2015-01-01",
+              2014,
+              ifelse(
+                day < "2016-01-01",
+                2015,
+                ifelse(
+                  day < "2017-01-01",
+                  2016,
+                  ifelse(
+                    day < "2018-01-01",
+                    2017,
+                    ifelse(day < "2019-01-01", 2018,
+                           ifelse(day < "2020-01-01", 2019, 2020))
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  ))) %>%
+  arrange(day)
+
+# create date lines
+ceq <- as.Date("2011-02-22")
+keq <- as.Date("2016-11-14")
+ter <- as.Date("2019-03-15")
+cov <- as.Date("2020-03-24")
+
+# get number for dates
+ceqD <- which(datrep$day %in% ceq)
+keqD <- which(datrep$day %in% keq)
+terD <- which(datrep$day %in% ter)
+covD <- which(datrep$day %in% cov)
+
+
+# create dates
+
+d1 <- as.numeric(datrep$day[ceqD])
+d2 <- as.numeric(datrep$day[keqD])
+d3 <- as.numeric(datrep$day[terD])
+d4 <- as.numeric(datrep$day[covD])
+
+# create break points
+cuts <-
+  data.frame(
+    Big_Events = c(
+      "Christchurch Earthquake",
+      "Kaikoura Earthquake",
+      "Mosque Attacks",
+      "Stringent COVID-19 LockDown"
+    ),
+    vals = c(d1, d2, d3, d4),
+    stringsAsFactors = FALSE
+  )
+
+
+ggplot2::ggplot(datrep, aes(day, n)) +
+  geom_col(aes(fill = Year)) + scale_x_date(date_labels = "%b/%Y")  +
+  geom_vline(
+    mapping = aes(xintercept = vals,
+                  colour = Big_Events),
+    data = cuts,
+    linetype = "dashed",
+    show.legend = TRUE
+  )  +
+  xlab("NZAVS daily counts") + ylab("Count of Responses") + ggtitle("New Zealand Attitudes and Values Study Daily Response Counts\n Years 2009-2020; N = 61,535")  + theme_classic()  +  scale_fill_viridis_d() + theme(legend.position = "top")
+
+# another approach
+# ggplot(datrep, aes(day, n)) +
+#  # geom_col(aes(fill = Year)) + scale_x_date(date_labels = "%b/%Y")  +
+#   geom_vline(
+#     xintercept = as.numeric(datrep$day[ceqD]),
+#     col = "red",
+#     linetype = "dashed"
+#   ) +
+#   geom_vline(
+#     xintercept = as.numeric(datrep$day[keqD]),
+#     col = "red",
+#     linetype = "dashed"
+#   ) +
+#   geom_vline(
+#     xintercept = as.numeric(datrep$day[terD]),
+#     col = "red",
+#     linetype = "dashed"
+#   ) +
+#   geom_vline(
+#     xintercept = as.numeric(datrep$day[covD]),
+#     col = "red",
+#     linetype = "dashed"
+#   ) +
+#   xlab("NZAVS daily counts") + ylab("Count of Responses") + ggtitle("NZAVS Daily Counts")  + theme_blank()  +  scale_fill_viridis_d()
+```
+
+
+
+
+
+
+
+
+
+

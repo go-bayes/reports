@@ -3,6 +3,7 @@ title: "Reports"
 site: distill::distill_website
 listing: 
   posts:
+    - nzavs
     - mus_sh
 ---
 

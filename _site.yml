@@ -1,12 +1,31 @@
 name: "reports"
 title: "Reports"
 description: |
-  Reports
+  Scientific reports with public relevance
 output_dir: "docs"
+base_url: https://go-bayes.github.io/reports
+repository_url: https://github.com/go-bayes/reports
+creative_commons: CC BY
+google_analytics: "G-X058WW5WJZ"
+twitter:
+  site: "@go_bayes"
+  creator: "@go_bayes"
+collections:
+  posts:
+    feed_item_max: false
+  labs:
+    feed_item_max: false
+  workbooks:
+    feed_item_max: false
 navbar:
-  right:
-    - text: "Reports"
-      href: index.html
-    - text: "About"
-      href: about.html
-output: distill::distill_article
+  source_url: https://github.com/go-bayes/reports
+  search: false
+  left:
+      - text: "Reports"
+        href: index.html
+      - text: "About"
+        href: about.html
+output:
+  distill::distill_article:
+    toc: yes
+    toc_level: 3

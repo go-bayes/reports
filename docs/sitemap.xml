@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" version="1.0">
+  <url>
+    <loc>https://go-bayes.github.io/reports/about.html</loc>
+    <lastmod>2021-02-27T20:45:27+13:00</lastmod>
+  </url>
+  <url>
+    <loc>https://go-bayes.github.io/reports/</loc>
+    <lastmod>2021-02-27T20:41:46+13:00</lastmod>
+  </url>
+  <url>
+    <loc>https://go-bayes.github.io/reports/posts/mus_sh/</loc>
+    <lastmod>2021-02-27T21:16:32+13:00</lastmod>
+  </url>
+  <url>
+    <loc>https://go-bayes.github.io/reports/posts/nzavs/</loc>
+    <lastmod>2021-02-27T20:42:55+13:00</lastmod>
+  </url>
+</urlset>
