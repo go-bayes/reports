@@ -15,19 +15,6 @@ output:
 bibliography: bib.bib
 ---
 
-<!-- --- -->
-<!-- title: "Time and Age Confounding in Panel Studies" -->
-<!-- author: "Joseph Bulbulia" -->
-<!-- date: "`r Sys.Date()`" -->
-<!-- output: -->
-<!--   tufte::tufte_html: -->
-<!--     tufte_variant: "envisioned" -->
-<!--     citation_package: natbib -->
-<!-- bibliography: bib.bib -->
-<!-- link-citations: yes -->
-<!-- --- -->
-
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(message=FALSE,
                       warning=FALSE,
@@ -52,25 +39,6 @@ library("ggforce")
 #import data
 df<-readRDS(here::here("data","df"))
 ```
-
-
-## The New Zealand Attitudes and Values Study
-
-
-New Zealand ranks among the world’s most tolerant societies [@Oecd2011-qv].
-
-<aside>
-The NZAVS measures tolerance using validated "affective thermometers."
-</aside>
-
-However, Muslims are New Zealand's least accepted minority group [@Shaver2016-fs] [@shaver2017news; @hawi2019terrorism; @yogeeswaran2019exploring;  [@greaves2020comparative; @sibley2020prejudice; @highland2019attitudes;@hawi2019terrorism]. 
-
-The tragic 2019 Christchurch mosque attacks raised awareness of Muslim adversity, and were followed by gains in Muslim acceptance . This gave Muslims hope. Yet acceptance changed at different rates within New Zealanders, and among a sizeable minority, prejudice remained entrenched. The New Zealand Attitudes and Values Study (NZAVS) is a pioneering nationally representative panel study started in 2009 [@nzavs2021]. 
-
-
-
-## Trends in acceptance of Muslims 2012-2020 
-
 
 ```{r dataprep, cache=TRUE}
 #data preparation for graphs -- filtering out key warmth indicators
@@ -184,7 +152,32 @@ dnz <- df %>%
   dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack","post_attack")))
 ```
 
-```{r warmthtime, fig.width=12, fig.height=6, fig.cap="\\label{fig:warmthtime}Within-person prejudice change pre/post attacks towards (a) Muslims, (b) Immigrants, (c) Māori, (d) NZ Europeans. Redline indicates mosque attacks. Greenline indicates maximum warmth to Muslims, which was strongly boosted post-attacks, yet lags behind other groups", cache = TRUE, fig.fullwidth = TRUE}
+## Background
+
+New Zealand ranks among the world’s most tolerant societies [@Oecd2011-qv].
+
+<aside>
+The NZAVS measures tolerance using validated "affective thermometers."
+</aside>
+
+However, Muslims are New Zealand's least accepted minority group [@Shaver2016-fs] [@shaver2017news; @hawi2019terrorism; @yogeeswaran2019exploring;  [@greaves2020comparative; @sibley2020prejudice; @highland2019attitudes;@hawi2019terrorism].(See Fig \@ref(fig:warmthtime))
+
+The tragic 2019 Christchurch mosque attacks raised awareness of Muslim adversity, and were followed by gains in Muslim acceptance. This gave Muslims hope. 
+
+Yet acceptance changed at different rates within New Zealanders, and among a sizeable minority, prejudice remained entrenched. 
+
+Here, we using New Zealand Attitudes and Values Study data, we quantify the magnitude of the anti-Muslim prejudice in New Zealand before and after the 15 March attacks. 
+
+<aside>
+The New Zealand Attitudes and Values Study (NZAVS) is a pioneering nationally representative panel study started in 2009 [@nzavs2021], which has measured over 65,000 New Zealanders.
+</aside>
+ 
+
+## Prejudice trends 2012-2020 reveal "Muslim Acceptance Gap"
+
+
+
+```{r warmthtime, fig.width=12, fig.height=10, fig.cap="\\label{fig:warmthtime}Within-person prejudice change pre/post attacks towards (a) Muslims, (b) Immigrants, (c) Māori, (d) NZ Europeans. Redline indicates mosque attacks. Greenline indicates maximum warmth to Muslims, which was strongly boosted post-attacks, yet lags behind other groups", cache = TRUE, fig.fullwidth = TRUE}
 
 ld <- ggplot(data = dt,
              aes(x = yrs,
@@ -285,12 +278,11 @@ lds_0 + li_0 + lm_m + lnz_0 +  plot_layout(guides = 'collect', nrow = 1, byrow =
 ```
 
 
-## Natural Experiment
+## Acceptance of Muslims increased after the attacks
 
 
 
-
-```{r pptimeline, cache=TRUE, fig.fullwidth = TRUE, fig.width=12, fig.height=8}
+```{r pptimeline, cache=TRUE, fig.fullwidth = TRUE, fig.width=12, fig.height=8, fig.cap="\\label(fig:pptimeline) There was a substantial lift in Muslim Acceptance following the shootings, however there maximum average level of Muslim acceptance remains lower than all other minority group ratings since the NZAVS has been recording attitudes within New Zealanders."}
 ## timeline
 rarep<-df%>%
   dplyr::filter(YearMeasured == 1) %>%
@@ -507,175 +499,8 @@ km2 <- df %>%
 #table1::table1(~Muslim|Wave, data = km, overall=F)# there are 31 muslims in 2017
 ```
 
-```{r natexperiment, fig.fullwidth = TRUE, fig.width=12, fig.height=6, cache=TRUE}
-## timeline
-rarep<-df%>%
-  dplyr::filter(YearMeasured == 1) %>%
-  dplyr::filter(Wave == 2017 | Wave == 2018 | Wave == 2019) %>%
-  dplyr::group_by(Id) %>% filter(n() == 3) %>%
-  dplyr::filter(Wave == 2017 | Wave == 2018 | Wave == 2019) %>%
-  droplevels() %>%
-  dplyr::ungroup(Id) %>%
-  dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30)+ TSCORE)%>%
-  count(day = floor_date(timeline, "day"))%>%
-  dplyr::mutate(Condition = factor(ifelse(day < "2018-06-18", -1, 
-                                          ifelse(day >="2018-06-18" & day < "2019-03-15", 0,
-                                                 ifelse( day >="2019-03-15" & day < "2019-06-18",1 , 
-                                                         2))),
-                                                 labels= c("PRE-ATTACK Baseline wv9 N = 11,455","PRE-ATTACK CONTROL rep measure wv10: n = 8111","IMMEDIATE POST-ATTACK rep measure wv10: PostAttack n = 3355", "DELAY POST-ATTACK Repeated measure post attack 2019: N= 11287 ")))%>%
-  arrange(day)
 
-# get data of change of baseline
-dates_vline1<- as.Date("2018-06-18")
-
-# get attack date
-dates_vline2<- as.Date("2019-03-15")
-dates_vline3<- as.Date("2019-06-18")
-
-# for line in a graph
-dates_vline2b<-which(rarep$day %in% dates_vline2)
-dates_vline1b<-which(rarep$day %in% dates_vline1)
-dates_vline3b<-which(rarep$day %in% dates_vline3)
-
-lds2 <- ggplot(rarep, aes(day, n)) +
-  geom_col(aes(fill = Condition)) + scale_x_date(date_labels = "%b/%Y",
-                                                 limits = c(as.Date("2017-08-25"), as.Date("2020-10-15")))  +
-  scale_y_continuous(limits = c(0, 1000))  +
-  geom_vline(xintercept = as.numeric(rarep$day[dates_vline2b]),
-             col = "red",
-             linetype = "dashed") +
-  # geom_vline(xintercept = as.numeric(rarep$day[dates_vline1b]), col ="black",linetype="dashed") +
-  # geom_vline(xintercept = as.numeric(rarep$day[dates_vline3b]), col ="black",linetype="dashed") +
-  xlab("NZAVS Waves years 2017 - 2020 daily counts") + ylab("Count of Responses") + 
-  #ggtitle("Mosque attacks on NZAVS timeline (N = 11,330 repeatedly sampled in NZAVS Waves 9,10,11)") # + 
-  theme_classic() +
-  annotate(
-    "rect",
-    xmin = as.Date("2017-08-25"),
-    xmax = dates_vline1,
-    ymin = 0,
-    ymax = 900,
-    alpha = 0
-  ) +
-  annotate(
-    "rect",
-    xmin = dates_vline2,
-    xmax = dates_vline3,
-    ymin = 0,
-    ymax = 900,
-    alpha = .3,
-    fill = "darkred"
-  ) +
-  annotate(
-    "rect",
-    xmin = dates_vline1,
-    xmax = dates_vline2,
-    ymin = 0,
-    ymax = 900,
-    alpha = .3
-  ) +
-  annotate(
-    "rect",
-    xmin = dates_vline3,
-    xmax = as.Date("2020-10-15"),
-    ymin = 0,
-    ymax = 900,
-    alpha = .05,
-    fill = "red"
-  ) +
-  annotate(
-    "text",
-    x = as.Date("2018-10-15"),
-    y = 980,
-    label = "Wave 10
-           repeated pre-attacks"
-  ) +
-  annotate(
-    "text",
-    x = as.Date("2018-01-15"),
-    y = 980,
-    label = "Wave 9
-           baseline (control)"
-  ) +
-  annotate(
-    "text",
-    x = as.Date("2019-04-30"),
-    y = 980,
-    label = "Wave 10
-           repeated post attacks"
-  ) +
-  annotate(
-    "text",
-    x = as.Date("2020-02-15"),
-    y = 980,
-    label = "Wave 11
-           repeated during the year following attacks"
-  ) +
-  annotate(
-    geom = "curve",
-    x = as.Date("2018-02-15"),
-    y = 750,
-    xend = as.Date("2018-10-15"),
-    yend = 750,
-    curvature = -.3,
-    arrow = arrow(length = unit(2, "mm"))
-  ) + 
-  annotate(
-    geom = "curve",
-    x = as.Date("2018-02-15"),
-    y = 750,
-    xend = as.Date("2019-05-15"),
-    yend = 750,
-    curvature = -.3,
-    arrow = arrow(length = unit(2, "mm"))
-  ) +
-  annotate("text",
-           x = as.Date("2018-02-01"),
-           y = 750,
-           label = "0") +
-  annotate("text",
-           x = as.Date("2018-11-05"),
-           y = 750,
-           label = "+1") +
-  annotate(
-    geom = "curve",
-    x = as.Date("2019-05-15"),
-    y = 800,
-    xend = as.Date("2020-05-15"),
-    yend = 750,
-    curvature = -.3,
-    arrow = arrow(length = unit(2, "mm"))
-  ) +
-  annotate("text",
-           x = as.Date("2019-06-05"),
-           y = 750,
-           label = "+1") +
-  annotate("text",
-           x = as.Date("2020-05-30"),
-           y = 750,
-           label = "+2") +
-  annotate(
-    geom = "curve",
-    x = as.Date("2018-11-15"),
-    y = 800,
-    xend = as.Date("2020-05-15"),
-    yend = 750,
-    curvature = -.3,
-    arrow = arrow(length = unit(2, "mm"))
-  ) +
-  theme(
-    legend.position = "top",
-    legend.text = element_text(size = 6),
-    legend.title = element_text(color = "Black", size = 8)
-  ) +
-  scale_fill_viridis_d(option = "plasma")
-dev.off()
-### USE GRAPH OF TIMELINE
-lds2
-```
-
-
-## Model
+## However Muslim acceptance lags behind other groups
 
 ```{r models, cache=TRUE}
 library(lme4)
@@ -693,6 +518,7 @@ m1 <- lmer(Warm.Muslims ~   Pre_PostATTACK +
 # parameters::model_parameters(m1) %>%
 
 p1 <-plot(ggeffects::ggpredict(m1, terms = "Pre_PostATTACK", ci = .89)) + xlab("pre-attack") + ylab("Warmth to Muslims (1-7)") + labs(title = "Warm Muslims") +
+     geom_hline(yintercept= 4.42, color = "green") +
   scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + xlab("Attack Timeline")
 
 
@@ -707,7 +533,7 @@ p2 <- plot(ggeffects::ggpredict(m2, terms = "Pre_PostATTACK", ci = .89)) +
        # add.data = TRUE,
        # dot.alpha = 0.03,
        # jitter = .1) + 
-       xlab("Attack Timeline") + ylab("Warmth to NZ Europeans (1-7)") + labs(title = "Warm NZ Euros") +
+       xlab("Attack Timeline") + ylab("Warmth to NZ Europeans (1-7)") + labs(title = "Warm NZ Euros") +      geom_hline(yintercept= 4.42, color = "green") +
        scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d()
 
 
@@ -720,6 +546,7 @@ m3 <- lmer(Warm.Maori ~    Pre_PostATTACK +
            data = km2)
 p3 <-
   plot(ggeffects::ggpredict(m3, terms = "Pre_PostATTACK", ci = .89)) + xlab("pre-attack") + ylab("Warmth to Māori (1-7)") + labs(title = "Warm Māori") +
+       geom_hline(yintercept= 4.42, color = "green") +
   scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + xlab("Attack Timeline")
 
 
@@ -732,6 +559,7 @@ m4 <- lmer(Warm.Immigrants ~   Pre_PostATTACK +
 
 
 p4 <- plot(ggeffects::ggpredict(m4, terms = "Pre_PostATTACK", ci = .89)) + xlab("pre-attack") + ylab("Warmth to Immigrants (1-7)") + labs(title = "Warm Immigrants") +
+       geom_hline(yintercept= 4.42, color = "green") +
   scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + xlab("Attack Timeline")
 
 m5 <- lmer(Warm.Asians ~    Pre_PostATTACK + 
@@ -746,12 +574,14 @@ m5 <- lmer(Warm.Asians ~    Pre_PostATTACK +
 
 p5 <-
   plot(ggeffects::ggpredict(m5, terms = "Pre_PostATTACK", ci = .89)) + xlab("pre-attack") + ylab("Warmth to Asians (1-7)") + labs(title = "Warm Asians") +
+       geom_hline(yintercept= 4.42, color = "green") +
   scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + xlab("Attack Timeline")
 
 p5b <-
   plot(ggeffects::ggpredict(m5, terms = c("cons_s[all]","Pre_PostATTACK [all]"), ci = .89), add.data = TRUE, dot.alpha = 0.02, jitter = .2 ) +
     scale_y_continuous(limits = c(1, 7)) + 
  xlab("Political Conservativism (Standard Deviation Units") + 
+       geom_hline(yintercept= 4.42, color = "green") +
   ylab("Warmth to Asians (1-7)") + labs(title = "Warm Asians")  + scale_colour_viridis_d() + xlab("Attack Timeline") 
 
 
@@ -766,7 +596,7 @@ p5b <-
 ```
 
 
-```{r  graphsmodels, fig.fullwidth = TRUE, fig.width=12, fig.height=6, cache=TRUE}
+```{r  graphsmodels, fig.fullwidth = TRUE, fig.width=12, fig.height=10, cache=TRUE, fig.cap="\\label{fig:graphsmodels} Increase in Warmth to Muslims After Shootings, however, the acceptance of Muslims lags behind other minority groups. Green horizonal line indicates peak acceptance of Muslims, which occurred following the attacks, and has since dropped."}
 desc <- 'Large boost in Muslim acceptance following shootings; However Muslim acceptance still lags behind.'
 p1a<- p1 +   ggforce::geom_mark_ellipse(aes( label = 'Pre/Post Attack', description = desc), colour = "red") 
 p2a<- p2 +   ggforce::geom_mark_ellipse(aes( label = 'Pre/Post Attack'))
@@ -774,30 +604,26 @@ p3a<- p3 +   ggforce::geom_mark_ellipse(aes( label = 'Pre/Post Attack'))
 p4a<- p4 +   ggforce::geom_mark_ellipse(aes( label = 'Pre/Post Attack'))
 
 
-lds3<-(p1a +  p4a + p3a + p2a) + plot_annotation(title = "Increase in Warmth to Muslims After Shootings",
-                                 subtitle = "However, Muslim acceptance lags behind other minority groups", tag_levels = 'a') +   plot_layout(guides = 'collect') + plot_layout(nrow = 1, byrow = FALSE)
+lds3<-(p1a +  p4a + p3a + p2a) + plot_annotation(tag_levels = 'a') +   plot_layout(guides = 'collect') + plot_layout(nrow = 1, byrow = FALSE)
 
 lds3
 ```
 
 
 
-```{r  models_politics, cache = TRUE}
+```{r  modelspolitics, cache = TRUE, fig.fullwidth = TRUE, fig.width=12, fig.height=12, fig.cap= "\\label{fig:modelspolitics}Warmth toward Muslims increased more among political conservatives; however, conservatives had substantial headroom for improvement"}
+
 m6 <- lmer(Warm.Muslims ~  cons_s * Pre_PostATTACK +  EthnicCats + 
              a_s +
              r_s + (1|Id) , # dependence owing to the week of response
            data=km2)
 
-p6 <- plot(ggeffects::ggpredict(m6, terms = c("Pre_PostATTACK [all]", "cons_s[all]"), ci = .89)) + xlab("Conservativism") + ylab("Warmth Muslims") + labs(title = "Warmth to Muslims Increased the most among political conservatives:
-however, only to the midrange of the warmth scale: there's lots of headroom") + scale_colour_viridis_d()
+p6 <- plot(ggeffects::ggpredict(m6, terms = c("Pre_PostATTACK [all]", "cons_s[all]"), ci = .89)) + xlab("Conservativism") + ylab("Warmth Muslims") +  scale_colour_viridis_d()
 
-####### 
 p7 <- plot(ggeffects::ggpredict(m6, terms = c("cons_s[all]","Pre_PostATTACK [all]"), ci = .89), add.data = TRUE, dot.alpha = 0.02, jitter = .2 ) + scale_y_continuous(limits = c(.5,7.5)) +
   xlab("Political Conservativism (SD)") + ylab("Warmth Muslims (1-7") + 
-  labs(title = "Warmth to Muslims") + scale_colour_viridis_d() 
+  labs(title = "Warmth to Muslims") + scale_colour_viridis_d() + theme(legend.position = "top")
 
-#p7 +  ggforce::geom_mark_ellipse(aes(fill = "Pre_PostATTACK", label = "Pre_PostATTACK")) 
-#p7 +   ggforce::facet_zoom(xlim = c(0, .2), ylim = c(4, 4.5), horizontal = FALSE)
 desc <- "Post Shooting Difference"
 
 p71<-p7 + annotate("rect", 
@@ -845,7 +671,7 @@ p71<-p7 + annotate("rect",
     colour = "red"
   )
 
-## Compare this to warmth to maori
+## Compare this to warmth to Maori
 
 m8 <- lmer(Warm.Maori ~  cons_s * Pre_PostATTACK +  EthnicCats + 
              a_s +
@@ -855,10 +681,9 @@ m8 <- lmer(Warm.Maori ~  cons_s * Pre_PostATTACK +  EthnicCats +
 p8 <- plot(ggeffects::ggpredict(m8, terms = c("cons_s[all]","Pre_PostATTACK [all]"), ci = .89), 
           add.data = TRUE, dot.alpha = 0.02, jitter = .2 ) + scale_y_continuous(limits = c(.5,7.5)) +
   xlab("Political Conservativism (SD)") + ylab("Warmth Māori (1-7") + 
-  labs(title = "Warmth to Māori") + scale_colour_viridis_d()
+  labs(title = "Warmth to Māori") + scale_colour_viridis_d()+ theme(legend.position = "top")
 
-
-## Warmth to NZEuRO
+## Warmth to NZEuro
 m9 <- lmer(Warm.NZEuro ~  cons_s * Pre_PostATTACK +  EthnicCats + 
              a_s +
              r_s +(1|Id) , # dependence owing to the week of response
@@ -867,8 +692,7 @@ m9 <- lmer(Warm.NZEuro ~  cons_s * Pre_PostATTACK +  EthnicCats +
 p9 <- plot(ggeffects::ggpredict(m9, terms = c("cons_s[all]","Pre_PostATTACK [all]"), ci = .89), 
           add.data = TRUE, dot.alpha = 0.02, jitter = .2 ) + scale_y_continuous(limits = c(.5,7.5)) +
   xlab("Political Conservativism (SD)") + ylab("Warmth NZ Europeans (1-7") + 
-  labs(title = "Warmth to NZ Europeans") + scale_colour_viridis_d()
-
+  labs(title = "Warmth to NZ Europeans") + scale_colour_viridis_d() + theme(legend.position = "top")
 
 m10 <- lmer(Warm.Immigrants ~  cons_s * Pre_PostATTACK +  EthnicCats + 
              a_s +
@@ -878,33 +702,27 @@ m10 <- lmer(Warm.Immigrants ~  cons_s * Pre_PostATTACK +  EthnicCats +
 p10 <- plot(ggeffects::ggpredict(m10, terms = c("cons_s[all]","Pre_PostATTACK [all]"), ci = .89), 
           add.data = TRUE, dot.alpha = 0.02, jitter = .2 ) + scale_y_continuous(limits = c(.5,7.5)) +
   xlab("Political Conservativism (SD)") + ylab("Warmth Immigrants (1-7") + 
-  labs(title = "Warmth to Immigrants") + scale_colour_viridis_d()
-
-
-# Graph
-# p71 + p10 + p8 + p9 +  plot_layout(nrow = 1, byrow = FALSE) + plot_annotation(title = "Warmth to Muslims and other groups by political conservatvisms pre/post shootings
-# (N = 11330, repeated measures 2018-2020)", subtitle = "Muslim acceptance lags behind other minority groups (graph shows all predicted responses)", tag_levels = 'a') +   plot_layout(guides = 'collect')  
-#   
-# p71 <-p71 + theme(legend.position = "top")
-# 
-# p10 <-p10 + theme(legend.position = "top")
-# p8 <-p8 + theme(legend.position = "top")
-# p9 <-p9 + theme(legend.position = "top")
-#
+  labs(title = "Warmth to Immigrants") + scale_colour_viridis_d()+ theme(legend.position = "top")
 ```
 
 
-```{r  graphsmodelsPol, fig.fullwidth = TRUE, fig.width=12, fig.height=6, cache = TRUE}
+```{r  graphsmodelsPol, fig.fullwidth = TRUE, fig.width=12, fig.height=10, cache = TRUE, fig.cap="\\label{fig:graphsmodelsPol} Warmth to Muslims and other groups by political conservatvisms pre/post shootings N = 11330, repeated measures 2017-2020, Muslim acceptance lags behind other minority groups. Here we plot all all predicted responses.", eval=FALSE, include = FALSE}
 
-lds4 <-p71 + p10 + p8 + p9 +  plot_layout(nrow = 1, byrow = FALSE) + plot_annotation(title = "Warmth to Muslims and other groups by political conservatvisms pre/post shootings
-(N = 11330, repeated measures 2018-2020)", subtitle = "Muslim acceptance lags behind other minority groups (graph shows all predicted responses)", tag_levels = 'a') +   plot_layout(guides = 'collect')  
+lds4 <-p71 + p10 + p8 + p9 +  plot_layout(nrow = 1, byrow = FALSE) + plot_annotation(tag_levels = 'a') +   plot_layout(guides = 'collect')  
 lds4
 ```
+
+```{r challenge, fig.fullwidth = TRUE, fig.width=12, fig.height=10, cache = TRUE, fig.cap="\\label{fig:challenge} The dual challenge will be in maintiaining elevated acceptance, and, building on these gains, to increase the acceptance of Muslims to at least the migrant level.", eval=FALSE}
+p71 
+```
+
+
+
+
 
 
 ```{r  dagpol, include = FALSE, eval = FALSE}
 ## ADD FIG
-## 
 dg2 <- dagify(
   wm ~ pp+  cs + ml + news + U + yr + rel + edu + a + eth + ur,
   cs ~ ml + rel + a,
@@ -949,7 +767,33 @@ marsden_fig1v2 # 1750 x 2000
 ```
 
 
+## Suggestion: 51 seconds of silence
 
+<!-- Anti-religious prejudice attacks freedom of expression, namely the freedom to express one’s sacred beliefs after one’s conscience.   -->
+
+Democracies must cultivate virtues of respectful listening. 
+
+The civic virtues necessary to sustain democracies should not be assumed.  Such virtues must be actively cultivated. 
+
+Respectful listening in a culturally diverse democracy requires education. That is, to understand how people think we must know something about them. 
+
+With these principles in mind, we suggest an annual moment of silence on March 15 for freedom of religious expression, to acknowledge the losses, and to open a space for conversation. 
+
+
+
+
+## Appendix: background
+
+In the context of New Zealand history, the relatively high levels of prejudice against Muslim, as well as the confusion of Muslims with Arabs, might seem surprising. 
+First, New Zealand’s cultural diversity exceeds that of Australia, the United Kingdom, France, Germany, the Netherlands, and Scandinavia. Muslims are only a small part of this diversity. In 2018, New Zealand’s Muslim, just over 1.5% of the total population. The Islamic community has been present in New Zealand since at least 1874 (Shepard, 2006). The New Zealand Muslim community is of diverse ethnic and cultural origins — of those that affiliated with Islam in 2013, 26.9% were born in Asia, 25.7% in New Zealand, 23.3% in the Middle East or Africa, and 21% in the Pacific Islands (Center, 2013). Thus, fewer than a quarter of New Zealand Muslims can be classified as ‘Arab.’ 
+
+<aside>
+Colonial New Zealand state never adopted an official state religion, while principles of religious equality and the promotion of social harmony led to the formation of a secular state primary education system beginning in 1877.  In such a setting where religious conflicts are few, anti-religious prejudice of any kind is anomalous. 
+</aside>
+
+Another reason that anti-Muslim in New Zealand is puzzling is that New Zealand is one of the world’s most socially progressive and tolerant societies [@Oecd2011-qv], which has a long tradition of religious tolerance and accommodation of religious diversity. 
+
+A final source of puzzlement about anti-Muslim prejudice in New Zealand is that there is no record of any extremist Muslim group in New Zealand, nor have there been any reported attacks of Muslims on non-Muslims By contrast many attacks against the Muslim minority were reported prior to 15 March 2019, when 51 Muslims were murdered at two mosques in a single day.  Members of Islamic communities in New Zealand have long reported verbal and physical harassment, vandalism, negative media portrayal, and/or have faced difficulties in the labour market (Shepard, 2012). Thus, while Muslims in New Zealand have a basis for concern about their experiences of anti-Muslim prejudice, there is simply no basis for anti-Muslim prejudice among the non-Muslim majority is in the interpersonal experiences of non-Muslims. 
 
 
 
