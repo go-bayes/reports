@@ -365,7 +365,7 @@ lds3 <-
 ## Following the Christchurch Mosque attacks, warmth towards Muslim grew but still lags behind other groups
 
 
-The New Zealand Attitudes and Values Study (NZAVS) is a nationally representative panel study started in 2009 [@nzavs2021], which has measured over 65,000 New Zealanders.
+The New Zealand Attitudes and Values Study (NZAVS) is a nationally representative panel study started in 2009 [@nzavs2021], which has measured over 65,000 New Zealanders (see [NZAVS](https://go-bayes.github.io/reports/posts/nzavs/))
 
 
 
