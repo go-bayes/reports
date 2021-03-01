@@ -365,61 +365,40 @@ lds3 <-
 ## Following the Christchurch Mosque attacks, warmth towards Muslim grew but still lags behind other groups
 
 
-The New Zealand Attitudes and Values Study (NZAVS) is a nationally representative panel study started in 2009 [@nzavs2021], which has measured over 65,000 New Zealanders (see [NZAVS](https://go-bayes.github.io/reports/posts/nzavs/))
 
 
-
-Here, we investigate warmth to Muslims before and after the 15 March 2019 mosque attacks to clarify how levels of warmth changed to Muslims and other groups.
-
-<aside>
-The New Zealand Attitudes and Values Study (NZAVS) is a nationally representative panel study started in 2009 [@nzavs2021], which has measured over 65,000 New Zealanders.
-</aside>
-
+We investigate warmth to Muslims before and after the 15 March 2019 mosque attacks in a nationally diverse longitudinal sample of New Zealanders (*N* = 11,272), and clarify how levels of warmth changed to Muslims and other groups.^[
+The New Zealand Attitudes and Values Study (NZAVS) is a nationally representative panel study started in 2009 [@nzavs2021], which has measured over 65,000 New Zealanders (see [NZAVS](https://go-bayes.github.io/reports/posts/nzavs/))]
 
 <aside>
-
 The NZAVS measures tolerance using validated "affective thermometers" See [@sibley2020prejudice].
-
 </aside>
 
 ### Findings
 
--   As indicated in Figure \@ref(fig:graphsmodels), following the attacks there was a substantial increase in warmth to Muslims.
-
--   Following the attacks, there was also a small boost in warmth to immigrants.
-
--   Despite the post-attack boost in warmth to Muslims, warmth to Muslims still lags behind warmth to other groups.
-
-<aside>
-
-For example, peak warmth to Muslims following the attacks is lower than pre-attack warmth to immigrants.
-
-</aside>
+  -   Following the attacks there was a substantial increase in warmth to Muslims (Figure \@ref(fig:graphsmodels)a.)
+  -   Following the attacks, there was also a small boost in warmth to immigrants (Figure \@ref(fig:graphsmodels)b.)
+  -   Despite the post-attack boost in warmth to Muslims, warmth to Muslims still lags behind warmth to other groups. (Figure \@ref(fig:graphsmodels)a-d)
 
 
-```{r  graphsmodels, fig.fullwidth = TRUE, fig.width=12, fig.height=8, cache=TRUE, fig.cap="\\label{fig:graphsmodels} Increase in Warmth to Muslims After Shootings (red-dashed line), however, the acceptance of Muslims lags behind other minority groups. Green horizonal line indicates peak acceptance of Muslims, which occurred following the attacks, and has since dropped. (N = 11272, Years = 2017-2020, Source = NZAVS)"}
+
+```{r  graphsmodels, fig.fullwidth = TRUE, fig.width=12, fig.height=8,  layout="l-body-outset", cache=TRUE, fig.cap="\\label{fig:graphsmodels} Increase in Warmth to Muslims After Shootings (red-dashed line), however, the acceptance of Muslims lags behind other minority groups. Green horizonal line indicates peak acceptance of Muslims, which occurred following the attacks, and has since dropped. (N = 11272, Years = 2017-2020, Source = New Zealand Attitudes and Values Study)"}
 lds3
 ```
 
 ### Importance of findings
 
--   Although the purpose of the Mosque attacks was to incite division, the attacks caused a strong boost in acceptance.
-
--   The reasons for the boost in Muslim acceptance are unclear.
-
+  -   Although the purpose of the Mosque attacks was to incite division, the attacks caused a strong boost in acceptance.
+  -   The reasons for the boost in Muslim acceptance are unclear.
 <aside>
-
-Speculating, the government, media [@shaver2017news], and non-Muslim church responses [@Shaver2016-fs] likely played a role in boosting Muslim acceptance.
-
+Speculating, the government's response, media's response [@shaver2017news], and non-Muslim church responses [@Shaver2016-fs] likely played a role in boosting Muslim acceptance.
 </aside>
-
--   Whether growth in acceptance will be sustained remains unclear
-
--   Whether acceptance reverts to pre-shooting levels remains unclear.
+  -   Whether growth in acceptance will be sustained remains unclear
+  -   Whether acceptance reverts to pre-shooting levels remains unclear.
 
 
 
-```{r  graphsmodelsPol, fig.fullwidth = TRUE, fig.width=12, fig.height=10, cache = TRUE, fig.cap="\\label{fig:graphsmodelsPol} Warmth to Muslims and other groups by political conservatvisms pre/post shootings N = 11330, repeated measures 2017-2020, Muslim acceptance lags behind other minority groups. Here we plot all all predicted responses.", eval=FALSE, include = FALSE}
+```{r  graphsmodelsPol, fig.fullwidth = TRUE,  layout="l-body-outset", fig.width=12, fig.height=10, cache = TRUE, fig.cap="\\label{fig:graphsmodelsPol} Warmth to Muslims and other groups by political conservatvisms pre/post shootings N = 11330, repeated measures 2017-2020, Muslim acceptance lags behind other minority groups. Here we plot all all predicted responses.", eval=FALSE, include = FALSE}
 
 lds4 <-p71 + p10 + p8 + p9 +  plot_layout(nrow = 1, byrow = FALSE) + plot_annotation(tag_levels = 'a') +   plot_layout(guides = 'collect')  
 lds4
@@ -442,7 +421,7 @@ km2 %>%
    kable_classic_2(c("striped", "hover"), full_width = TRUE)
 ```
 
-```{r pptimeline, cache=TRUE, fig.fullwidth = TRUE, fig.width=12, fig.height=8, fig.cap="\\label{fig:pptimeline} Within-participant repeated measures covering the years before and following the attacks allow precise estimates of attitudinal change within-people (N = 11,481)."}
+```{r pptimeline, cache=TRUE, fig.fullwidth = TRUE,  layout="l-body-outset", fig.width=12, fig.height=8, fig.cap="\\label{fig:pptimeline} Within-participant repeated measures covering the years before and following the attacks allow precise estimates of attitudinal change within-people (N = 11,481)."}
 ## timeline
 rarep<-df%>%
   dplyr::filter(YearMeasured == 1) %>%
@@ -612,17 +591,12 @@ lds2
 
 New Zealand ranks among the world's most tolerant societies [@Oecd2011-qv]. However, Muslims are New Zealand's least accepted minority group [@Shaver2016-fs; @shaver2017news; @hawi2019terrorism; @yogeeswaran2019exploring; @greaves2020comparative; @sibley2020prejudice; @highland2019attitudes; @hawi2019terrorism].
 
-
-
-
 In the context of New Zealand history, the relatively high levels of prejudice against Muslim, as well as the confusion of Muslims with Arabs, might seem surprising.
 
 First, New Zealand's cultural diversity exceeds that of Australia, the United Kingdom, France, Germany, the Netherlands, and Scandinavia. Muslims are only a small part of this diversity. In 2018, New Zealand's Muslim, just over 1.5% of the total population. The Islamic community has been present in New Zealand since at least 1874 (Shepard, 2006). The New Zealand Muslim community is of diverse ethnic and cultural origins --- of those that affiliated with Islam in 2013, 26.9% were born in Asia, 25.7% in New Zealand, 23.3% in the Middle East or Africa, and 21% in the Pacific Islands (Center, 2013). Thus, fewer than a quarter of New Zealand Muslims can be classified as 'Arab.'
 
 <aside>
-
 Colonial New Zealand state never adopted an official state religion, while principles of religious equality and the promotion of social harmony led to the formation of a secular state primary education system beginning in 1877. In such a setting where religious conflicts are few, anti-religious prejudice of any kind is anomalous.
-
 </aside>
 
 Another reason that anti-Muslim in New Zealand is puzzling is that New Zealand is one of the world's most socially progressive and tolerant societies [@Oecd2011-qv], which has a long tradition of religious tolerance and accommodation of religious diversity.
@@ -633,7 +607,7 @@ A final source of puzzlement about anti-Muslim prejudice in New Zealand is that 
 
 In previous research, we found that levels of media exposure predicted lower warmth towards Muslims; notably, this effect held at both the low and high end of the political conservativism scale [@shaver2017news]. Whether changes in media coverage of Muslims contributed to rising Muslim acceptance following the attacks is a question that our future research will consider.
 
-<!-- We also found that prior to the attacks, religiously identified New Zealanders were on average more accepting of Muslims [@Shaver2016-fs]. Whether this difference held after the attacks is another question that we will consider in future reserach. -->
+ We also found that prior to the attacks, religiously identified New Zealanders were on average more accepting of Muslims [@Shaver2016-fs]. Whether this difference held after the attacks is another question that we will consider in future research.
 
 ## Appendix 3: Prejudice trends from 2012-2020 reveal a longstanding "Muslim Acceptance Gap"
 
@@ -641,7 +615,7 @@ Figure \@ref(fig:warmthtime) shows the longer term trend warmth towards Muslims,
 
 For more analysis of prejudice trends in New Zealand see: [@sibley2020prejudice]
 
-```{r warmthtime, fig.width=10, fig.height=24, fig.cap="\\label{fig:warmthtime} Within-person prejudice change pre/post attacks towards (a) Muslims, (b) Immigrants, (c) Māori, (d) NZ Europeans. Redline indicates mosque attacks. Greenline indicates maximum warmth to Muslims, which was strongly boosted post-attacks, yet lags behind other groups", cache = TRUE, fig.fullwidth = TRUE, include = TRUE}
+```{r warmthtime, fig.width=12,  layout="l-body-outset", fig.height=8, fig.cap="\\label{fig:warmthtime} Within-person prejudice change pre/post attacks towards (a) Muslims, (b) Immigrants, (c) Māori, (d) NZ Europeans. Redline indicates mosque attacks. Greenline indicates maximum warmth to Muslims, which was strongly boosted post-attacks, yet lags behind other groups", cache = TRUE, fig.fullwidth = TRUE, include = TRUE}
 
 ld <- ggplot(data = dt,
              aes(x = yrs,
@@ -740,7 +714,7 @@ lds_0 + li_0 + lm_m + lnz_0 +  plot_layout(guides = 'collect', nrow = 1, byrow =
 
 ```
 
-```{r  modelspolitics, cache = TRUE, fig.fullwidth = TRUE, fig.width=12, fig.height=12, fig.cap= "\\label{fig:modelspolitics} Warmth toward Muslims increased more among political conservatives; however, conservatives had substantial headroom for improvement", include = FALSE}
+```{r  modelspolitics,  cache = TRUE, fig.fullwidth = TRUE, fig.width=12, fig.height=12, fig.cap= "\\label{fig:modelspolitics} Warmth toward Muslims increased more among political conservatives; however, conservatives had substantial headroom for improvement", include = FALSE}
 
 m6 <- lmer(Warm.Muslims ~  cons_s * Pre_PostATTACK +  EthnicCats + 
              a_s +
