@@ -736,7 +736,7 @@ lnz_0 <-lnz + geom_line(alpha = .005) +
   labs(title="Warmth to NZ Europeans") +
   xlab("Years 2011-2020, N = 22,254")
 
-lds_0 + li_0 + lm_m + lnz_0 +  plot_layout(guides = 'collect', nrow = 4, byrow = TRUE) +   plot_annotation(title = "Timeline of attitudes to different groups in New Zealand; years 2011-2020: Source: NZAVS, N = 22,254", subtitle = "Green line = maximum level of warmth for Muslims, red line = Mosque attacks; Alpha for points on graph were set to .02 to avoid overplotting; method for estimation", tag_levels = 'a')
+lds_0 + li_0 + lm_m + lnz_0 +  plot_layout(guides = 'collect', nrow = 1, byrow = FALSE) +   plot_annotation(title = "Timeline of attitudes to different groups in New Zealand; years 2011-2020: Source: NZAVS, N = 22,254", subtitle = "Green line = maximum level of warmth for Muslims, red line = Mosque attacks; Alpha for points on graph were set to .02 to avoid overplotting; method for estimation", tag_levels = 'a')
 
 ```
 
