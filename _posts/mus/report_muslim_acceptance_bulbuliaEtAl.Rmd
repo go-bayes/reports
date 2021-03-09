@@ -34,6 +34,7 @@ library("viridis")
 library("patchwork")
 library("ggforce")
 library("kableExtra")
+library("lme4")
 ```
 
 ```{r data, cache = TRUE}
@@ -398,16 +399,6 @@ Speculating, the government's response, media's response [@shaver2017news], and 
 
 
 
-```{r  graphsmodelsPol, fig.fullwidth = TRUE,  layout="l-body-outset", fig.width=12, fig.height=10, cache = TRUE, fig.cap="\\label{fig:graphsmodelsPol} Warmth to Muslims and other groups by political conservatvisms pre/post shootings N = 11330, repeated measures 2017-2020, Muslim acceptance lags behind other minority groups. Here we plot all all predicted responses.", eval=FALSE, include = FALSE}
-
-lds4 <-p71 + p10 + p8 + p9 +  plot_layout(nrow = 1, byrow = FALSE) + plot_annotation(tag_levels = 'a') +   plot_layout(guides = 'collect')  
-lds4
-```
-
-```{r challenge, fig.fullwidth = TRUE, fig.width=12, fig.height=10, cache = TRUE, fig.cap="\\label{fig:challenge} The dual challenge will be in maintiaining elevated acceptance, and, building on these gains, to increase the acceptance of Muslims to at least the migrant level.", eval=FALSE}
-p71 
-```
-
 ## Appendix 1: Design
 
 Participants responded to waves 9, 10, and 11 of the New Zealand Attitudes and Values Study. In total there were `r length(unique(km2$Id))` participants who responded to all three waves. See Figure \@ref(fig:pptimeline), Table \@ref(tab:designtable)
@@ -714,7 +705,7 @@ lds_0 + li_0 + lm_m + lnz_0 +  plot_layout(guides = 'collect', nrow = 1, byrow =
 
 ```
 
-```{r  modelspolitics,  cache = TRUE, fig.fullwidth = TRUE, fig.width=12, fig.height=12, fig.cap= "\\label{fig:modelspolitics} Warmth toward Muslims increased more among political conservatives; however, conservatives had substantial headroom for improvement", include = FALSE}
+```{r  modelspolitics,  cache = TRUE}
 
 m6 <- lmer(Warm.Muslims ~  cons_s * Pre_PostATTACK +  EthnicCats + 
              a_s +
@@ -725,7 +716,17 @@ p6 <- plot(ggeffects::ggpredict(m6, terms = c("Pre_PostATTACK [all]", "cons_s[al
 
 p7 <- plot(ggeffects::ggpredict(m6, terms = c("cons_s[all]","Pre_PostATTACK [all]"), ci = .89), add.data = TRUE, dot.alpha = 0.02, jitter = .2 ) + scale_y_continuous(limits = c(.5,7.5)) +
   xlab("Political Conservativism (SD)") + ylab("Warmth Muslims (1-7") + 
-  labs(title = "Warmth to Muslims") + scale_colour_viridis_d() + theme(legend.position = "top")
+  labs(title = "Warmth to Muslims") + scale_colour_viridis_d()   +
+  theme(
+    # Change legend background color
+    # legend.background = element_rect(fill = "darkgray"),
+    #  legend.key = element_rect(fill = "lightblue", color = NA),
+    # Change legend key size and key width
+    legend.key.size = unit(0.2, "cm"),
+     legend.direction = "vertical",,
+    legend.key.width = unit(0.2, "cm"),
+  ) + 
+  guides(size = 1.5)
 
 desc <- "Post Shooting Difference"
 
@@ -772,7 +773,7 @@ p71<-p7 + annotate("rect",
     curvature = 0,
     arrow = arrow(length = unit(2, "mm")),
     colour = "red"
-  )
+  ) 
 
 ## Compare this to warmth to Maori
 m8 <- lmer(Warm.Maori ~  cons_s * Pre_PostATTACK +  EthnicCats + 
@@ -783,7 +784,17 @@ m8 <- lmer(Warm.Maori ~  cons_s * Pre_PostATTACK +  EthnicCats +
 p8 <- plot(ggeffects::ggpredict(m8, terms = c("cons_s[all]","Pre_PostATTACK [all]"), ci = .89), 
           add.data = TRUE, dot.alpha = 0.02, jitter = .2 ) + scale_y_continuous(limits = c(.5,7.5)) +
   xlab("Political Conservativism (SD)") + ylab("Warmth Māori (1-7") + 
-  labs(title = "Warmth to Māori") + scale_colour_viridis_d()+ theme(legend.position = "top")
+  labs(title = "Warmth to Māori") + scale_colour_viridis_d()+ 
+    theme(
+    # Change legend background color
+    # legend.background = element_rect(fill = "darkgray"),
+    #  legend.key = element_rect(fill = "lightblue", color = NA),
+    # Change legend key size and key width
+    legend.key.size = unit(0.2, "cm"),
+    legend.direction = "vertical",
+    legend.key.width = unit(0.2, "cm")
+  )+ 
+  guides(size = 1.5)
 
 ## Warmth to NZEuro
 m9 <- lmer(Warm.NZEuro ~  cons_s * Pre_PostATTACK +  EthnicCats + 
@@ -794,15 +805,54 @@ m9 <- lmer(Warm.NZEuro ~  cons_s * Pre_PostATTACK +  EthnicCats +
 p9 <- plot(ggeffects::ggpredict(m9, terms = c("cons_s[all]","Pre_PostATTACK [all]"), ci = .89), 
           add.data = TRUE, dot.alpha = 0.02, jitter = .2 ) + scale_y_continuous(limits = c(.5,7.5)) +
   xlab("Political Conservativism (SD)") + ylab("Warmth NZ Europeans (1-7") + 
-  labs(title = "Warmth to NZ Europeans") + scale_colour_viridis_d() + theme(legend.position = "top")
+  labs(title = "Warmth to NZ Europeans") + scale_colour_viridis_d() + 
+    theme(
+    # Change legend background color
+    # legend.background = element_rect(fill = "darkgray"),
+    #  legend.key = element_rect(fill = "lightblue", color = NA),
+    # Change legend key size and key width
+    legend.key.size = unit(0.2, "cm"),
+     legend.direction = "vertical",
+    legend.key.width = unit(0.2, "cm")
+  )+ 
+  guides(size = 1.5)
 
 m10 <- lmer(Warm.Immigrants ~  cons_s * Pre_PostATTACK +  EthnicCats + 
              a_s +
              r_s +(1|Id) , # dependence owing to the week of response
            data=km2)
 
-p10 <- plot(ggeffects::ggpredict(m10, terms = c("cons_s[all]","Pre_PostATTACK [all]"), ci = .89), 
-          add.data = TRUE, dot.alpha = 0.02, jitter = .2 ) + scale_y_continuous(limits = c(.5,7.5)) +
-  xlab("Political Conservativism (SD)") + ylab("Warmth Immigrants (1-7") + 
-  labs(title = "Warmth to Immigrants") + scale_colour_viridis_d()+ theme(legend.position = "top")
+p10 <-
+  plot(
+    ggeffects::ggpredict(
+      m10,
+      terms = c("cons_s[all]", "Pre_PostATTACK [all]"),
+      ci = .89
+    ),
+    add.data = TRUE,
+    dot.alpha = 0.02,
+    jitter = .2
+  ) + scale_y_continuous(limits = c(.5, 7.5)) +
+  xlab("Political Conservativism (SD)") + ylab("Warmth Immigrants (1-7") +
+  labs(title = "Warmth to Immigrants") + scale_colour_viridis_d()+
+  theme(
+    # Change legend background color
+    # legend.background = element_rect(fill = "darkgray"),
+    #  legend.key = element_rect(fill = "lightblue", color = NA),
+    # Change legend key size and key width
+    legend.key.size = unit(0.2, "cm"),
+    legend.key.width = unit(0.2, "cm"),
+    legend.direction = "vertical")+ 
+  guides(size = 1.5)
 ```
+
+## Appendix 4: Predictors of Muslim acceptance
+
+We observe that political conservativism is strongly associated with minority gropu prejudice. In absolute terms, however, the growth in Muslim acceptance following the shootings was stronger at the conservative end of the scale (see Figure \@ref(fig:graphsmodelsPol). The graph plots all expected values, as such the darkness of the areas reflect densities of responses. This approach allows us to visualise the variance around the average responses (the))
+
+```{r  graphsmodelsPol, fig.fullwidth = TRUE,  layout="l-body-outset", fig.width=12, fig.height=10, cache = TRUE, fig.cap="\\label{fig:graphsmodelsPol} Warmth to Muslims (y-axis) and other groups by political conservativism (x-axis) pre/post shootings (the solid lines). The shift betweenand the purple/blue lines (pre-attacks) and the yellow/green lines (post-attacks) show magnitude of growth in minority group acceptance. Results reveal that the attacks led to a greater increase in acceptance of Muslims among political conservatives. However, this population had more headroom for growth in warmth. Whether this boost in Muslim acceptance endures remains to be seen. (N = 11272, Years = 2017-2020, Source = New Zealand Attitudes and Values Study)", eval=TRUE, echo = FALSE}
+lds4 <-  p71 + p10 + p8 + p9 +  plot_annotation(tag_levels = 'a') +   plot_layout(nrow = 1,  byrow = FALSE)  +  plot_layout(guides = 'collect')
+lds4 
+```
+
+
