@@ -369,7 +369,7 @@ lds3 <-
 
 
 We investigate warmth to Muslims before and after the 15 March 2019 mosque attacks in a nationally diverse longitudinal sample of New Zealanders (*N* = 11,272), and clarify how levels of warmth changed to Muslims and other groups.^[
-The New Zealand Attitudes and Values Study (NZAVS) is a nationally representative panel study started in 2009 [@nzavs2021], which has measured over 65,000 New Zealanders (see [NZAVS](https://go-bayes.github.io/reports/posts/nzavs/))]
+The New Zealand Attitudes and Values Study (NZAVS) is a nationally representative panel study that Prof Chris Sibley started in 2009 [@nzavs2021], which has measured over 65,000 New Zealanders (see [NZAVS](https://www.psych.auckland.ac.nz/en/about/new-zealand-attitudes-and-values-study.html)]
 
 <aside>
 The NZAVS measures tolerance using validated "affective thermometers" See [@sibley2020prejudice].
@@ -846,11 +846,11 @@ p10 <-
   guides(size = 1.5)
 ```
 
-## Appendix 4: Predictors of Muslim acceptance
+## Appendix 4: Political conservatives also grew more accepting of Muslims after the 2019 Mosque attacks.
 
-We observe that political conservativism is strongly associated with minority gropu prejudice. In absolute terms, however, the growth in Muslim acceptance following the shootings was stronger at the conservative end of the scale (see Figure \@ref(fig:graphsmodelsPol). The graph plots all expected values, as such the darkness of the areas reflect densities of responses. This approach allows us to visualise the variance around the average responses (the))
+Generally, greater political conservativism predicts greater minority group prejudice. In absolute terms, however, growth in Muslim acceptance following the shootings was stronger at the conservative end of the scale (see Figure \@ref(fig:graphsmodelsPol). 
 
-```{r  graphsmodelsPol, fig.fullwidth = TRUE,  layout="l-body-outset", fig.width=12, fig.height=10, cache = TRUE, fig.cap="\\label{fig:graphsmodelsPol} Warmth to Muslims (y-axis) and other groups by political conservativism (x-axis) pre/post shootings (the solid lines). The shift betweenand the purple/blue lines (pre-attacks) and the yellow/green lines (post-attacks) show magnitude of growth in minority group acceptance. Results reveal that the attacks led to a greater increase in acceptance of Muslims among political conservatives. However, this population had more headroom for growth in warmth. Whether this boost in Muslim acceptance endures remains to be seen. (N = 11272, Years = 2017-2020, Source = New Zealand Attitudes and Values Study)", eval=TRUE, echo = FALSE}
+```{r  graphsmodelsPol, fig.fullwidth = TRUE,  layout="l-body-outset", fig.width=12, fig.height=10, cache = TRUE, fig.cap="\\label{fig:graphsmodelsPol} Warmth to Muslims (y-axis) and other groups by political conservativism (x-axis) pre/post shootings (the solid lines). The shift betweenand the purple/blue lines (pre-attacks) and the yellow/green lines (post-attacks) shows the magnitude of growth in minority group acceptance. Here we plot all expected values of the model as points. The darkness of the areas on the graph reflect densities of responses. This approach allows us to visualise the variance around average responses. Results reveal that the mosque attacks led to a greater increase in warmth towards Muslims among political conservatives. However, this population had more headroom for growth in warmth. Whether this boost in Muslim warmth is sustained remains to be seen: (N = 11272, Years = 2017-2020, Source = New Zealand Attitudes and Values Study)", eval=TRUE, echo = FALSE}
 lds4 <-  p71 + p10 + p8 + p9 +  plot_annotation(tag_levels = 'a') +   plot_layout(nrow = 1,  byrow = FALSE)  +  plot_layout(guides = 'collect')
 lds4 
 ```
