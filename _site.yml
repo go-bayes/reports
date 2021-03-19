@@ -5,8 +5,8 @@ description: |
 output_dir: "docs"
 base_url: https://go-bayes.github.io/reports
 repository_url: https://github.com/go-bayes/reports
-creative_commons: CC BY
-google_analytics: "G-X058WW5WJZ"
+creative_commons: CC BY-NC-SA
+google_analytics: "G-RHXJDBVMBK"
 twitter:
   site: "@go_bayes"
   creator: "@go_bayes"
@@ -15,7 +15,7 @@ collections:
     feed_item_max: false
 navbar:
   source_url: https://github.com/go-bayes/reports
-  search: false
+  search: true
   left:
       - text: "Brief Reports"
         href: index.html
