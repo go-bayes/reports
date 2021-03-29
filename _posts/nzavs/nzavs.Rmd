@@ -182,12 +182,8 @@ The NZAVS  maintains an up-to-date contact list as participants move house, chan
 
 ## Questionaire
 
-```{r}
-xfun::file_string(here::here("html","nzavs.htm"))
-```
 
-
-
+[Link to Questionaire](https://www.dropbox.com/s/cv256sbjal4ucvo/nzavs-data-dictionary.htm?dl=0)
 
 
 
