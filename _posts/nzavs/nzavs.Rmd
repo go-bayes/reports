@@ -52,7 +52,7 @@ df<-readRDS(here::here("data","df"))
 
 
 
-```{r timeline, fig.width=12, fig.height=12, fig.fullwidth = TRUE, fig.cap="Sampling from the electoral rol combines with repeated measures within the same people across New Zealand's social diversity to enable robust inference about stability and change in attitudes and values across New Zealand over time .", layout = "l-body-outset", cache = TRUE}
+```{r timeline, fig.width=12, fig.height=10, fig.cap="Sampling from the electoral rol combines with repeated measures within the same people across New Zealand's social diversity to enable robust inference about stability and change in attitudes and values across New Zealand over time .", layout = "l-body-outset", cache = TRUE}
 datrep <- df %>%
   dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30) + TSCORE) %>%
   count(day = floor_date(timeline, "day")) %>%
@@ -167,6 +167,7 @@ ggplot2::ggplot(datrep, aes(day, n)) +
 #   xlab("NZAVS daily counts") + ylab("Count of Responses") + ggtitle("NZAVS Daily Counts")  + theme_blank()  +  scale_fill_viridis_d()
 ```
 
+## About the New Zealand Atitudes and Values Study
 
 The New Zealand Attitudes and Values Study (NZAVS) is a national panel study that Professor Chris G Sibley started in 2009. The team has since grown to over 40 collaborators.
 
@@ -180,14 +181,11 @@ Each year, the NZAVS surveys health, personality, relationships, employment, val
 
 
 
-## Questionaire
+## Link to data dictionary and questions
 
+[Link to Full data dictionary](https://dl.dropboxusercontent.com/s/but0pz9h4jdpy6f/NZAVS-Technical-Documents-e02-Data-Dictionary.xlsx?dl=0)
 
-[Link to Questionaire](https://www.dropbox.com/s/cv256sbjal4ucvo/nzavs-data-dictionary.htm?dl=0)
-
-
-
-
+[Link to questions only](https://dl.dropboxusercontent.com/s/cv256sbjal4ucvo/nzavs-data-dictionary.htm?dl=0)
 
 
 
