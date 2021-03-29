@@ -172,6 +172,11 @@ The NZAVS is distinct from other panel studies for the breadth of its survey que
 
 The NZAVS  maintains an up-to-date contact list as participants move house, change names, change telephone accounts, and change email addresses. The study's personalised telephone campaigns, holiday cards, and participant prize draws have enabled the NZAVS to maintain a remarkably high annual sample retention rate of 80%. Many longitudinal studies achieve only 20% retention. The high NZAVS retention rate combines with a data-rich questionnaire and 12 waves of data collection to produce a unique intellectual resource. No comparable time-series data source within individuals with such *coverage* and *depth* for investigating religion, health, and community-making exists in the world [@nzavs2021]. 
 
+## Questionaire
+
+```{r}
+htmltools::includeHTML(here::here("html", "nzavs.htm"))
+```
 
 
 
