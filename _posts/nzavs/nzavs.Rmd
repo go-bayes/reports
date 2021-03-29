@@ -182,9 +182,12 @@ The NZAVS  maintains an up-to-date contact list as participants move house, chan
 
 ## Questionaire
 
-```{r class.output="scroll-100"}
-htmltools::includeHTML(here::here("html", "nzavs.htm"))
+```{r}
+xfun::file_string(here::here("html","nzavs.htm"))
 ```
+
+
+
 
 
 
