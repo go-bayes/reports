@@ -571,28 +571,54 @@ x <-cv$Covid_Timeline
 m <-cv$Fatigue
 y<- cv$KESSLER6sum
 id <-cv$Id
-m_w <-cv$Fatigue_within
+m_w <-as.integer(cv$Fatigue_within*2)
 
-dat <-cbind(x,m,m_w, y,id)
+dat <-data.frame(cbind(x,m,m_w, y,id))
+table(dat$m_w)
 ```
 
 
 ```{r echo = TRUE}
 path_m <- bf(
   m ~ x + 
-    (1 |p| id:x)
+    (1 |p| id)
 )
 path_y <- bf(
-  y ~ x + m_w + 
-    ( 1 |p| id:x)
+  y ~ x + mo(m_w) + 
+    ( 1 |p| id)
 )
 f1 <- brm(
   path_m + path_y + set_rescor(FALSE),
   data = dat,
-  control = list(adapt_delta = .99),
   file = here("models/mediation-k6-covid-fatigue")
 )
-```
+
+summary(f1)
+s1<-bayestestR::mediation(f1,centrality = "mean",ci=.95) # nat, no  FAT 
+
+sjPlot::plot_model(f1)
+
+d1<-bayestestR::describe_posterior(as.data.frame(f1),centrality = "mean", test="p_direction",ci=.95)
+d1
+
+pt1<-d1%>%
+  tibble::as_tibble(include.rownames = FALSE)%>%
+  dplyr::slice(n=1:10)%>%
+  dplyr::select(-CI)%>%
+  mutate_if(is.numeric, ~round(., 3))%>%
+  ggpubr::ggtexttable(rows = NULL,
+                      theme = ttheme("mRed"))
+
+pt1
+bbt18<-bayestestR::mediation(f1,centrality = "mean",ci=.95) # nat, no  FAT 
+
+
+dm20<-as.data.frame(bbt20S)%>%
+  dplyr::select(-proportion_mediated)%>%
+  bayestestR::estimate_density()%>%
+  plot(labels = FALSE)%>%
+  ggpar(main = "")#+theme_solarized()
+dm20
 ```
 
 
