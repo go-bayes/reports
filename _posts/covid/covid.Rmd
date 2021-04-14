@@ -540,6 +540,62 @@ plot(estimate_contrasts(k6_cv)%>%
 ```
 
 
+```{r}
+bmlm::mlm_path_plot(
+  xlab = "Covid\nCondition", 
+  ylab = "Kessler6\n Distress", 
+  mlab = "Fatigue"
+  )
+```
+
+```{r}
+library(tidyverse)
+library(patchwork)
+p1 <- cv %>% 
+  ggplot(aes(Covid_Timeline, Fatigue)) +
+  stat_summary(fun.data = mean_cl_boot, size = 1) +
+  geom_point(position = position_jitter(.15, .1), shape = 1, alpha = .01)
+p2 <- cv %>% 
+  ggplot(aes(Covid_Timeline, KESSLER6sum)) +
+  stat_summary(fun.data = mean_cl_boot, size = 1) +
+  geom_point(position = position_jitter(.15, .1), shape = 1, alpha = .01)
+p3 <- cv %>% 
+  ggplot(aes(Fatigue, KESSLER6sum)) +
+  geom_point(position = position_jitter(.15, .1), shape = 1, alpha = .01) +
+  geom_smooth(method = 'loess')
+p1 | p2 | p3
+```
+
+```{r}
+x <-cv$Covid_Timeline
+m <-cv$Fatigue
+y<- cv$KESSLER6sum
+id <-cv$Id
+m_w <-cv$Fatigue_within
+
+dat <-cbind(x,m,m_w, y,id)
+```
+
+
+```{r echo = TRUE}
+path_m <- bf(
+  m ~ x + 
+    (1 |p| id:x)
+)
+path_y <- bf(
+  y ~ x + m_w + 
+    ( 1 |p| id:x)
+)
+f1 <- brm(
+  path_m + path_y + set_rescor(FALSE),
+  data = dat,
+  control = list(adapt_delta = .99),
+  file = here("models/mediation-k6-covid-fatigue")
+)
+```
+```
+
+
 
 # ```{r}
 # cv2<-cv
