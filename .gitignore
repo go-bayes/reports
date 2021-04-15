@@ -39,6 +39,6 @@ vignettes/*.pdf
 
 #*data/
 *_cache/
-*models/
+#*models/
 _posts/**/*.html
 _posts/**/*_files/
