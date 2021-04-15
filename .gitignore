@@ -19,7 +19,7 @@
 
 # RStudio files
 .Rproj.user/
-*.Rproj
+
 
 # produced vignettes
 vignettes/*.html
@@ -37,10 +37,6 @@ vignettes/*.pdf
 *.knit.md
 *.txt
 
-.Rproj.user
-.Rhistory
-.RData
-.Ruserdata
 *data/
 *_cache/
 *models/
