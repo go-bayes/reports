@@ -37,7 +37,7 @@ vignettes/*.pdf
 *.knit.md
 *.txt
 
-*data/
+#*data/
 *_cache/
 *models/
 _posts/**/*.html
