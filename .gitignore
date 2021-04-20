@@ -5,6 +5,8 @@
 # Session Data files
 .RData
 
+# data
+*data/
 
 # User-specific files
 .Ruserdata
@@ -43,3 +45,16 @@ vignettes/*.pdf
 *models/
 _posts/**/*.html
 _posts/**/*_files/
+
+*data/
+*_cache/
+*models/
+*templates/template_review_files/
+_posts/**/*.html
+_posts/**/*_files/
+*.Rproj
+docs/templates/template_review_files/*
+docs/templates/**/*.html
+_posts/**/*_files/
+_posts/*.pdf
+docs/posts/**/*.pdf
