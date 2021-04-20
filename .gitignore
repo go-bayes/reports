@@ -5,9 +5,6 @@
 # Session Data files
 .RData
 
-# data
-data/**df
-
 # User-specific files
 .Ruserdata
 
@@ -46,7 +43,10 @@ vignettes/*.pdf
 _posts/**/*.html
 _posts/**/*_files/
 
-*data/
+
+# data
+data/*df
+
 *_cache/
 *models/
 *templates/template_review_files/
