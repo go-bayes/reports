@@ -4,6 +4,7 @@
 
 # Session Data files
 .RData
+*DS_Store
 
 # User-specific files
 .Ruserdata
@@ -39,6 +40,6 @@ vignettes/*.pdf
 
 #*data/
 *_cache/
-#*models/
+*models/
 _posts/**/*.html
 _posts/**/*_files/
