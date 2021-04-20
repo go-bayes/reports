@@ -1,0 +1,339 @@
+---
+title: "Longitudinal Effects of Pandemic Distress in New Zealand"
+subtitle: "February/March 2020"
+author: "Joseph Bulbulia, Psychology, Victoria University"
+date: 2020-APRIL-23
+bibliography: bibliography.bib
+output: 
+  ioslides_presentation:
+    mainfont: roboto
+    incremental: true
+    transition: 0
+    smaller: true
+    css: extra.css
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+
+
+```{r load_libraries, include=FALSE}
+# see: https://github.com/rjknell/Ioslides_css
+library("tidyverse")
+library("easystats")
+library("patchwork")
+library("kableExtra")
+library("ggpubr")
+#library("viridis")
+#library("wesanderson")
+# library("papaja")
+library("here")
+library("citr")
+library("here")
+library("brms")
+library("rstan")
+library("rstanarm")
+# library("tidybayes")
+library("lubridate")
+library("ggdag")
+library("viridisLite")
+library("bmlm")
+library("bayesplot")
+library("broom")
+library("purrr")
+#library("cmdstanr")  #multithreading bayesian models
+# rstan options
+rstan_options(auto_write=TRUE)
+options(mc.cores=parallel::detectCores ())
+theme_set(theme_classic())
+```
+
+
+
+```{r setup, include=FALSE}
+# See: https://rstudio-pubs-static.s3.amazonaws.com/27777_55697c3a476640caa0ad2099fe914ae5.html#/
+# setup
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE #,
+#  layout = "l-body-outset" #,
+ # fig.width= 12,
+ # fig.height= 10,
+#  collapse =TRUE,
+#  R.options = list(width = 60)
+)
+
+```
+```{r cache=TRUE}
+# import data
+df <- readRDS(here::here("data", "df"))
+```
+
+```{r cache = TRUE, include = FALSE}
+ord_dates_class <- c(
+  "BaseLine_2018_19_w10", 
+  "Pre_COVID_2019_w11", 
+  "Jan_Feb_2020", 
+  "Early_March_2020", 
+  "L4_Lockdown_2020",
+  "Post_Lockdown_2020")
+rm(cv)
+
+
+cv <- df %>%
+  dplyr::filter(YearMeasured == 1) %>%
+  dplyr::filter(Wave == 2018 | Wave == 2019) %>%
+  dplyr::group_by(Id) %>% filter(n() > 1) %>%
+  dplyr::filter(n() != 0) %>%
+  dplyr::ungroup(Id) %>%
+  dplyr::mutate(Covid_Timeline =
+                 # ifelse(
+                 # TSCORE %in% 3837:3894,
+                 # "Baseling",
+                    as.factor(ifelse(
+                      TSCORE %in% 3895:3921,
+                      "Early_March_2020",
+                      ifelse(
+                        TSCORE %in% 3921:3954,
+                        "L4_Lockdown_2020",
+                        ifelse(
+                          TSCORE > 3954,
+                          "Post_Lockdown_2020",
+                          ifelse(
+                            TSCORE %in% 3842:3894,
+                            "Jan_Feb_2020",
+                          ifelse(
+                            TSCORE %in% 3665:3842 &
+                              Wave == 2019,
+                            "Pre_COVID_2019_w11",
+                            "BaseLine_2018_19_w10"
+                          )
+                        )
+                      )
+                    ) 
+                 ) ))%>%
+  dplyr::mutate(PrePostCovid =
+                  ifelse(
+                    TSCORE > 3895, "post_covid",
+                    ifelse(
+                      TSCORE < 3895 &
+                        Wave == 2019,
+                      "before_COVID_wave11",
+                      "baseline_wave10"
+                    )
+                  ))%>% 
+  dplyr::select(
+    TSCORE,
+    WSCORE,
+    Wave,
+    Partner,
+    Employed,
+    Sat.Government,
+    NZ.Business.Conditions,
+    NZ.Economic.Situation,
+    PrePostCovid,
+    Rel.Conflict,
+    Rel.Satisfaction,
+    Hours.SocialMedia,
+    Hours.Exercise,
+    Hours.Internet,
+    Hours.News,
+    Hours.Family,
+    Hours.Friends,
+    Hours.Housework,
+    Hours.Children,
+    Hours.Religious,
+    Hours.Work,
+    Hours.Community,
+    Family.Time,
+    Community.Time,
+    Friends.Time,
+    Family.Money,
+    Friends.Money,
+    Community.Money,
+    years,
+    Id,
+    Parent,
+    SWB.SatPWI02, # your health
+    Hours.Work,
+    Hours.Exercise,
+    LIFEMEANING,
+    KESSLER6,
+    SWB.SatPWI03, # your future security
+    #  K6sum,
+    KESSLER6sum,
+    Age,
+    Male,
+    Relid,
+    Pol.Orient,
+    Urban,
+    GenCohort,
+    Edu,
+    YearMeasured,
+    Covid_Timeline,
+    HLTH.SleepHours,
+    HLTH.Fatigue,
+    LIFESAT,
+    PWI,
+    EthnicCats,
+    NZdep,
+    Partner,
+    Pol.Orient,
+    Urban,
+    Euro,
+    Religious,
+    NZdep,
+    WSCORE,
+    Religion.Church,
+    Emp.JobSecure,
+    Emp.JobSat,
+    Emp.JobValued,
+    Alcohol.Intensity,
+    Alcohol.Frequency
+  ) %>%
+  dplyr::group_by(Id) %>% filter(n() > 1) %>%
+  dplyr::filter(n() != 0) %>%
+  dplyr::ungroup(Id) %>%
+  dplyr::filter(!is.na(KESSLER6sum),
+                !is.na(LIFEMEANING)) %>%
+  dplyr::mutate(
+    Urban = (Urban),
+    Euro = (Euro),
+    Religious = as.factor(Religious),
+    Your_Health = (SWB.SatPWI02),
+    Your_Future_Security = SWB.SatPWI03,
+    Covid_Timeline = as.factor(Covid_Timeline)
+  ) %>%
+  dplyr::mutate(
+    WSCORE = as.factor(WSCORE),
+    EduC = scale(as.numeric(Edu), scale = F, center = TRUE),
+    Sat.Government = scale(Sat.Government),
+    AgeDecadeC = scale(Age, scale = F, center = T) / 10,
+    Hours.Work10 = as.integer(Hours.Work) / 10,
+    Hours.Sleep = as.integer(HLTH.SleepHours),
+    Hours.Exercise = as.integer(Hours.Exercise),
+    Fatigue = as.integer(HLTH.Fatigue),
+    f_s = scale(Fatigue),
+    K6sum = as.integer(KESSLER6 * 6),
+    LIFEMEANING_S = scale(LIFEMEANING),
+    NZdepS = scale(NZdep),
+    PolOrientS = scale(Pol.Orient, scale = T, center = T),
+    Relid_S = scale(Relid, scale = T, center = T),
+    Conservative = Pol.Orient,
+    logSM = log(Hours.SocialMedia + 1),
+    logINT = log(Hours.Internet + 1),
+    logEX = log(Hours.Exercise + 1),
+    logWK= log(Hours.Work + 1),
+    k6_s = scale(KESSLER6sum),
+    Conservative_S = PolOrientS,
+    Religion_Church_S = scale(Religion.Church),
+    Emp.JobSecure_S = scale(Emp.JobSecure),
+    KESSLER6sum = as.integer(KESSLER6sum),
+    Alcohol.Intensity_S = scale(Alcohol.Intensity),
+    Alcohol.Frequency_S = scale(Alcohol.Frequency),
+    Hours.Work = as.integer(Hours.Work),
+    Hours.Exercise = as.integer(Hours.Exercise),
+    yearS = years - min(years)
+  ) %>%
+  dplyr::mutate(Covid_Timeline = forcats::fct_relevel(Covid_Timeline, ord_dates_class))
+
+cv <- cbind(cv,
+            demean(
+              cv,
+              select = c(
+                "KESSLER6sum",
+                "k6_s",
+                "logEX",
+                "logSM",
+                "logINT",
+                "logWK",
+                "Hours.Sleep",
+                "Hours.Work10",
+                "Hours.Exercise",
+                "Sat.Government",
+                "Hours.Children",
+                "Hours.Internet",
+                "Hours.Friends",
+                "Hours.Family",
+                "Hours.Religious",
+                "Hours.Community",
+                "Rel.Satisfaction",
+                "Rel.Conflict",
+                "Family.Time",
+                "Family.Money",
+                "Friends.Time",
+                "Friends.Money",
+                "Community.Time",
+                "Community.Money",
+                "Fatigue",
+                "Alcohol.Intensity",
+                "Alcohol.Frequency",
+                "NZ.Economic.Situation",
+                "Emp.JobSecure",
+                "Friends.Time",
+                "Family.Time",
+                "Community.Time",
+                "Hours.SocialMedia",
+                "Hours.Internet",
+                "Your_Future_Security"
+              ),
+              group = "Id"
+            ))
+```
+
+# opening slide
+
+
+## R Markdown
+
+This is an R Markdown presentation. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.
+
+## Slide with Bullets
+
+
+```{r, layout = "l-body-outset"}
+mlm_path_plot(xlab = "Stimulus\n(X)",
+              mlab = "Organism\n(M)",
+              ylab = "Response\n(Y)")
+```
+
+
+## Graph
+
+```{r}
+library(tidyverse)
+library(patchwork)
+p1 <- cv %>%
+  ggplot(aes(Covid_Timeline, Hours.Work10)) +
+  stat_summary(fun.data = mean_cl_boot, size = 1) +
+  geom_point(position = position_jitter(.15, .1), shape = 1, alpha = .01)
+p2 <- cv %>%
+  ggplot(aes(Covid_Timeline, KESSLER6sum)) +
+  stat_summary(fun.data = mean_cl_boot, size = 1) +
+  geom_point(position = position_jitter(.15, .1), shape = 1, alpha = .01)
+p3 <- cv %>%
+  ggplot(aes(Hours.Work10, KESSLER6sum)) +
+  geom_point(position = position_jitter(.15, .1), shape = 1, alpha = .01) +
+  geom_smooth(method = 'loess')
+p1 | p2 | p3
+```
+
+
+## {.fullslide}
+
+```{r pressure}
+plot(pressure)
+```
+
+
+## next slide
+
+```{r}
+plot(pressure)
+```
+
+

@@ -66,13 +66,26 @@ theme_set(theme_classic())
 ```
 
 
-```{r}
+```{r setup, include=FALSE}
+# setup
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  layout = "l-body-outset",
+  fig.width= 12,
+  fig.height= 10,
+  collapse =TRUE,
+  R.options = list(width = 60)
+)
+
+
+```{r cache = TRUE}
 # import data
 df <- readRDS(here::here("data", "df"))
 ```
 
-```{r}
-glimpse(df)
+```{r cache = TRUE}
 ord_dates_class <- c(
   "BaseLine_2018_19_w10", 
   "Pre_COVID_2019_w11", 
@@ -80,8 +93,6 @@ ord_dates_class <- c(
   "Early_March_2020", 
   "L4_Lockdown_2020",
   "Post_Lockdown_2020")
-rm(cv)
-
 
 cv <- df %>%
   dplyr::filter(YearMeasured == 1) %>%
@@ -282,16 +293,36 @@ cv <- cbind(cv,
               ),
               group = "Id"
             ))
-
-table(cv$Covid_Timeline)
 ```
 
-# Draw dag 
-Your_Health = (SWB.SatPWI02),
-    Your_Future_Security = SWB.SatPWI03,
+
+##  Sample 
 ```{r}
+cv %>%
+  dplyr::select(c(KESSLER6sum, Covid_Timeline)) %>%
+  dplyr::group_by(Covid_Timeline) %>%
+  report::report() %>%
+  summary()
+```
+
+
+## Distress
+
+```{r}
+cv %>%
+  dplyr::select(c(KESSLER6sum, Covid_Timeline)) %>%
+  dplyr::group_by(Covid_Timeline) %>%
+  report::report() %>%
+  summary()
+```
+
+
+
+## Causal inference : exercise
+
+```{r echo = FALSE}
 library("ggdag")
-tidy_k6_dag3 <- dagify(
+dg <- dagify(
   k6  ~ covid + income + jobsecurity + age + fatigue + sleep + 
     childcare + partner + male + exercise + healthsecurity + Hours.SocialMedia + hourswork,
   income ~ hourswork  + edu + ethnicity + male + covid,
@@ -330,15 +361,17 @@ tidy_k6_dag3 <- dagify(
              male = "male",
              hourswork = "hours work"
              )) %>%
-  control_for(c("hourswork"))
-  
-# no   control_for(c("Hours.SocialMedia"))
- # no Hours Work! 
-# no to Exercise! 
+  control_for(c("exercise"))
 
-ggdag_adjust(tidy_k6_dag3, text = FALSE, use_labels = "label", collider_lines = TRUE)
+ggdag_adjust(dg, text = FALSE, use_labels = "label", collider_lines = TRUE)
+```
 
-ggdag::ggdag_adjustment_set(tidy_k6_dag3, node_size = 14) +
+
+
+## No adjustment set
+
+```{r echo = FALSE}
+ggdag::ggdag_adjustment_set(dg, node_size = 14) +
   theme(legend.position = "bottom") + theme_dag_blank()
 #  control_for(c("govconfidence"))
 #control_for(c("partner"))
@@ -354,11 +387,6 @@ ggdag::ggdag_adjustment_set(tidy_k6_dag3, node_size = 14) +
 # yes to exercise! 
 ```
 
-```{r }
-# graph adjustment sets
-ggdag::ggdag_adjustment_set(tidy_k6_dag3, node_size = 14) +
-  theme(legend.position = "bottom") + theme_dag_blank()
-```
 
 ##  The GGDAG package will find colliders
 
