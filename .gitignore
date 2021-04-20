@@ -6,7 +6,7 @@
 .RData
 
 # data
-*data/
+data/**df
 
 # User-specific files
 .Ruserdata
