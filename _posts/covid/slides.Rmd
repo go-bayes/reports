@@ -42,6 +42,9 @@ library("bmlm")
 library("bayesplot")
 library("broom")
 library("purrr")
+library("lme4")
+library("ggeffects")
+library("tidybayes")
 #library("cmdstanr")  #multithreading bayesian models
 # rstan options
 rstan_options(auto_write=TRUE)
@@ -285,7 +288,8 @@ cv <- cbind(cv,
                 "Community.Time",
                 "Hours.SocialMedia",
                 "Hours.Internet",
-                "Your_Future_Security"
+                "Your_Future_Security",
+                "LIFEMEANING"
               ),
               group = "Id"
             )) 
@@ -493,6 +497,12 @@ mlm_path_plot(xlab = "Condition\n(X)",
 ```
 
 
+## 
+```{r}
+
+```
+
+
 ## Fatigue
 
 ```{r cache = TRUE}
@@ -560,17 +570,236 @@ p1 | p2 | p3
 
 
 
-## Test
+## Life Meaning
 
-```{r pressure}
-plot(pressure)
+```{r cache = TRUE}
+p1 <- cv %>% 
+  ggplot(aes(Covid_Timeline, LIFEMEANING)) +
+  stat_summary(fun.data = mean_cl_boot, size = 1) +
+  geom_point(position = position_jitter(.15, .1), shape = .5, alpha = .01) + 
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+p2 <- cv %>% 
+  ggplot(aes(Covid_Timeline, KESSLER6sum)) +
+  stat_summary(fun.data = mean_cl_boot, size = 1) +
+  geom_point(position = position_jitter(.15, .1), shape = .5, alpha = .01) + 
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+p3 <- cv %>% 
+  ggplot(aes(LIFEMEANING, KESSLER6sum)) +
+  geom_point(position = position_jitter(.15, .1), shape = .5, alpha = .01) +
+  geom_smooth(method = 'loess') 
+p1 | p2 | p3
 ```
 
 
-## next slide
+## Mediation Model: Fatigue
 
-```{r}
-plot(pressure)
+```{r echo = FALSE}
+x <-cv$Covid_Timeline
+mF <-cv$Fatigue
+y<- cv$KESSLER6sum
+id <-cv$Id
+mF_w <-as.integer(cv$Fatigue_within)
+mF_b <-as.integer(cv$Fatigue_between)
+datF <-data.frame(x,mF,mF_w,mF_b,y,id)
 ```
+
+
+```{r echo = TRUE}
+path_m <- bf(
+  mF ~ x + 
+    (1|  id)
+)
+path_y <- bf(
+  y ~ x + mF_w + mF_b +
+    ( 1  | id)
+)
+f1a <- brm(
+  path_m + path_y + set_rescor(FALSE),
+  data = datF,
+  file = here("models/mediation-k6-covid-fatigueW")
+)
+```
+
+## Results: Fatigue Mediation in March
+
+
+```{r echo=FALSE, cache = TRUE}
+post1F <- brms::posterior_samples(f1a)
+post_marF <- post1F%>% 
+  transmute(
+    a = b_mF_xEarly_March_2020,
+    b = b_y_mF_w,
+    cp = b_y_xEarly_March_2020,
+    me = a * b,
+    c = cp + me#,
+   # pme = me / c
+  )
+posterior_summary(post_marF)
+mcmc_intervals(post_marF)
+```
+
+## Results: Fatigue Mediation in Lockdown
+
+```{r echo=FALSE, cache = TRUE}
+## Results: Fatigue Mediation in Lockodown
+post_lF <- post1 %>% 
+  transmute(
+    a = b_mF_xL4_Lockdown_2020,
+    b = b_y_mF_w,
+    cp = b_y_xL4_Lockdown_2020,
+    me = a * b,#+ covab,
+    c = cp + me
+  )
+
+posterior_summary(post_lF)
+mcmc_intervals(post_lF)
+```
+
+
+## Work 
+
+```{r echo = FALSE, cache=TRUE}
+x <-cv$Covid_Timeline
+mWK <-cv$logWK
+y<- cv$KESSLER6sum
+id <-cv$Id
+mWK_w <-as.integer(cv$logWK)
+mWK_b <-as.integer(cv$logWK)
+datWK <-data.frame(x,mWK,mWK_w,mWK_b,y,id)
+```
+
+
+```{r echo = TRUE, cache=TRUE}
+path_m <- bf(
+  mWK ~ x + 
+    (1|  id)
+)
+path_y <- bf(
+  y ~ x + mWK_w + mWK_b +
+    ( 1  | id)
+)
+f6 <- brm(
+  path_m + path_y + set_rescor(FALSE),
+  data = datWK,
+  file = here("models/mediation-k6-covid-work")
+)
+```
+
+
+
+```{r echo = FALSE, cache=TRUE}
+x <-cv$Covid_Timeline
+mLM <-cv$LIFEMEANING_within
+y<- cv$KESSLER6sum
+id <-cv$Id
+mWK_w <-as.integer(cv$logWK)
+mWK_b <-as.integer(cv$logWK)
+datWK <-data.frame(x,mWK,mWK_w,mWK_b,y,id)
+```
+
+
+```{r echo = TRUE, cache=TRUE}
+path_m <- bf(
+  mF ~ x + 
+    (1|  id)
+)
+path_y <- bf(
+  y ~ x + mWK_w + mWK_b +
+    ( 1  | id)
+)
+f6 <- brm(
+  path_m + path_y + set_rescor(FALSE),
+  data = datWK,
+  file = here("models/mediation-k6-covid-work")
+)
+```
+
+## LIFEMEANING
+
+```{r echo = FALSE, cache=TRUE}
+x <-cv$Covid_Timeline
+mLM <-cv$LIFEMEANING
+y<- cv$KESSLER6sum
+id <-cv$Id
+mLM_w <-as.integer(cv$LIFEMEANING_within)
+mLM_b <-as.integer(cv$LIFEMEANING_between)
+datLM <-data.frame(x,mLM,mLM_w,mLM_b,y,id)
+```
+
+
+```{r echo = TRUE, cache=TRUE}
+path_m <- bf(
+  mLM ~ x + 
+    (1|  id)
+)
+path_y <- bf(
+  y ~ x + mLM_w + mLM_b +
+    ( 1  | id)
+)
+f7 <- brm(
+  path_m + path_y + set_rescor(FALSE),
+  data = datLM,
+  file = here("models/mediation-k6-covid-lifemeaning")
+)
+```
+
+
+## Meaning of Life
+
+
+
+## Lifemeaning Early march
+
+```{r cache = TRUE, echo=FALSE}
+library(bayesplot)z
+postLM <- posterior_samples(f7)
+
+post_marLM <- postLM%>% 
+  transmute(
+    a = b_mLM_xEarlyMarch,
+    b = b_y_mLM_w,
+    cp = b_y_xEarlyMarch,
+    me = a * b,
+    c = cp + me
+  )
+# 
+
+brms::posterior_summary(post_marLM)
+mcmc_intervals(post_marLM)
+```
+
+
+## Results:Meaning in Lockdown
+
+
+
+```{r echo=FALSE, cache = TRUE}
+## Results: Fatigue Mediation in Lockdown
+summary(f7)
+post_LLM <- postLM%>% 
+  transmute(
+    a = b_mLM_xLockdown,
+    b = b_y_mLM_w,
+    cp = b_y_xLockdown,
+    me = a * b,
+    c = cp + me
+  )
+
+# distress causes meaning
+
+posterior_summary(post_LLM)
+mcmc_intervals(post_LLM)
+```
+
+
+
+## Thanks
+
+- Prof Chris G. Sibley & the NZAVS team
+- Dr.Matti Vuorre (former VUW graduate, now at Oxford) for his [workshop](https://mvuorre.github.io/brms-workshop/)
+- NZAVS participants
+
+## Funders
+
 
 

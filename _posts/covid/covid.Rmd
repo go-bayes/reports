@@ -743,8 +743,6 @@ plot(ggeffects::ggpredict(Hours.Children))
 Hours.Friends <- glmer(Hours.Friends ~ Covid_Timeline + (1|Id), family = "poisson", cv)
 plot(ggeffects::ggpredict(Hours.Friends))
 
-Hours.Family <- glmer(Hours.Family ~ Covid_Timeline + (1|Id), family = "poisson", cv)
-plot(ggeffects::ggpredict(Hours.Family))
 
 cvR <- dplyr::filter(cv, Relid !=0)
 Hours.Religious <- glmer(Hours.Religious ~ Covid_Timeline + (1|Id), family = "poisson", cvR)
@@ -1406,6 +1404,7 @@ post5 <- posterior_samples(f5)
 # covab <- VarCorr(f1, summary = FALSE)$id$ cov %>%
 #         .[,"m_Intercept","y_Intercept"]
 
+post1 <- posterior_samples(f1a)
 post_marF <- post1%>% 
   transmute(
     a = b_mF_xEarly_March_2020,
