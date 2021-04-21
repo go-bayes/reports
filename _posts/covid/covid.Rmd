@@ -79,25 +79,36 @@ knitr::opts_chunk$set(
   R.options = list(width = 60)
 )
 
-
-```{r cache = TRUE}
 # import data
 df <- readRDS(here::here("data", "df"))
 ```
 
-```{r cache = TRUE}
+```{r cache = TRUE, echo = FALSE}
 ord_dates_class <- c(
-  "BaseLine_2018_19_w10", 
-  "Pre_COVID_2019_w11", 
-  "Jan_Feb_2020", 
-  "Early_March_2020", 
-  "L4_Lockdown_2020",
-  "Post_Lockdown_2020")
+  "Baseline", 
+  "PreCOVID", 
+  "JanFeb", 
+  "EarlyMarch", 
+  "Lockdown",
+  "PostLockdown")
+
+# 3665 days after 30 June 2009 Saturday 13 July 2019
+# 3842 days after 30 June 2009 Monday 6 January 2020
+# 3895 days after 30 June 2009 Friday 28 February 2020
+# 3921 days after 30 June 2009 WED MAR 25th
+# 3954 days after 30 June 2009 Monday 27 April 2020
+# 3672 days after June 30 2009 Saturday 20 July 2019
+
+cv%>%
+  dplyr::filter(Wave ==2019)%>%
+  dplyr::select(Wave,TSCORE) %>%
+  summarise (min(TSCORE))
 
 cv <- df %>%
   dplyr::filter(YearMeasured == 1) %>%
   dplyr::filter(Wave == 2018 | Wave == 2019) %>%
-  dplyr::group_by(Id) %>% filter(n() > 1) %>%
+  dplyr::group_by(Id) %>% 
+  filter(n() > 1) %>%
   dplyr::filter(n() != 0) %>%
   dplyr::ungroup(Id) %>%
   dplyr::mutate(Covid_Timeline =
@@ -105,22 +116,22 @@ cv <- df %>%
                  # TSCORE %in% 3837:3894,
                  # "Baseling",
                     as.factor(ifelse(
-                      TSCORE %in% 3895:3921,
-                      "Early_March_2020",
+                      TSCORE %in% 3896:3921, # feb 29 - march 25th
+                      "EarlyMarch",
                       ifelse(
-                        TSCORE %in% 3921:3954,
-                        "L4_Lockdown_2020",
+                        TSCORE %in% 3922:3954,
+                        "Lockdown", #march 26- Mon 27 April 2020
                         ifelse(
-                          TSCORE > 3954,
-                          "Post_Lockdown_2020",
+                          TSCORE > 3954, # after april 27th 20202
+                          "PostLockdown",
                           ifelse(
-                            TSCORE %in% 3842:3894,
-                            "Jan_Feb_2020",
+                            TSCORE %in% 3842:3895, # jan 6 to feb 28
+                            "JanFeb",
                           ifelse(
-                            TSCORE %in% 3665:3842 &
+                            TSCORE %in% 3665:3841 &
                               Wave == 2019,
-                            "Pre_COVID_2019_w11",
-                            "BaseLine_2018_19_w10"
+                            "PreCOVID",
+                            "Baseline"  # 3672 TSCORE or  20 July 2019
                           )
                         )
                       )
@@ -128,14 +139,17 @@ cv <- df %>%
                  ) ))%>%
   dplyr::mutate(PrePostCovid =
                   ifelse(
-                    TSCORE > 3895, "post_covid",
+                    TSCORE > 3895, "PostLockdown",
                     ifelse(
                       TSCORE < 3895 &
                         Wave == 2019,
-                      "before_COVID_wave11",
-                      "baseline_wave10"
+                      "PreCOVID",
+                      "Baseline"
                     )
                   ))%>% 
+  dplyr::group_by(PrePostCovid) %>% 
+  filter(n() > 1) %>%
+  ungroup() %>% # There is overlap between waves, we only want repeated measures 
   dplyr::select(
     TSCORE,
     WSCORE,
@@ -208,8 +222,6 @@ cv <- df %>%
   dplyr::group_by(Id) %>% filter(n() > 1) %>%
   dplyr::filter(n() != 0) %>%
   dplyr::ungroup(Id) %>%
-  dplyr::filter(!is.na(KESSLER6sum),
-                !is.na(LIFEMEANING)) %>%
   dplyr::mutate(
     Urban = (Urban),
     Euro = (Euro),
@@ -292,11 +304,195 @@ cv <- cbind(cv,
                 "Your_Future_Security"
               ),
               group = "Id"
-            ))
+            )) %>%
+    dplyr::mutate(condition = forcats::fct_relevel(condition, ord_dates_class))
+
+# test that we only have repeated measures
+test <-cv %>%
+  group_by(Id)%>%
+  count()%>%
+  ungroup() 
+
+table(cv$Covid_Timeline)
+```
+
+```{r}
+# covid timeline
+# 3665 days after 30 June 2009 Saturday 13 July 2019
+# 3842 days after 30 June 2009 Monday 6 January 2020
+# 3895 days after 30 June 2009 Friday 28 February 2020
+# 3921 days after 30 June 2009 WED MAR 25th
+library(lubridate)
+library(tidyverse)
+
+dplyr::mutate(condition = forcats::fct_relevel(condition, ord_dates_class))
+
+carep <- cv %>%
+  dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30) + TSCORE) %>%
+  count(day = floor_date(timeline, "day")) %>%
+dplyr::mutate(condition = ifelse(
+    day < "2019-06-20",
+    "Baseline",
+    ifelse(
+      day >= "2019-06-20" &
+        day < "2020-01-06",
+      "PreCOVID",
+      ifelse(
+        day >= "2020-01-06" & day < "2020-02-29",
+        "Jan_Feb",
+        ifelse(
+          day >= "2020-02-29" & day < "2020-03-25",
+          "EarlyMarch",
+          ifelse(
+            day >= "2020-03-25" &
+              day < "2020-04-28",
+            "Lockdown",
+            "Postlockdown"
+            )))))) %>%
+  arrange(day)
+
+# get COVID date
+dates_vline0<- as.Date("2018-06-03")
+dates_vline1<- as.Date("2019-06-20")
+dates_vline2<- as.Date("2020-01-06")
+dates_vline3<- as.Date("2020-02-28")
+# get data of change of baseline
+dates_vline4<- as.Date("2020-03-25")
+dates_vline5 <- as.Date("2020-04-27")
+dates_vline6 <- as.Date("2020-10-15")
+# for line in a graph
+
+# for line in a graph
+#
+dates_vline10 <- which(carep$day %in% dates_vline0)
+dates_vline1b <- which(carep$day %in% dates_vline1)
+dates_vline2b <- which(carep$day %in% dates_vline2)
+dates_vline3b <- which(carep$day %in% dates_vline3)
+dates_vline4b <- which(carep$day %in% dates_vline4)
+dates_vline5b <- which(carep$day %in% dates_vline5)
+dates_vline6b <- which(carep$day %in% dates_vline6)
+
+
+tline <- ggplot(carep, aes(day, n)) +
+  geom_col(aes(fill = condition)) + scale_x_date(date_labels = "%b/%Y", limits = c(as.Date("2018-06-10"), as.Date("2020-10-15")))  + scale_y_continuous(limits = c(0, 1000))  +
+ geom_vline(xintercept = as.numeric(carep$day[dates_vline10]),
+             col = "black",
+             linetype = "dashed") +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline1b]),
+             col = "red",
+             linetype = "dashed") +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline2b]),
+             col = "red") +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline3b]),
+             col = "red",
+             linetype = "dashed") +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline4b]),
+             col = "red",
+             linetype = "dashed") +
+    geom_vline(xintercept = as.numeric(carep$day[dates_vline5b]),
+             col = "red",
+             linetype = "dashed") + 
+  xlab("NZAVS Waves 9 and 10 daily counts: repeated measures") + ylab("Count of Responses")  + theme_classic() +   scale_fill_viridis_d() + theme(
+    legend.position = "top",
+    legend.text = element_text(size = 6),
+    legend.title = element_text(color = "Black", size = 8)
+  ) +
+  annotate(
+    "rect",
+    xmin = as.Date("2018-01-03"),
+    xmax = dates_vline5,
+    ymin = 0,
+    ymax = 1000,
+    alpha = .001
+  )  +
+  annotate(
+    "rect",
+    xmin = dates_vline1,
+    xmax = dates_vline6,
+    ymin = 0,
+    ymax = 1000,
+    alpha = .05,
+    fill = "darkblue"
+  ) +
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-07-10"),
+    y = 750,
+    xend = as.Date("2019-10-15"),
+    yend = 800,
+    curvature = -.2,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-07-10"),
+    y = 750,
+    xend = as.Date("2020-01-30"),
+    yend = 850,
+    curvature = -.2,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-07-10"),
+    y = 750,
+    xend = as.Date("2020-03-10"),
+    yend = 875,
+    curvature = -.2,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-07-10"),
+    y = 750,
+    xend = as.Date("2020-04-10"),
+    yend = 900,
+    curvature = -.2,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-07-10"),
+    y = 750,
+    xend = as.Date("2020-06-10"),
+    yend = 925,
+    curvature = -.2,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate("text",
+           x = as.Date("2018-07-01"),
+           y = 755,
+           label = "0") +  annotate("text",
+           x = as.Date("2019-10-25"),
+           y = 800,
+           label = "1") + 
+   annotate("text",
+           x = as.Date("2020-02-10"),
+           y = 850,
+           label = "2") + 
+  annotate("text",
+           x = as.Date("2020-03-15"),
+           y = 875,
+           label = "3") +
+  annotate("text",
+           x = as.Date("2020-04-20"),
+           y = 900,
+           label = "4") +
+  annotate("text",
+           x = as.Date("2020-06-10"),
+           y = 925,
+           label = "5")
+
+# GRAPH
+tline + plot_annotation(title = "NZAVS COVID timeline", 
+subtitle = "0.Baseline(34778) 1.PreCovid(23460) 2.JanFeb(2678) 3.EarlyMarch(2537) 4.Lockdown(1647) 5.Postlockdown(4456)")
 ```
 
 
+
+
 ##  Sample 
+
 ```{r}
 cv %>%
   dplyr::select(c(KESSLER6sum, Covid_Timeline)) %>%
@@ -1575,8 +1771,7 @@ table(dat$m_w)
 length(unique(dat$id))
 ```
 
-
-```
+``
 
 
 
