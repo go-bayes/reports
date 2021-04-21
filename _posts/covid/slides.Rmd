@@ -151,6 +151,7 @@ cv <- df %>%
     Rel.Satisfaction,
     Hours.SocialMedia,
     Hours.Exercise,
+    Hours.Charity,
     Hours.Internet,
     Hours.News,
     Hours.Family,
@@ -285,7 +286,8 @@ cv <- cbind(cv,
                 "Fatigue",
                 "Alcohol.Intensity",
                 "Alcohol.Frequency",
-                "NZ.Economic.Situation",
+                "
+                ",
                 "Emp.JobSecure",
                 "Friends.Time",
                 "Family.Time",
@@ -791,6 +793,52 @@ f8 <- brm(
   file = here("models/mediation-k6-covid-commute")
 )
 ```
+
+
+
+## Commute Early march
+
+```{r cache = TRUE, echo=FALSE}
+library(bayesplot)
+postCT <- posterior_samples(f8)
+
+post_marCT <- postCT%>% 
+  transmute(
+    a = b_mCT_xEarlyMarch,
+    b = b_y_mCT_w,
+    cp = b_y_xEarlyMarch,
+    me = a * b,
+    c = cp + me
+  )
+# 
+summary(f8)
+brms::posterior_summary(post_marCT)
+mcmc_intervals(post_marCT) +  
+  labs(
+    title = "Meaning of Life mediated distress in March"#,
+  #  subtitle = "A wide, uncertain interval is spread thin when areas are equal"
+   ) + scale_x_discrete(limits = c(-1,1))
+```
+
+
+## Results:Meaning in Lockdown
+
+
+
+```{r echo=FALSE, cache = TRUE}
+## Results: Fatigue Mediation in Lockdown
+summary(f7)
+post_LLM <- postLM%>% 
+  transmute(
+    a = b_mLM_xLockdown,
+    b = b_y_mLM_w,
+    cp = b_y_xLockdown,
+    me = a * b,
+    c = cp + me
+  )
+
+
+
 
 
 
