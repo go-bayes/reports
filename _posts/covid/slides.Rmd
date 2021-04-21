@@ -159,6 +159,9 @@ cv <- df %>%
     Hours.Children,
     Hours.Religious,
     Hours.Work,
+    Hours.Commute,
+    Hours.TV,
+    Hours.CompGames,
     Hours.Community,
     Family.Time,
     Community.Time,
@@ -237,6 +240,7 @@ cv <- df %>%
     logINT = log(Hours.Internet + 1),
     logEX = log(Hours.Exercise + 1),
     logWK= log(Hours.Work + 1),
+    logCT = log(Hours.Commute + 1),
     k6_s = scale(KESSLER6sum),
     Conservative_S = PolOrientS,
     Religion_Church_S = scale(Religion.Church),
@@ -300,12 +304,19 @@ cv <- cbind(cv,
 #   ungroup() 
 ```
 
+
+
 ## Plan
 
 1. Change in indicators of psychological distress pre/post Covid
 2. Mediators of psychological distress
 3. Advice for future pandemics
 
+## Hope
+
+1. To clarify how Covid affected people last year
+2. Quantitatively infer what we did right, for the present and future pandemics
+3. Generalise 
 
 ## Data
 
@@ -475,11 +486,54 @@ tline <- ggplot(carep, aes(day, n)) +
            x = as.Date("2020-06-10"),
            y = 925,
            label = "5")
+```
 
+
+## The New Zealand Attitudes and Values Study {.build}
+
+
+  - Planned 20-year longitudinal study, currently in its 12$^{th}$ year.
+  
+  - Sample frame drawn randomly from NZ Electoral Roll.
+
+  - Postal questionnaire (coverage; retention ~ 80%)
+    
+  - Large multidisciplinary research team (40 +)
+    
+  - Focus on personality, social attitudes, values, religion, meaning-making**, **perfectionism**, **virtue**, employment, experiences of discrimination, physical and psychological health, and environmental attitudes ...
+    
+  - Current sample contains > 42,000 unique people, or 1.45% of the adult NZ population.
+    
+  - Here, we will draw on repsonses from *N* = 37,000 longitudinal participants who responded to the 2018/19 and 2019/20 waves.
+
+
+## A natural experiment 
+
+```{r cache = TRUE}
 # GRAPH
 tline + plot_annotation(title = "NZAVS COVID timeline", 
 subtitle = "0(34778) 1.PreCVD(23460) 2.JanFeb(2678) 3.March(2537) 4.LckDwn(1647) 5.PostLD(4456)")
 ```
+
+
+
+## Anatomy of response
+
+```{r}
+
+Hours.Commute <- lmer(Hours.Commute ~ Covid_Timeline + (1|Id), cv)
+plot(ggeffects::ggpredict(Hours.Commute))
+
+Hours.CommuteK6 <- lmer(KESSLER6sum ~ logCT + (1|Id), cv)
+plot(ggeffects::ggpredict(Hours.CommuteK6))
+
+Hours.Work <- lmer(Hours.Work ~ Covid_Timeline + (1|Id), cv)
+plot(ggeffects::ggpredict(Hours.Work))
+
+Hours.WorkK6 <- lmer(KESSLER6sum ~ logWK + (1|Id), cv)
+plot(ggeffects::ggpredict(Hours.CommuteK6))
+```
+
 
 
 
@@ -494,12 +548,6 @@ subtitle = "0(34778) 1.PreCVD(23460) 2.JanFeb(2678) 3.March(2537) 4.LckDwn(1647)
 mlm_path_plot(xlab = "Condition\n(X)",
               mlab = "Mediator\n(M)",
               ylab = "Distress\n(Y)")
-```
-
-
-## 
-```{r}
-
 ```
 
 
@@ -669,14 +717,16 @@ datWK <-data.frame(x,mWK,mWK_w,mWK_b,y,id)
 ```
 
 
-```{r echo = TRUE, cache=TRUE}
+
+
+```{r echo = FALSE, cache=TRUE}
 path_m <- bf(
   mWK ~ x + 
-    (1|  id)
+    (1|  id), family = "poisson"
 )
 path_y <- bf(
   y ~ x + mWK_w + mWK_b +
-    ( 1  | id)
+    ( 1  | id), family = "poisson"
 )
 f6 <- brm(
   path_m + path_y + set_rescor(FALSE),
@@ -684,37 +734,67 @@ f6 <- brm(
   file = here("models/mediation-k6-covid-work")
 )
 ```
+
+
+## Work Results
+
+```{r cache=TRUE}
+library(bayesplot)
+postWK <- posterior_samples(f6)
+summary(f6)
+post_marWK <- postWK%>% 
+  transmute(
+    a = b_mWK_xEarlyMarch,
+    b = b_y_mWK_w,
+    cp = b_y_xEarlyMarch,
+    me = a * b,
+    c = cp + me
+  )
+# 
+
+brms::posterior_summary(post_marWK)
+mcmc_intervals(post_marWK) +  
+  labs(
+    title = "Work mediated distress in March"#,
+  #  subtitle = "A wide, uncertain interval is spread thin when areas are equal"
+   ) + scale_x_discrete(limits = c(-1,1))
+```
+
+
+## Commute
+
+```{r echo = FALSE, cache=TRUE}
+x <-cv$Covid_Timeline
+mCT <-cv$logCT
+y<- cv$KESSLER6sum
+id <-cv$Id
+mCT_w <-as.integer(cv$logCT)
+mCT_b <-as.integer(cv$logCT)
+datCT <-data.frame(x,mCT,mCT_w,mCT_b,y,id)
+```
+
 
 
 
 ```{r echo = FALSE, cache=TRUE}
-x <-cv$Covid_Timeline
-mLM <-cv$LIFEMEANING_within
-y<- cv$KESSLER6sum
-id <-cv$Id
-mWK_w <-as.integer(cv$logWK)
-mWK_b <-as.integer(cv$logWK)
-datWK <-data.frame(x,mWK,mWK_w,mWK_b,y,id)
-```
-
-
-```{r echo = TRUE, cache=TRUE}
 path_m <- bf(
-  mF ~ x + 
+  mCT ~ x + 
     (1|  id)
 )
 path_y <- bf(
-  y ~ x + mWK_w + mWK_b +
+  y ~ x + mCT_w + mCT_b +
     ( 1  | id)
 )
-f6 <- brm(
+f8 <- brm(
   path_m + path_y + set_rescor(FALSE),
-  data = datWK,
-  file = here("models/mediation-k6-covid-work")
+  data = datCT,
+  file = here("models/mediation-k6-covid-commute")
 )
 ```
 
-## LIFEMEANING
+
+
+## Meaning of life
 
 ```{r echo = FALSE, cache=TRUE}
 x <-cv$Covid_Timeline
@@ -751,7 +831,7 @@ f7 <- brm(
 ## Lifemeaning Early march
 
 ```{r cache = TRUE, echo=FALSE}
-library(bayesplot)z
+library(bayesplot)
 postLM <- posterior_samples(f7)
 
 post_marLM <- postLM%>% 
@@ -765,7 +845,11 @@ post_marLM <- postLM%>%
 # 
 
 brms::posterior_summary(post_marLM)
-mcmc_intervals(post_marLM)
+mcmc_intervals(post_marLM) +  
+  labs(
+    title = "Meaning of Life mediated distress in March"#,
+  #  subtitle = "A wide, uncertain interval is spread thin when areas are equal"
+   ) + scale_x_discrete(limits = c(-1,1))
 ```
 
 
@@ -788,7 +872,12 @@ post_LLM <- postLM%>%
 # distress causes meaning
 
 posterior_summary(post_LLM)
-mcmc_intervals(post_LLM)
+mcmc_intervals(post_LLM) + 
+  labs(
+    title = "Meaning of Life did not meadiate distress during lockdown"#,
+  #  subtitle = "A wide, uncertain interval is spread thin when areas are equal"
+   ) + scale_x_discrete(limits = c(-1,1))
+
 ```
 
 

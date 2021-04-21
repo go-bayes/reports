@@ -707,7 +707,7 @@ ggdag::ggdag_collider(dg) +   theme_dag_blank()
 
 ```{r}
 cv$Sat.Government
-k6_cv <- brm(KESSLER6sum_within ~ Covid_Timeline + (1|Id), cv, file = here::here("models","k6_cv"))
+k6_cv <- brm(KESSLER6sum ~ Covid_Timeline + (1|Id), cv, file = here::here("models","k6_cv"))
 summary(k6_cv)
 
 k6 <- lmer(KESSLER6sum ~ Covid_Timeline + (1|Id), cv)
@@ -1024,7 +1024,7 @@ p2 <- cv %>%
 p3 <- cv %>%
   ggplot(aes(Fatigue, KESSLER6sum)) +
   geom_point(position = position_jitter(.15, .1), shape = 1, alpha = .01) +
-  geom_smooth(method = 'loess')
+  geom_smooth(method = 'gam')
 p1 | p2 | p3
 ```
 
