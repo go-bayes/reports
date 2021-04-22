@@ -99,10 +99,10 @@ ord_dates_class <- c(
 # 3954 days after 30 June 2009 Monday 27 April 2020
 # 3672 days after June 30 2009 Saturday 20 July 2019
 
-cv%>%
-  dplyr::filter(Wave ==2019)%>%
-  dplyr::select(Wave,TSCORE) %>%
-  summarise (min(TSCORE))
+# cv%>%
+#   dplyr::filter(Wave ==2019)%>%
+#   dplyr::select(Wave,TSCORE) %>%
+#   summarise (min(TSCORE))
 
 cv <- df %>%
   dplyr::filter(YearMeasured == 1) %>%
@@ -598,25 +598,67 @@ ggdag::ggdag_collider(tidy_k6_dag3,
 
 ```{r}
 library("ggdag")
+d1<-dagify(
+  k6  ~ covid + commute + work,
+  commute ~ work + covid,
+  work ~ covid,
+  exposure =  "commute",
+  outcome =   "k6",
+  labels = c(k6 = "Kessler 6", 
+             covid = "Covid Timeline", 
+             work = "hours work",
+             commute = "hours commute"
+             ))
+
+%>%
+  control_for(c("covid"))
+  
+ggdag::ggdag_collider(d1) +   theme_dag_blank()
+
+ggdag::ggdag_adjustment_set(d1, node_size = 14) +
+  theme(legend.position = "bottom") + theme_dag_blank()
+
+
+
+d2<-dagify(
+  k6  ~ covid + commute + work,
+  commute ~ work + covid,
+  work ~ covid,
+  exposure =  "covid",
+  outcome =   "k6",
+  labels = c(k6 = "Kessler 6", 
+             covid = "Covid Timeline", 
+             work = "hours work",
+             commute = "hours commute"
+             ))
+ggdag::ggdag_adjustment_set(d2, node_size = 14) +
+  theme(legend.position = "bottom") + theme_dag_blank()
+
+
+####
+
+
 tidy_k6_dag2 <- dagify(
   k6  ~ covid + income + jobsecurity + age + fatigue +
     childcare + partner + male + exercise + healthsecurity + Hours.SocialMedia + hourswork + hoursfriends,
-  income ~ hourswork  + edu + ethnicity + male,
+  income ~ hourswork  + edu + ethnicity + male + hourscommute,
   Hours.SocialMedia ~ hourswork + hoursfriends + age,
   exercise ~ age + ethnicity + hourswork,
+  hourscommute ~ covid,
   hourswork ~ covid, 
   childcare ~ hourswork + male, 
   partner ~ jobsecurity + childcare + hourswork,
   fatigue ~  age + hourswork + sleep + exercise,
   sleep ~   age + hourswork + exercise,
-  jobsecurity ~  covid,
-  healthsecurity ~ govconfidence + covid + edu + exercise + age,
-  govconfidence ~ covid + pol.orient, 
-  buisnessconfidence ~ govconfidence + covid,
+  jobsecurity ~  govconfidence,
+  healthsecurity ~ govconfidence + edu + exercise + age,
+  govconfidence ~  pol.orient, 
+  buisnessconfidence ~ govconfidence,
   exposure =  "covid",
   outcome =   "k6",
   labels = c(k6 = "Kessler 6", 
              covid = "Covid Timeline", 
+             hourscommute = "hourscommute",
              fatigue = "fatigue",
              Hours.SocialMedia = "Hours \n Social Media",
              income = "income",
@@ -636,18 +678,20 @@ tidy_k6_dag2 <- dagify(
              ethnicity = "ethnicity",
              male = "male",
              hourswork = "hours work"
-             )) %>%
-  control_for(c("hourswork"))
+             ))%>%
+  control_for(c("covid"))
   
 ggdag::ggdag_collider(tidy_k6_dag2,
-                      from = "covid",
+                      from = "hourswork",
                       to = "k6") +   theme_dag_blank()
 
 # graph adjustment sets
 ggdag::ggdag_adjustment_set(tidy_k6_dag2, node_size = 14) +
   theme(legend.position = "bottom") + theme_dag_blank()
-# no   control_for(c("Hours.SocialMedia"))
- # no Hours Work! 
+
+ggdag_adjust(tidy_k6_dag2, text = TRUE, collider_lines = TRUE)
+
+# no Hours Work! 
 # no to Exercise! 
 
 
@@ -1217,7 +1261,8 @@ f2 <- brm(
 ```
 
 
-# Excercise
+# Exercise
+
 ```{r}
 x <-cv$Covid_Timeline
 mEX <-cv$logEX
@@ -1250,9 +1295,7 @@ summary(f4)
 
 
 
-Relationships
-
-Rel.Conflict
+## Relationship Conflict
 
 ```{r}
 x <-cv$Covid_Timeline
@@ -1290,7 +1333,6 @@ summary(f5)
 
 
 ```{r}
-
 f20 <- lmer(logSM_within ~     Covid_Timeline + (1|Id), data = cv)
 plot(ggeffects::ggpredict(f20, terms = c("Covid_Timeline")), grid = TRUE)
 sjPlot::tab_model(f2)
@@ -1302,25 +1344,6 @@ sjPlot::tab_model(f2)
 ```
 
 
-```{r}
-cv$log
-f2a <- lmer(KESSLER6sum ~ logINT_between * Covid_Timeline + logINT_within  * Covid_Timeline + (1|Id), data = cv)
-plot(ggeffects::ggpredict(f2a, terms = c("logINT_within", "Covid_Timeline")), grid = TRUE)
-sjPlot::tab_model(f2a)
-```
-
-```{r}
-cv$log
-f2b<- lmer(KESSLER6sum ~ logWK_between * Covid_Timeline + logWK_within  * Covid_Timeline + (1|Id), data = cvE)
-plot(ggeffects::ggpredict(f2b, terms = c("logWK_within", "Covid_Timeline")), grid = TRUE)
-sjPlot::tab_model(f2b)
-```
-
-```{r}
-f2c <- lmer(KESSLER6sum ~ logINT_between * Covid_Timeline + logINT_within  * Covid_Timeline + (1|Id), data = cv)
-plot(ggeffects::ggpredict(f2c, terms = c("logSM_between", "Covid_Timeline")), grid = TRUE)
-sjPlot::tab_model(f2c)
-```
 
 
 
@@ -1728,59 +1751,27 @@ mcmc_intervals(post_mar)
 ```
 
 
-###
+<!-- ### -->
 
-pt1<-d1%>%
-  tibble::as_tibble(include.rownames = FALSE)%>%
-  dplyr::slice(n=1:10)%>%
-  dplyr::select(-CI)%>%
-  mutate_if(is.numeric, ~round(., 3))%>%
-  ggpubr::ggtexttable(rows = NULL,
-                      theme = ttheme("mRed"))
+<!-- pt1<-d1%>% -->
+<!--   tibble::as_tibble(include.rownames = FALSE)%>% -->
+<!--   dplyr::slice(n=1:10)%>% -->
+<!--   dplyr::select(-CI)%>% -->
+<!--   mutate_if(is.numeric, ~round(., 3))%>% -->
+<!--   ggpubr::ggtexttable(rows = NULL, -->
+<!--                       theme = ttheme("mRed")) -->
 
-pt1
-bbt18<-bayestestR::mediation(f1,centrality = "mean",ci=.95) # nat, no  FAT 
-
-
-dm20<-as.data.frame(bbt20S)%>%
-  dplyr::select(-proportion_mediated)%>%
-  bayestestR::estimate_density()%>%
-  plot(labels = FALSE)%>%
-  ggpar(main = "")#+theme_solarized()
-dm20
+<!-- pt1 -->
+<!-- bbt18<-bayestestR::mediation(f1,centrality = "mean",ci=.95) # nat, no  FAT  -->
 
 
-
-# BLM Approach
-```{r}
-cvf <- cv%>%
-  dplyr::select(Covid_Timeline, Fatigue)%>%
-  filter(Covid_Timeline == )
-cv1<-dplyr::filter(cv, !is.na(Fatigue_within))
-x <-cv1$Covid_Timeline
-m <-cv1$Fatigue
-y<- cv1$KESSLER6sum
-id <-cv1$Id
-
-m_w <-as.integer(cv1$Fatigue_within)
-
-dat <-data.frame(x,m,m_w, y,id)
-str(dat)
-table(dat$m_w)
-length(unique(dat$id))
-```
-
-``
+<!-- dm20<-as.data.frame(bbt20S)%>% -->
+<!--   dplyr::select(-proportion_mediated)%>% -->
+<!--   bayestestR::estimate_density()%>% -->
+<!--   plot(labels = FALSE)%>% -->
+<!--   ggpar(main = "")#+theme_solarized() -->
+<!-- dm20 -->
 
 
 
-
-
-# ```{r}
-# ncv<-filter(cv, yearS > 1)
-# 
-# m2 <- lmer(KESSLER6sum_within ~ bs(yearS ) + (1|Id), ncv)
-# summary(m2)
-# plot(ggeffects::ggpredict(m2, terms = "yearS[all]" ))
-# ```
 
