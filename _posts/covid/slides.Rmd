@@ -1,18 +1,21 @@
 ---
 title: "Longitudinal Anatomy of Covid-19 Distress"
 author: "Joseph Bulbulia, Psychology, Victoria University"
-date: 2020-APRIL-23
-bibliography: bibliography.bib
-output: 
+date: "2020-APRIL-23"
+output:
+  beamer_presentation:
+    incremental: yes
   ioslides_presentation:
     mainfont: roboto
     incremental: yes
     transition: 0
-    smaller: false
+    smaller: no
     widescreen: no
+    selfcontained: yes
     css: extra.css
-editor_options: 
-  markdown: 
+bibliography: bibliography.bib
+editor_options:
+  markdown:
     wrap: 72
 ---
 
@@ -653,7 +656,7 @@ plot(ggeffects::ggpredict(Hours.Housework, terms = "Covid_Timeline"))
 
 ## Hours commuting - much less
 
-```{r}
+```{r cache=TRUE}
 Hours.Commute <- lmer(Hours.Commute ~ Covid_Timeline + (1|Id), cv)
 
 plot(ggeffects::ggpredict(Hours.Commute, terms = "Covid_Timeline"))
@@ -663,7 +666,7 @@ plot(ggeffects::ggpredict(Hours.Commute, terms = "Covid_Timeline"))
 
 ## Fatigue - huge drop
 
-```{r}
+```{r cache=TRUE}
 ## MENTAL HEALTH 
 Fatigue <- lmer(Fatigue ~  Covid_Timeline + (1 | Id), data = cv)
 plot(ggeffects::ggpredict(Fatigue,
@@ -672,7 +675,7 @@ plot(ggeffects::ggpredict(Fatigue,
 
 ## Meaning of life - unreliable
 
-```{r}
+```{r cache=TRUE}
 LIFEMEANING <- lmer(LIFEMEANING ~  Covid_Timeline + (1|Id), data = cv)
 plot(ggeffects::ggpredict(LIFEMEANING,
                           terms =  "Covid_Timeline"))
@@ -688,7 +691,7 @@ plot(ggeffects::ggpredict(Sat.Government,
 
 ## Future security -  gain > March
 
-```{r}
+```{r cache=TRUE}
 Your_Future_Security <- lmer(Your_Future_Security ~ Covid_Timeline + (1|Id), cv)
 plot(ggeffects::ggpredict(Your_Future_Security,
                           terms =  "Covid_Timeline"))
@@ -955,7 +958,7 @@ p4 | p5 | p6
 
 ## Exercise counterfactual
 
-```{r, cache = TRUE}
+```{r  cache = TRUE}
 logEXK6 <- glmer(KESSLER6sum ~ logEX_within + logEX_between + (1|Id),
                                family = "poisson", cv)
 plot(ggeffects::ggpredict(logEXK6,
@@ -967,7 +970,7 @@ plot(ggeffects::ggpredict(logEXK6,
 -   Manipulate X, measure M and Y
 -   Regress M on X; Y on X and M
 
-```{r, layout = "l-body-outset"}
+```{r, layout = "l-body-outset", cache =TRUE}
 mlm_path_plot(xlab = "Condition\n(X)",
               mlab = "Mediator\n(M)",
               ylab = "Distress\n(Y)")
