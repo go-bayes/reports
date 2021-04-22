@@ -3,8 +3,8 @@ title: "Brief Reports"
 site: distill::distill_website
 listing: 
   posts:
-    - nzavs
     - covid
+    - nzavs
     - mus
 ---
 

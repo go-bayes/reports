@@ -518,7 +518,7 @@ subtitle = "0(34778) 1.PreCVD(23460) 2.JanFeb(2678) 3.March(2537) 4.LckDwn(1647)
 
 ## Slept - more
 
-```{r}
+```{r cache=TRUE}
 Hours.Sleep <- lmer(Hours.Sleep ~ Covid_Timeline + (1|Id),  cv)
 plot(ggeffects::ggpredict(Hours.Sleep, terms = "Covid_Timeline")) 
 ```
@@ -574,7 +574,7 @@ plot(ggeffects::ggpredict(Hours.Family, terms = "Covid_Timeline"))
 
 ## Hours with community - loss
 
-```{r}
+```{r cache=TRUE}
 Hours.Community <- lmer(Hours.Community ~ Covid_Timeline + (1|Id),  cv)
 plot(ggeffects::ggpredict(Hours.Community,terms = "Covid_Timeline"), add.data=TRUE, dot.alpha =.05) +   
   scale_y_continuous(trans = 'log2') + labs(subtitle = "log2 y axis")
@@ -618,7 +618,7 @@ plot(ggeffects::ggpredict(Hours.TV , terms = "Covid_Timeline"))
 
 ## Computer games - yes
 
-```{r}
+```{r cache=TRUE}
 Hours.CompGames <- lmer(Hours.CompGames ~ Covid_Timeline + (1|Id), cv)
 plot(ggeffects::ggpredict(Hours.CompGames , terms = "Covid_Timeline"))
 ```
