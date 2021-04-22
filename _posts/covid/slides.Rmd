@@ -89,6 +89,7 @@ ord_dates_class <- c(
 # 3672 days after June 30 2009 Saturday 20 July 2019
 ```
 
+
 ```{r cache = TRUE, echo = FALSE}
 cv <- df %>%
   dplyr::filter(YearMeasured == 1) %>%
@@ -491,27 +492,19 @@ tline <- ggplot(carep, aes(day, n)) +
 -   Advice for future pandemics?
 -   Collaborations?
 
-## The New Zealand Attitudes and Values Study {.build}
+## The New Zealand Attitudes and Values Study
 
 -   Planned 20-year longitudinal study, currently in its 12$^{th}$ year.
-
 -   Sample frame drawn randomly from NZ Electoral Roll.
-
 -   Postal questionnaire (coverage; retention \~ 80%)
-
--   Large multidisciplinary research team (40 +)
-
 -   Focus on personality, social attitudes, values, religion,
     meaning-making, perfectionism, virtues, habits, employment,
     experiences of discrimination, physical and psychological health,
     and environmental attitudes ...
-
 -   Current sample contains `36524` unique people, which is $>$ 1% of
     the NZ adult population.
-
--   Here, we will draw on repsonses from *N* =
-    `r  length(unique(cv$Id))` longitudinal participants who responded
-    to the 2018/19 and 2019/20 NZAVS waves.
+-   Here, *N* = `r  length(unique(cv$Id))` longitudinal participants who responded
+    to **both** the 2018/19 and 2019/20 NZAVS waves.
 
 ## 
 
@@ -523,34 +516,28 @@ subtitle = "0(34778) 1.PreCVD(23460) 2.JanFeb(2678) 3.March(2537) 4.LckDwn(1647)
 
 # What we did with our time?
 
-## Hours Sleep - yes
+## Slept - more
 
 ```{r}
 Hours.Sleep <- lmer(Hours.Sleep ~ Covid_Timeline + (1|Id),  cv)
 plot(ggeffects::ggpredict(Hours.Sleep, terms = "Covid_Timeline")) 
 ```
 
-## Hours excercise - yes/more
+##  Excercised - more
 
 ```{r}
 Hours.Exercise <- glmer(Hours.Exercise ~ Covid_Timeline + (1|Id), cv, family = "poisson")
 plot(ggeffects::ggpredict(Hours.Exercise,  terms = "Covid_Timeline"))
 ```
 
-## Alchohol intensity - yes
+## Alchohol intensity - bit lower
 
 ```{r cache=TRUE}
 Alcohol.Intensity <- lmer(Alcohol.Intensity ~ Covid_Timeline + (1|Id), cv)
-plot(ggeffects::ggpredict(Alcohol.Intensity ,terms = "Covid_Timeline"))
+plot(ggeffects::ggpredict(Alcohol.Intensity ,terms = "Covid_Timeline"), add.data=TRUE, dot.alpha =.05) + scale_y_continuous(trans = 'log2') + labs(subtitle = "log2 y axis")
 ```
 
-## Dispersion in Alcohol Intensity
-
-```{r}
-plot(ggeffects::ggpredict(Alcohol.Intensity ,terms = "Covid_Timeline"), add.data=TRUE, dot.alpha =.05) 
-```
-
-## Alchohol frequency - no
+## Alchohol frequency - steady
 
 ```{r cache=TRUE}
 Alcohol.Frequency <- lmer(Alcohol.Frequency ~ Covid_Timeline + (1|Id), cv)
@@ -593,7 +580,7 @@ plot(ggeffects::ggpredict(Hours.Community,terms = "Covid_Timeline"), add.data=TR
   scale_y_continuous(trans = 'log2') + labs(subtitle = "log2 y axis")
 ```
 
-## Hours religious - loss
+## Hours religious community - loss
 
 ```{r cache=TRUE}
 Hours.Religious <- lmer(Hours.Religious ~ Covid_Timeline + (1|Id),  cvR)
@@ -632,7 +619,7 @@ plot(ggeffects::ggpredict(Hours.TV , terms = "Covid_Timeline"))
 ## Computer games - yes
 
 ```{r}
-Hours.CompGames <- glmer(Hours.CompGames ~ Covid_Timeline + (1|Id), cv)
+Hours.CompGames <- lmer(Hours.CompGames ~ Covid_Timeline + (1|Id), cv)
 plot(ggeffects::ggpredict(Hours.CompGames , terms = "Covid_Timeline"))
 ```
 
@@ -672,7 +659,7 @@ Hours.Commute <- lmer(Hours.Commute ~ Covid_Timeline + (1|Id), cv)
 plot(ggeffects::ggpredict(Hours.Commute, terms = "Covid_Timeline"))
 ```
 
-# Core effects
+# Core psycho-physical effects
 
 ## Fatigue - huge drop
 
@@ -683,7 +670,7 @@ plot(ggeffects::ggpredict(Fatigue,
                           terms =  "Covid_Timeline"))
 ```
 
-## Meaning of life - loss in March?
+## Meaning of life - unreliable
 
 ```{r}
 LIFEMEANING <- lmer(LIFEMEANING ~  Covid_Timeline + (1|Id), data = cv)
@@ -699,7 +686,7 @@ plot(ggeffects::ggpredict(Sat.Government,
                           terms =  "Covid_Timeline"))
 ```
 
-## Future security -  March loss
+## Future security -  gain > March
 
 ```{r}
 Your_Future_Security <- lmer(Your_Future_Security ~ Covid_Timeline + (1|Id), cv)
@@ -715,7 +702,7 @@ plot(ggeffects::ggpredict(Emp.JobSecure,
                           terms =  "Covid_Timeline"))
 ```
 
-## Valued by employer - held steady
+## Valued by employer - steady
 
 ```{r cache=TRUE}
 Emp.JobValued <- lmer( Emp.JobValued ~ Covid_Timeline + (1|Id), cv)
@@ -723,7 +710,7 @@ plot(ggeffects::ggpredict(Emp.JobValued,
                           terms =  "Covid_Timeline"))
 ```
 
-## Partner conflict - held steady
+## Partner conflict - steady
 
 ```{r cache=TRUE}
 Rel.Conflict <- lmer(Rel.Conflict ~ Covid_Timeline + (1|Id), cvP)
@@ -731,27 +718,21 @@ plot(ggeffects::ggpredict(Rel.Conflict,
                           terms =  "Covid_Timeline"))
 ```
 
-## Partner satisfaction - mostly heald
+## Partner satisfaction - steady-ish?
 
 ```{r cache=TRUE}
 Rel.Satisfaction <- lmer(Rel.Satisfaction ~ Covid_Timeline + (1|Id), cv)
-plot(ggeffects::ggpredict(Rel.Satisfaction, terms = "Covid_Timeline"))
-```
-
-## Partner satisfaction w/responses
-
-```{r}
 plot(ggeffects::ggpredict(Rel.Satisfaction, terms = "Covid_Timeline"),add.data=TRUE, dot.alpha =.05) 
 ```
 
-## Business conditions - slide > Feb
+## Business optimism - slide 
 
 ```{r cache=TRUE}
 NZ.Business.Conditions <- lmer(NZ.Business.Conditions ~ Covid_Timeline + (1|Id), cv)
 plot(ggeffects::ggpredict(NZ.Business.Conditions, terms = "Covid_Timeline"))
 ```
 
-## Economic outlook - slide > lockdown
+## Economic outlook - slide 
 
 ```{r cache=TRUE}
 NZ.Economic.Situation <- lmer(NZ.Economic.Situation ~ Covid_Timeline + (1|Id), cv)
@@ -764,15 +745,16 @@ plot(ggeffects::ggpredict(NZ.Economic.Situation , terms = "Covid_Timeline"))
 
 during the past 30 days, how often did... 
 
-- (a) . . . you feel hopeless;
-- (b) . . . you feel so depressed that nothing could cheer you up; 
-- (c). . . you feel restless or fidgety; 
-- (d) . . . you feel that everything
+(a). . . . you feel hopeless;
+(b). . . . you feel so depressed that nothing could cheer you up; 
+(c). . . . you feel restless or fidgety; 
+(d). . . . you feel that everything
 was an effort; 
-- (e) . . . you feel worthless; 
-- (f). . . you feel
+(e). . . . you feel worthless; 
+(f). . . you feel
 nervous? 
-- None of the time; A little of the time; Some of the time;
+
+Answers: None of the time; A little of the time; Some of the time;
 Most of the time; All of the time."
 
 ## Pandemic distress
@@ -947,7 +929,7 @@ p7 | p8 | p9
 Your_Future_SecurityK6 <- glmer(KESSLER6sum ~ Your_Future_Security_within + Your_Future_Security_between + (1|Id),
                                family = "poisson", cv)
 plot(ggeffects::ggpredict(Your_Future_SecurityK6,
-                          terms =  c("Your_Future_Security_within", "Your_Future_Security_between")), facet=TRUE)
+                          terms =  c("Your_Future_Security_within", "Your_Future_Security_between")))
 ```
 
 ## Exercise increase?
@@ -997,6 +979,25 @@ mlm_path_plot(xlab = "Condition\n(X)",
 -   No 3rd variable on M to Y relationship
 -   M is measured without error
 -   Y and M residuals are not correlated [@vuorre2020multilevel]
+
+
+## Set up
+
+```{r echo = TRUE, eval = FALSE}
+path_m <- bf(
+  mF ~ x + (1 | c | id)
+  )
+path_y <- bf(
+  y ~ x + mF_w + mF_b +
+               (1 | c | id)
+  )
+m1 <- brm(
+  path_m + path_y + set_rescor(FALSE),
+  data = datF,
+  file = here("models/mediation-k6-covid-fatigue")
+)
+```
+
 
 ## Fatigue: DAG
 
@@ -1120,7 +1121,7 @@ mFS_b <-as.integer(cv$Your_Future_Security_between)
 datFS <-data.frame(x,mFS,mFS_w,mFS_b,y,id)
 ```
 
-```{r echo = TRUE}
+```{r echo = FALSE}
 path_m <- bf(
   mFS ~ x + 
     (1 |  id)
@@ -1205,7 +1206,7 @@ mEX_w <-as.integer(cv$logEX_within)
 mEX_b <-as.integer(cv$logEX_between)
 datEX <-data.frame(x,mEX,mEX_w,mEX_b,y,id)
 ```
-```{r echo = TRUE}
+```{r echo = FALSE}
 path_m <- bf(
   mEX ~ x + 
     (1| id)
@@ -1275,7 +1276,7 @@ h2 <- c(
 
 h3 <- c(
   a = "mEX_xL4_Lockdown_2020  < mEX_xEarly_March_2020",
-  b = "y_mEX_w = y_mEX_w",
+ # b = "y_mEX_w"
   cp = "y_xL4_Lockdown_2020 < y_xEarly_March_2020",
   me = "mEX_xL4_Lockdown_2020 * y_mEX_w < mEX_xEarly_March_2020 * y_mEX_w",
   c = "mEX_xL4_Lockdown_2020 * y_mEX_w + y_xL4_Lockdown_2020 < mEX_xEarly_March_2020 * y_mEX_w + y_xEarly_March_2020"
@@ -1315,9 +1316,16 @@ plot(ggeffects::ggpredict(Valemployer,
     [workshop](https://mvuorre.github.io/brms-workshop/)
 -   NZAVS participants
 
-## Funders
 
--- Templeton Religion Trust 0196
+## Funders {.flexbox .vcenter}
+ 
+Templeton Religion Trust Grant 0196
+
+
+## Slides here
+
+https://go-bayes.github.io/reports/posts/covid/
+
 
 # EXTRA SLIDES
 
@@ -1337,6 +1345,8 @@ d1<-dagify(
              commute = "hours commute"
              ))
 ```
+
+## Colliders
 
 ```{r}
 ggdag::ggdag_collider(d1) +   theme_dag_blank()
@@ -1426,7 +1436,7 @@ d3 <- dagify(
 ggdag::ggdag_collider(d3) +   theme_dag_blank()
 ```
 
-## Only condition on Covid Timeline!
+## Covid --> K6: keep it simple.
 
 ```{r}
 # graph adjustment sets
