@@ -6,7 +6,6 @@ listing:
     - nzavs
     - covid
     - mus
-
 ---
 
 ```{r setup, include=FALSE}
