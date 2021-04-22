@@ -2,18 +2,14 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" version="1.0">
   <url>
     <loc>https://go-bayes.github.io/reports/about.html</loc>
-    <lastmod>2021-03-01T21:10:15+13:00</lastmod>
+    <lastmod>2021-04-20T21:45:26+12:00</lastmod>
   </url>
   <url>
     <loc>https://go-bayes.github.io/reports/</loc>
-    <lastmod>2021-03-29T21:48:02+13:00</lastmod>
+    <lastmod>2021-04-23T01:26:51+12:00</lastmod>
   </url>
   <url>
-    <loc>https://go-bayes.github.io/reports/posts/mus/</loc>
-    <lastmod>2021-03-10T11:34:25+13:00</lastmod>
-  </url>
-  <url>
-    <loc>https://go-bayes.github.io/reports/posts/nzavs/</loc>
-    <lastmod>2021-03-30T00:55:52+13:00</lastmod>
+    <loc>https://go-bayes.github.io/reports/posts/covid/</loc>
+    <lastmod>2021-04-23T01:40:33+12:00</lastmod>
   </url>
 </urlset>

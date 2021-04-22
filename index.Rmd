@@ -4,7 +4,9 @@ site: distill::distill_website
 listing: 
   posts:
     - nzavs
+    - covid
     - mus
+
 ---
 
 ```{r setup, include=FALSE}
