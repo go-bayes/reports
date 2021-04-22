@@ -580,7 +580,7 @@ plot(ggeffects::ggpredict(Hours.Community,terms = "Covid_Timeline"), add.data=TR
   scale_y_continuous(trans = 'log2') + labs(subtitle = "log2 y axis")
 ```
 
-## Hours religious community - loss
+## Religious community - loss
 
 ```{r cache=TRUE}
 Hours.Religious <- lmer(Hours.Religious ~ Covid_Timeline + (1|Id),  cvR)
@@ -854,7 +854,7 @@ marlock <- np +
   geom_smooth() +
   theme_classic() + 
   scale_color_viridis_d(option = "plasma") +  
-  labs(title = "Regression discontinuity covid timeline (gam smooth)")  +   theme(
+  labs(title = "Regression discontinuity covid timeline reveals stress pulse was prior to lockdown")  +   theme(
     legend.position = "right",
     legend.text = element_text(size = 6),
     legend.title = element_text(color = "Black", size = 8))
@@ -1019,7 +1019,7 @@ ggdag::ggdag_adjustment_set(dg, node_size = 14) +
   theme(legend.position = "bottom") + theme_dag_blank()
 ```
 
-# Mediation Model: Fatigue
+# Mediation: Fatigue
 
 ## Model form 
 ```{r echo = FALSE}
@@ -1047,7 +1047,7 @@ f1a <- brm(
 )
 ```
 
-## Results: fatigue - early March
+## Results: fatigue - March
 
 ```{r echo=FALSE, cache = FALSE}
 post1F <- brms::posterior_samples(f1a)
@@ -1066,7 +1066,7 @@ post_marF <- post1F %>%
 mcmc_intervals(post_marF)
 ```
 
-## Results: fatigue - early Lockdown
+## Results: fatigue - L4
 
 ```{r echo=FALSE, cache = TRUE}
 ## Results: Fatigue Mediation in Lockodown
@@ -1086,9 +1086,9 @@ post_lF <- post1F %>%
 mcmc_intervals(post_lF)
 ```
 
-# Mediation Model: Future Security
+# Mediation: Future Security
 
-## Future Security Security: DAG
+## Future Security: DAG
 
 ```{r}
 library(ggdag)
@@ -1109,7 +1109,7 @@ ggdag::ggdag_adjustment_set(dg2, node_size = 14) +
   theme(legend.position = "bottom") + theme_dag_blank()
 ```
 
-## Results: F.Security - early March
+## F.Security - March
 
 ```{r}
 x <-cv$Covid_Timeline
@@ -1154,7 +1154,7 @@ post_marFS <- post3%>%
 mcmc_intervals(post_marFS)
 ```
 
-## Results: F.Security - early Lockdown
+## F.Security - L4
 
 ```{r}
 post_lFS <- post3 %>% 
@@ -1172,7 +1172,7 @@ post_lFS <- post3 %>%
 mcmc_intervals(post_lFS)
 ```
 
-#  Mediation Model: Exercise
+#  Mediation:Exercise
 
 ## Exercise: DAG
 
@@ -1195,7 +1195,7 @@ ggdag::ggdag_adjustment_set(dg3, node_size = 14) +
   theme(legend.position = "bottom") + theme_dag_blank()
 ```
 
-## Results: Exercise - early March
+## Exercise - March
 
 ```{r}
 x <-cv$Covid_Timeline
@@ -1238,7 +1238,7 @@ post_marEX <- post4%>%
 mcmc_intervals(post_marEX)
 ```
 
-## Results: Exercise early Lockdown
+## Exercise: L4
 
 ```{r}
 post_lEX <- post4 %>% 
@@ -1255,7 +1255,7 @@ post_lEX <- post4 %>%
 mcmc_intervals(post_lEX)
 ```
 
-## Contrast Exercise: March vs. Lockdown
+## Excercise: March vs. L4
 
 ```{r}
 h1 <- c(
@@ -1294,7 +1294,7 @@ plot(
 )
 ```
 
-## Future: employer gratitude = buffer?
+## Future: employer gratitude?
 
 ```{r}
 Valemployer <- glmer( KESSLER6sum ~ Emp.JobValued + (1|Id), cv, family = "poisson")

@@ -11,10 +11,10 @@
     ],
     "date": "2021-02-28",
     "categories": [],
-    "contents": "\n\nContents\nTalk\n\n\n\n\nTalk\nClick here to go to the lecture slides.\n\n\n\nfitvids('.shareagain', {players: 'iframe'});\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    "contents": "\n\n\n\nTalk\nClick here to go to the lecture slides.\n\n\n\nfitvids('.shareagain', {players: 'iframe'});\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
     "preview": {},
-    "last_modified": "2021-04-23T01:40:33+12:00",
-    "input_file": {}
+    "last_modified": "2021-04-23T04:02:17+12:00",
+    "input_file": "covid.utf8.md"
   },
   {
     "path": "posts/mus/",
