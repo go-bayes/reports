@@ -1,6 +1,6 @@
 ---
 title: "Trust in the New Zealand Police has been increasing since 2017"
-description: "However willingness to enage with the Police, and trust in politicians, have been decreasing: evidence from the New Zealand Attitudes and Values Study (N = 11,481)"
+description: "However willingness to enage with the police, and trust in politicians, have been decreasing: evidence from the New Zealand Attitudes and Values Study (N = 11,481)"
 author:
   - name: Joseph Bulbulia
     url: https://josephbulbulia.netlify.app
@@ -183,9 +183,9 @@ pd <- df %>%
 
 ## Introduction
 
-Here, we investigate stability in change in attitudes to the New Zealand Police and New Zealand politicians using New Zealand Attiudes and Values Study (NZAVS).
+Here, we investigate stability in change in attitudes to the New Zealand Police and to New Zealand politicians using longitudinal responses from the New Zealand Attitudes and Values Study (NZAVS).
 
-The NZAVS is a panel study. A panel study is a longitudinal study that follows the same individuals over time. A panel study is different from a census, which samples the population as a whole over time, without tracking individuals. Time-series data within the same individuals across a diverse population are powerful because they enable a systematic understanding of the complex interplay between human social and psychological processes that occur within people over time. The NZAVS is distinct from other national panel studies for the breadth of its survey questions which hae broad coverage in political and social psychology and health. The study also includes measures of attitudes to the police. Trends in these attitudes since 2017 provide our focus.
+The NZAVS is a panel study. A panel study is a longitudinal study that follows the same individuals over time. A panel study is different from a census, which samples the population as a whole over time, without tracking individuals. Time-series data within the same individuals across a diverse population are powerful because they enable a systematic understanding of the complex interplay between human social and psychological processes that occur within people over time. The NZAVS is distinct from other national panel studies for the breadth of its survey questions which has broad coverage in political and social psychology and health. The study also includes measures of attitudes to the police. Trends in these attitudes since 2017 provide our focus.
 
 For more information about the NZAVS see [here](https://www.psych.auckland.ac.nz/en/about/new-zealand-attitudes-and-values-study.html) and [here](https://go-bayes.github.io/reports/posts/nzavs/)
 
@@ -197,7 +197,7 @@ The NZAVS uses a three item scale to assess institutional trust in the NZ police
 > 2.  There are many things about the New Zealand Police and its policies that need to be changed (reverse scored).
 > 3.  The New Zealand Police care about the well-being of everyone they deal with.
 
-The NZAVS also uses a two-item scale to assess williness to engage with the police. The items in this scale are as follows:
+The NZAVS also uses a two-item scale to assess wiliness to engage with the police. The items in this scale are as follows:
 
 > 1.  I would always report dangerous or suspicious activities occurring in my neighbourhood to the police.
 > 2.  I would always provide information to the police to help them find someone suspected of committing a crime.
@@ -208,7 +208,7 @@ To disentangle police-specific distrust from other forms of institutional trust,
 
 > 1.  Politicians in New Zealand can generally be trusted.
 
-## Trust in New Zealand Police has been increasing since 2017.
+## Trust in the New Zealand police has been increasing since 2017.
 
 First, we model the time trend for trust in the New Zealand police since 2017, using a model that also adjusts for the effects of the Covid-19 pandemic.
 
@@ -238,7 +238,7 @@ pl1
 
 ### There was a boost in willingness to trust the police during New Zealand's March/April 2020 Lockdown
 
-Focusing on Covid specific preditions (while holding the time effect constant), we find a large boost in trust of the New Zealand police during New Zealand's stringent Covid-19 pandemic lockdown of late March/April 2020.
+Focusing on Covid specific predictions (while holding the time effect constant), we find a large boost in trust of the New Zealand police during New Zealand's stringent Covid-19 pandemic lockdown of late March/April 2020.
 
 ```{r  layout = "l-body-outset"}
 pl1_b <- plot(
@@ -258,7 +258,7 @@ pl1_b
 
 Second, we model the time trend in willingness to engage with the New Zealand police over time, using a model that also adjusts for the effects of the Covid-19 pandemic.
 
-We find that since 2017, willingness to enage with the New Zealand police is generally high but has been dropping within New Zealanders over time.
+We find that since 2017, willingness to engage with the New Zealand police is generally high but has been dropping within New Zealanders over time.
 
 ```{r cache = TRUE}
 pt2 <-lme4::lmer(Police_Engage ~ year_s + Covid_Timeline + (1|Id), data = pd)
@@ -285,7 +285,7 @@ pl2
 
 ### There was no change in willingness to engage the police during New Zealand's March/April 2020 lockdown
 
-Focusing on Covid specific predictions (while holding the time effect constant), we find no evidence for change in willingess to engage with the police during New Zealand's stringent Covid-19 pandemic lockdown of late March/April 2020.
+Focusing on Covid specific predictions (while holding the time effect constant), we find no evidence for change in willingness to engage with the police during New Zealand's stringent Covid-19 pandemic lockdown of late March/April 2020.
 
 ```{r layout = "l-body-outset"}
 pl2_b <- plot(
@@ -301,9 +301,9 @@ pl2_b <- plot(
 pl2_b
 ```
 
-## Trust in New Zealand Politicians has dropped since 2017, however there was a strong boost during lockdown.
+## Trust in New Zealand politicians has dropped since 2017, however there was a strong boost during lockdown.
 
-Third we compare the dynamics of trust in the New Zealand Police with the dynamics of trust in New Zealand politicians, employing a parrallel model for trust in politicians. As such, we estimate the time trend in trust for the New Zealand politicians since 2017 using a model that also adjusts for the effects of the Covid-19 pandemic.
+Third we compare the dynamics of trust in the New Zealand Police with the dynamics of trust in New Zealand politicians, employing a parallel model for trust in politicians. As such, we estimate the time trend in trust for the New Zealand politicians since 2017 using a model that also adjusts for the effects of the Covid-19 pandemic.
 
 We find that since 2017, trust in the New Zealand Politicians has dropped within New Zealanders.
 
@@ -335,7 +335,7 @@ pl3
 
 ### There was a large boost in trust of politicians during New Zealand's March/April 2020 lockdown
 
-Focusing on Covid specific predictions (while holding the time effect constant), we find evidence for a substantial boost to tust politicians during New Zealand's stringent Covid-19 pandemic lockdown of late March/April 2020. Notably, this boost appears to be reverting to pre-pandemic levels.
+Focusing on Covid specific predictions (while holding the time effect constant), we find evidence for a substantial boost to trust politicians during New Zealand's stringent Covid-19 pandemic lockdown of late March/April 2020. Notably, this boost appears to be reverting to pre-pandemic levels.
 
 ```{r layout = "l-body-outset"}
 pl3_b <- plot(
@@ -364,13 +364,13 @@ pl1 + pl3 +
 
 ```
 
-The evidence we present here for strong and rising trust in the New Zealand police comes from a national panel sample that repeatedly measures the same individuals in successive years. The NZAVS sample is randomly selected from New Zealand electoral role -- a privilege unique to New Zealand's research community. NZAVS time series data possess an integrity that brings confidence to these preliminary findings. However, the causal processes underpinnings of strong and increasing trust in the New Zealand Police remain unclear. Clarifying why the New Zealand Police is so highly trusted holds importance for New Zealanders who which to sustain such confidence, and may be important for countries who experience lower confidence in their police forces and seek to improve trust. Although New Zealanders express a strong willingness to engage with the police, the causes for the decline in such willingness merit future investigation.
+The evidence we present here for strong and rising trust in the New Zealand Police comes from a national panel sample that repeatedly measures the same individuals in successive years. The NZAVS sample is randomly selected from New Zealand electoral role -- a privilege unique to New Zealand's research community. NZAVS time series data possess an integrity that brings confidence to these preliminary findings. However, the causal processes underpinnings of strong and increasing trust in the New Zealand Police remain unclear. Clarifying why the New Zealand Police is so highly trusted holds importance for New Zealanders who which to sustain such confidence, and may be important for countries who experience lower confidence in their police forces and seek to improve trust. Although New Zealanders express a strong willingness to engage with the police, the causes for the a slight decline in such willingness merit future investigation. 
 
 ## Appendix
 
-### Trust in Police predicted by ethnicity
+### Trust in police predicted by ethnic identification
 
-Maori are much less trusting of the police, on average, than NZ Europeans and other ethnicities.
+Maori are much less trusting of the police, on average, than NZ Europeans and other ethnic groups.
 
 ```{r layout = "l-body-outset"}
 pt4 <- 
@@ -389,7 +389,7 @@ pt4_b <- plot(
 pt4_b
 ```
 
-### Trust in Police predicted by gender identity
+### Trust in police predicted by gender identity
 
 Those who identify as male are more trusting of the police.
 
@@ -413,7 +413,7 @@ pt5_b
 ```
 
 
-### Trust in Police predicted by age 
+### Trust in police predicted by age 
 
 Older people are more trusting of the Police.
 
@@ -436,7 +436,7 @@ pt6_b
 
 ```
 
-### Trust in Police predicted by education (standardised)
+### Trust in police predicted by education (standardised)
 
 Education only weakly predicts greater trust in the police.
 
