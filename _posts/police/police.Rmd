@@ -1,0 +1,467 @@
+---
+title: "Trust in the New Zealand Police has been increasing since 2017"
+description: "However willingness to enage with the Police, and trust in politicians, have been decreasing: evidence from the New Zealand Attitudes and Values Study (N = 11,481)"
+author:
+  - name: Joseph Bulbulia
+    url: https://josephbulbulia.netlify.app
+    affiliation: Victoria University of Wellington
+    affiliation_url: https://www.wgtn.ac.nz
+    orcid_id: 0000-0002-5861-2056
+date: 2021-May-08
+output:
+  distill::distill_article:
+    self_contained: false
+    toc: true
+    code_folding: true
+---
+
+```{r setup, include=FALSE}
+# setup
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  layout = "l-body-outset",
+  fig.width = 12,
+  fig.height = 10,
+  collapse = TRUE,
+  R.options = list(width = 60
+  )
+)
+```
+
+```{r libs, include=FALSE}
+library("tidyverse")
+library("here")
+library("equatiomatic")
+library("lubridate")
+library("ggplot2")
+library("ggthemes") #themes
+library("ggpubr")
+library("viridis")
+library("patchwork")
+library("ggforce")
+library("kableExtra")
+library("lme4")
+library("ggplot2")
+library("ggeffects")
+library("sjPlot")
+library("kableExtra")
+library("easystats")
+```
+
+```{r data, cache = TRUE, include = FALSE}
+#import data
+df<-readRDS(here::here("data","df"))
+
+
+# Categories for the covid timeline
+
+ord_dates_class <- c(
+  "PreCOVID", 
+  "Jan_Feb_2020", 
+  "Early_March_2020", 
+  "Lockdown_2020",
+  "Post_Lockdown_2020")
+
+# prepare data
+
+pd <- df %>%
+  dplyr::select(
+    Id,
+    Age,
+    Male,
+    EthnicCats,
+    TSCORE,
+    Edu,
+    POLICE.TRUST,
+    POLICE.ENGAGE,
+    Pol.PoliticianTrust,
+    Sat.Government,
+    Wave,
+    YearMeasured,
+    EthnicCats,
+    Warm.Overweight,
+    Warm.Elderly,
+    Warm.MentalIllness,
+    Warm.Muslims,
+    Warm.Immigrants,
+    Warm.Asians,
+    Wave,
+    Warm.Maori,
+    Warm.NZEuro,
+    Warm.Indians,
+    Warm.Chinese,
+    Warm.Refugees,
+    Warm.Pacific,
+    Muslim,
+    Euro,
+    Relid,
+    Religious,
+    Pol.Orient,
+    TSCORE,
+    WSCORE,
+    YearMeasured,
+    Hours.Internet,
+    Household.INC,
+    Hours.News,
+    NZdep,
+    KESSLER6sum,
+    Hours.Work,
+    years
+  ) %>%
+  dplyr::filter(
+      Wave == 2017 &
+      YearMeasured == 1 |
+      Wave == 2018 &
+      YearMeasured == 1 |
+      Wave == 2019 & YearMeasured == 1
+  ) %>%
+  droplevels() %>%
+  group_by(Id) %>%
+  filter(n() == 3) %>%
+  ungroup() %>%
+  dplyr::mutate(Covid_Timeline =
+                  as.factor(ifelse(
+                    TSCORE %in% 3896:3921,
+                    # feb 29 - march 25th
+                    "Early_March_2020",
+                    ifelse(
+                      TSCORE %in% 3922:3954,
+                      "Lockdown_2020",
+                      #march 26- Mon 27 April 2020
+                      ifelse(
+                        TSCORE > 3954,
+                        # after april 27th 20202
+                        "Post_Lockdown_2020",
+                        ifelse(
+                          TSCORE %in% 3842:3895,
+                          # jan 6 to feb 28
+                          "Jan_Feb_2020",
+                                 "PreCOVID"
+                                 
+                        )
+                      )
+                    )
+                  )))%>%
+  dplyr::mutate(
+    WSCORE = as.factor(WSCORE),
+    POLICE.TRUST_S = scale(POLICE.TRUST),
+    POLICE.ENGAGE_S = scale(POLICE.ENGAGE),
+    Politicians_Trust = (Pol.PoliticianTrust),
+    Politician_Trust_S = scale(Pol.PoliticianTrust),
+    #EduC = scale(as.numeric(Edu), scale = F, center = TRUE),
+    Sat.Government_S = scale(Sat.Government),
+    AgeDecadeC = scale(Age, scale = F, center = T) / 10,
+    NZdep_S = scale(NZdep),
+    Conservative = Pol.Orient,
+    Education = Edu,
+    Ethnic_Categories = EthnicCats,
+    Conservative_S = scale(Conservative, scale = T, center = T),
+    KESSLER6sum = as.integer(KESSLER6sum),
+    Hours.Work = as.integer(Hours.Work),
+    logNews = log(Hours.News + 1),
+    logINT = log(Hours.Internet + 1),
+    Household_income = Household.INC,
+    year_s = years - min(years),
+    Police_Trust = POLICE.TRUST,
+    Police_Engage = POLICE.ENGAGE
+  ) %>%
+  dplyr::mutate(Covid_Timeline = forcats::fct_relevel(Covid_Timeline, ord_dates_class))
+
+```
+
+## Summary
+
+-   Trust in the New Zealand Police has been increasing since 2017.
+-   There was a boost to this trust during the March/April 2020 lockdown.
+-   Willingness to engage with the police is high but declining.
+-   There was no change in willingness to engage with the police during the March/April 2020 lockdown..
+-   By comparison, trust in New Zealand politicians has been increasing since 2017.
+-   Notably, there was a strong increase in trust in politicians during the March/April 2020 lockdown.
+-   Overall, New Zealanders trust their police much more than they trust their politicians.
+
+## Introduction
+
+Here, we investigate stability in change in attitudes to the New Zealand Police and New Zealand politicians using New Zealand Attiudes and Values Study (NZAVS).
+
+The NZAVS is a panel study. A panel study is a longitudinal study that follows the same individuals over time. A panel study is different from a census, which samples the population as a whole over time, without tracking individuals. Time-series data within the same individuals across a diverse population are powerful because they enable a systematic understanding of the complex interplay between human social and psychological processes that occur within people over time. The NZAVS is distinct from other national panel studies for the breadth of its survey questions which hae broad coverage in political and social psychology and health. The study also includes measures of attitudes to the police. Trends in these attitudes since 2017 provide our focus.
+
+For more information about the NZAVS see [here](https://www.psych.auckland.ac.nz/en/about/new-zealand-attitudes-and-values-study.html) and [here](https://go-bayes.github.io/reports/posts/nzavs/)
+
+## Questions
+
+The NZAVS uses a three item scale to assess institutional trust in the NZ police. The items are as follows:
+
+> 1.  People's basic rights are well protected by the New Zealand Police.
+> 2.  There are many things about the New Zealand Police and its policies that need to be changed (reverse scored).
+> 3.  The New Zealand Police care about the well-being of everyone they deal with.
+
+The NZAVS also uses a two-item scale to assess williness to engage with the police. The items in this scale are as follows:
+
+> 1.  I would always report dangerous or suspicious activities occurring in my neighbourhood to the police.
+> 2.  I would always provide information to the police to help them find someone suspected of committing a crime.
+
+These scales appeared in NZAVS Wave 7 (2015/16), Wave 9 (2017/18), Wave 10 (2018/19), and Wave 11 (2019/20).
+
+To disentangle police-specific distrust from other forms of institutional trust, we also include a measure of trust in politicians.
+
+> 1.  Politicians in New Zealand can generally be trusted.
+
+## Trust in New Zealand Police has been increasing since 2017.
+
+First, we model the time trend for trust in the New Zealand police since 2017, using a model that also adjusts for the effects of the Covid-19 pandemic.
+
+We find that since 2017, trust in the New Zealand police has been increasing within New Zealanders.
+
+```{r cache = TRUE}
+pt <-lme4::lmer(Police_Trust ~ year_s + Covid_Timeline + (1|Id), data = pd)
+parameters::model_parameters(pt) %>%
+  parameters::print_html(
+      caption = "data from the New Zealand Attitudes and Values Study",
+      title = "Trust in New Zealand Police: years 2017-2020")
+```
+
+Graphing the trend while holding pandemic indicators constant, we find a steady increase in trust for the New Zealand Police.
+
+```{r}
+pl1 <- plot(ggeffects::ggpredict(pt,
+                                 effects = c("year_s")),
+            add.data = TRUE,
+            dot.alpha = .05)[[1]] + 
+  xlab("Years 2017-2020") + 
+  ylab("Trust in Police (1-7)") +
+  labs(title = "Predicted values of Police Trust in New Zealand",
+       subtitle = "Years 2017-2020, source: New Zealand Attitudes and Values Study")
+pl1
+```
+
+### There was a boost in willingness to trust the police during New Zealand's March/April 2020 Lockdown
+
+Focusing on Covid specific preditions (while holding the time effect constant), we find a large boost in trust of the New Zealand police during New Zealand's stringent Covid-19 pandemic lockdown of late March/April 2020.
+
+```{r}
+pl1_b <- plot(
+  ggeffects::ggpredict(pt,
+                       effects = c("year_s","Covid_Timeline")),
+  add.data = TRUE,
+  dot.alpha = .05
+)[[2]] + 
+  xlab("Covid 19 Timeline: years: 2017-2020") +
+  ylab("Trust in Police (1-7)") +
+  labs(title = "Predicted values of Police Trust in New Zealand",
+       subtitle = "Covid-19 Timeline: source: New Zealand Attitudes and Values Study")
+pl1_b
+```
+
+## Willingness to engage with the police is generally high but has been dropping since 2017
+
+Second, we model the time trend in willingness to engage with the New Zealand police over time, using a model that also adjusts for the effects of the Covid-19 pandemic.
+
+We find that since 2017, willingness to enage with the New Zealand police is generally high but has been dropping within New Zealanders over time.
+
+```{r cache = TRUE}
+pt2 <-lme4::lmer(Police_Engage ~ year_s + Covid_Timeline + (1|Id), data = pd)
+parameters::model_parameters(pt2) %>%
+  parameters::print_html(
+      caption = "Data from the New Zealand Attitudes and Values Study",
+      title = "Willingness to Engage New Zealand Police: years 2017-2020"
+  )
+```
+
+Graphing the trend (holding pandemic effects constant) reveals this steady decrease in willingness to assist the police.
+
+```{r}
+pl2 <- plot(ggeffects::ggpredict(pt2,
+                                 effects = c("year_s", "Covid_Timeline")),
+            add.data = TRUE,
+            dot.alpha = .05)[[1]] + 
+  xlab("Years 2017-2020") + 
+  ylab("Engage with Police (1-7)") +
+  labs(title = "Predicted Willingness to Engage with the New Zealand Police",
+       subtitle = "Years 2017-2020, source: New Zealand Attitudes and Values Study")
+pl2
+```
+
+### There was no change in willingness to engage the police during New Zealand's March/April 2020 lockdown
+
+Focusing on Covid specific predictions (while holding the time effect constant), we find no evidence for change in willingess to engage with the police during New Zealand's stringent Covid-19 pandemic lockdown of late March/April 2020.
+
+```{r}
+pl2_b <- plot(
+  ggeffects::ggpredict(pt2,
+                       effects = c("year_s","Covid_Timeline")),
+  add.data = TRUE,
+  dot.alpha = .05
+)[[2]] + 
+  xlab("Covid 19 Timeline: years: 2017-2020") + 
+  ylab("Trust in Police (1-7)") +
+  labs(title = "Predicted values of Willingness to enage the NZ Police",
+       subtitle = "Covid-19 Timeline: source: New Zealand Attitudes and Values Study")
+pl2_b
+```
+
+## Trust in New Zealand Politicians has dropped since 2017, however there was a strong boost during lockdown.
+
+Third we compare the dynamics of trust in the New Zealand Police with the dynamics of trust in New Zealand politicians, employing a parrallel model for trust in politicians. As such, we estimate the time trend in trust for the New Zealand politicians since 2017 using a model that also adjusts for the effects of the Covid-19 pandemic.
+
+We find that since 2017, trust in the New Zealand Politicians has dropped within New Zealanders.
+
+```{r}
+pt3 <-
+  lme4::lmer(Politicians_Trust ~ year_s + Covid_Timeline + (1 | Id), data = pd)
+parameters::model_parameters(pt3) %>%
+  parameters::print_html(caption = "Data from the New Zealand Attitudes and Values Study",
+                         title = "Trust in Politicians: years 2017-2020")
+```
+
+Graphing the trend in trust in New Zealand politicians (holding pandemic effects constant) and find no evidence change for a time trend in such trust.
+
+```{r}
+pl3 <- plot(
+  ggeffects::ggpredict(pt3,
+                       effects = c("year_s", "Covid_Timeline")),
+  add.data = TRUE,
+  jitter = .45,
+  dot.alpha = .05
+)[[1]] +
+  xlab("Years 2017-2020") +
+  ylab("Trust in Politicians (1-7)") +
+  labs(title = "Predicted Trust in New Zealand Politicians",
+       subtitle = "Years 2017-2020, source: New Zealand Attitudes and Values Study")
+
+pl3
+```
+
+### There was a large boost in trust of politicians during New Zealand's March/April 2020 lockdown
+
+Focusing on Covid specific predictions (while holding the time effect constant), we find evidence for a substantial boost to tust politicians during New Zealand's stringent Covid-19 pandemic lockdown of late March/April 2020. Notably, this boost appears to be reverting to pre-pandemic levels.
+
+```{r}
+pl3_b <- plot(
+  ggeffects::ggpredict(pt3,
+                       effects = c("year_s","Covid_Timeline")),
+  add.data = TRUE,
+  dot.alpha = .05
+)[[2]] + 
+  xlab("Covid 19 Timeline: years: 2017-2020") + 
+  ylab("Trust in Police (1-7)") +
+  labs(title = "Predicted values of trust in New Zealand Politicians",
+       subtitle = "Covid-19 Timeline: source: New Zealand Attitudes and Values Study")
+pl3_b
+```
+
+## Key message: comparison of trust in New Zealand Police and trust in New Zealand politicians shows relatively high and growing confidence in the police with relatively lower and declining confidence in politicians.
+
+To better understand differences in trust of the New Zealand Police (Fig4.a) and trust in New Zealand Politicians, we can graph both trends side-by-side. Doing so reveals that rising trust in the police is not the result of a generic increase in institutional trust, but is a unique phenomenon that holds across a diverse population.
+
+```{r}
+library(patchwork)
+
+pl1 + pl3 +
+  plot_annotation(title = "Relative Trust in NZ Police vs NZ Politicians: 2017-2020: all predicted responses plotted.",
+                  tag_levels = "a")
+
+```
+
+The evidence we present here for strong and rising trust in the New Zealand police comes from a national panel sample that repeatedly measures the same individuals in successive years. The NZAVS sample is randomly selected from New Zealand electoral role -- a privilege unique to New Zealand's research community. NZAVS time series data possess an integrity that brings confidence to these preliminary findings. However, the causal processes underpinnings of strong and increasing trust in the New Zealand Police remain unclear. Clarifying why the New Zealand Police is so highly trusted holds importance for New Zealanders who which to sustain such confidence, and may be important for countries who experience lower confidence in their police forces and seek to improve trust. Although New Zealanders express a strong willingness to engage with the police, the causes for the decline in such willingness merit future investigation.
+
+## Appendix
+
+### Sample information
+
+The following table reports the means and standard deviations in responses to these item, as well as sample descriptive details.
+
+```{r}
+table1::table1( ~ Age +
+                  Ethnic_Categories +
+                  Male +
+                  Household_income + 
+                  Police_Trust +
+                  Police_Engage +
+                  Politicians_Trust| Wave, 
+                overall  = FALSE,
+                data = pd)
+```
+
+### Timeline
+
+Number of response per Covid timeline condition. All responses within individuals were recorded in wave 9, wave 10, and in the five Covid phases of wave 11 (pre-Covid, after the WHO announcement on January 6, after the first community case in New Zealand: 28 February, Early March, Lockdown (March-April 2020, and Post Lockdown))
+
+```{r}
+pd %>%
+  select(Covid_Timeline) %>%
+   group_by(Covid_Timeline) %>%
+  count()%>%
+   kbl() %>%
+    kable_paper("hover", full_width = F)
+```
+
+Timeline histogram presents counts of NZAVS responses per day in the repeated measures sample 2017-2020:
+
+```{r}
+carep <- pd %>%
+  dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30) + TSCORE) %>%
+  count(day = floor_date(timeline, "day")) %>%
+dplyr::mutate(condition = ifelse(
+    day < "2019-06-20" &
+      day > "2018-07-10",
+    "Wave_10",
+    ifelse(
+      day >= "2019-06-20" &
+        day < "2020-01-06",
+      "PreCOVID_wave11",
+      ifelse(
+        day >= "2020-01-06" & day < "2020-02-29",
+        "Jan_Feb",
+        ifelse(
+          day >= "2020-02-29" & day < "2020-03-25",
+          "Early_March",
+          ifelse(
+            day >= "2020-03-25" &
+              day < "2020-04-28",
+            "Lockdown",
+             ifelse(
+            day >= "2017-08-27" &
+            day <= "2018-07-10",
+            "Wave_9",
+            "Post_Lockdown"
+            )))))) )%>%
+  dplyr::mutate(condition = forcats::fct_relevel(condition, ord_dates_class)) %>%
+  arrange(day)
+
+# get COVID date
+dates_vline0<- as.Date("2018-06-03")
+dates_vline1<- as.Date("2019-06-20")
+dates_vline2<- as.Date("2020-01-06")
+dates_vline3<- as.Date("2020-02-28")
+# get data of change of baseline
+dates_vline4<- as.Date("2020-03-25")
+dates_vline5 <- as.Date("2020-04-27")
+dates_vline6 <- as.Date("2020-10-15")
+# for line in a graph
+
+# for line in a graph
+#
+dates_vline10 <- which(carep$day %in% dates_vline0)
+dates_vline1b <- which(carep$day %in% dates_vline1)
+dates_vline2b <- which(carep$day %in% dates_vline2)
+dates_vline3b <- which(carep$day %in% dates_vline3)
+dates_vline4b <- which(carep$day %in% dates_vline4)
+dates_vline5b <- which(carep$day %in% dates_vline5)
+dates_vline6b <- which(carep$day %in% dates_vline6)
+
+
+tline <- ggplot(carep, aes(day, n)) +
+  geom_col(aes(fill = condition)) + scale_x_date(date_labels = "%b/%Y", limits = c(as.Date("2017-08-26"), as.Date("2020-10-15")))  + scale_y_continuous(limits = c(0, 650))  +
+  xlab("NZAVS Waves 8, 10 and 11 daily counts: repeated measures") + ylab("Counts of Responses")  + theme_classic() +   scale_fill_viridis_d()
+## covid timeline
+tline
+```
+
+```{r echo=FALSE, include =FALSE}
+# check model -- no collinaerity
+check_collinearity(pt)
+check_collinearity(pt2)
+check_collinearity(pt3)
+```

@@ -3,9 +3,10 @@ title: "Brief Reports"
 site: distill::distill_website
 listing: 
   posts:
-    - covid
     - nzavs
+    - covid
     - mus
+    - police
 ---
 
 ```{r setup, include=FALSE}
