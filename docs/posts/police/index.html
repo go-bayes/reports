@@ -136,7 +136,7 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 <!--/radix_placeholder_rmarkdown_metadata-->
   
   <script type="text/json" id="radix-resource-manifest">
-  {"type":"character","attributes":{},"value":["police_files/anchor-4.2.2/anchor.min.js","police_files/bowser-1.9.3/bowser.min.js","police_files/distill-2.2.21/template.v2.js","police_files/figure-html5/unnamed-chunk-10-1.png","police_files/figure-html5/unnamed-chunk-11-1.png","police_files/figure-html5/unnamed-chunk-13-1.png","police_files/figure-html5/unnamed-chunk-2-1.png","police_files/figure-html5/unnamed-chunk-3-1.png","police_files/figure-html5/unnamed-chunk-4-1.png","police_files/figure-html5/unnamed-chunk-5-1.png","police_files/figure-html5/unnamed-chunk-6-1.png","police_files/figure-html5/unnamed-chunk-7-1.png","police_files/figure-html5/unnamed-chunk-8-1.png","police_files/figure-html5/unnamed-chunk-9-1.png","police_files/header-attrs-2.7.8/header-attrs.js","police_files/jquery-1.11.3/jquery.min.js","police_files/kePrint-0.0.1/kePrint.js","police_files/lightable-0.0.1/lightable.css","police_files/popper-2.6.0/popper.min.js","police_files/table1-1.0/table1_defaults.css","police_files/tippy-6.2.7/tippy-bundle.umd.min.js","police_files/tippy-6.2.7/tippy-light-border.css","police_files/tippy-6.2.7/tippy.css","police_files/tippy-6.2.7/tippy.umd.min.js","police_files/webcomponents-2.0.0/webcomponents.js"]}
+  {"type":"character","attributes":{},"value":["police_files/anchor-4.2.2/anchor.min.js","police_files/bowser-1.9.3/bowser.min.js","police_files/distill-2.2.21/template.v2.js","police_files/figure-html5/unnamed-chunk-10-1.png","police_files/figure-html5/unnamed-chunk-11-1.png","police_files/figure-html5/unnamed-chunk-12-1.png","police_files/figure-html5/unnamed-chunk-13-1.png","police_files/figure-html5/unnamed-chunk-14-1.png","police_files/figure-html5/unnamed-chunk-15-1.png","police_files/figure-html5/unnamed-chunk-17-1.png","police_files/figure-html5/unnamed-chunk-2-1.png","police_files/figure-html5/unnamed-chunk-3-1.png","police_files/figure-html5/unnamed-chunk-4-1.png","police_files/figure-html5/unnamed-chunk-5-1.png","police_files/figure-html5/unnamed-chunk-6-1.png","police_files/figure-html5/unnamed-chunk-7-1.png","police_files/figure-html5/unnamed-chunk-8-1.png","police_files/figure-html5/unnamed-chunk-9-1.png","police_files/header-attrs-2.7.8/header-attrs.js","police_files/jquery-1.11.3/jquery.min.js","police_files/kePrint-0.0.1/kePrint.js","police_files/lightable-0.0.1/lightable.css","police_files/popper-2.6.0/popper.min.js","police_files/table1-1.0/table1_defaults.css","police_files/tippy-6.2.7/tippy-bundle.umd.min.js","police_files/tippy-6.2.7/tippy-light-border.css","police_files/tippy-6.2.7/tippy.css","police_files/tippy-6.2.7/tippy.umd.min.js","police_files/webcomponents-2.0.0/webcomponents.js"]}
   </script>
   <!--radix_placeholder_navigation_in_header-->
 <meta name="distill:offset" content="../.."/>
@@ -2422,6 +2422,10 @@ gtag('config', 'G-RHXJDBVMBK');
 <li><a href="#key-message-comparison-of-trust-in-new-zealand-police-and-trust-in-new-zealand-politicians-shows-relatively-high-and-growing-confidence-in-the-police-with-relatively-lower-and-declining-confidence-in-politicians.">Key message: comparison of trust in New Zealand Police and trust in New Zealand politicians shows relatively high and growing confidence in the police with relatively lower and declining confidence in politicians.</a></li>
 <li><a href="#appendix">Appendix</a>
 <ul>
+<li><a href="#trust-in-police-predicted-by-ethnicity">Trust in Police predicted by ethnicity</a></li>
+<li><a href="#trust-in-police-predicted-by-gender-identity">Trust in Police predicted by gender identity</a></li>
+<li><a href="#trust-in-police-predicted-by-age">Trust in Police predicted by age</a></li>
+<li><a href="#trust-in-police-predicted-by-education-standardised">Trust in Police predicted by education (standardised)</a></li>
 <li><a href="#sample-information">Sample information</a></li>
 <li><a href="#timeline">Timeline</a></li>
 </ul></li>
@@ -3969,6 +3973,116 @@ Show code
 </div>
 <p>The evidence we present here for strong and rising trust in the New Zealand police comes from a national panel sample that repeatedly measures the same individuals in successive years. The NZAVS sample is randomly selected from New Zealand electoral role – a privilege unique to New Zealand’s research community. NZAVS time series data possess an integrity that brings confidence to these preliminary findings. However, the causal processes underpinnings of strong and increasing trust in the New Zealand Police remain unclear. Clarifying why the New Zealand Police is so highly trusted holds importance for New Zealanders who which to sustain such confidence, and may be important for countries who experience lower confidence in their police forces and seek to improve trust. Although New Zealanders express a strong willingness to engage with the police, the causes for the decline in such willingness merit future investigation.</p>
 <h2 id="appendix">Appendix</h2>
+<h3 id="trust-in-police-predicted-by-ethnicity">Trust in Police predicted by ethnicity</h3>
+<p>Maori are much less trusting of the police, on average, than NZ Europeans and other ethnicities.</p>
+<div class="layout-chunk" data-layout="l-body-outset">
+<details>
+<summary>
+Show code
+</summary>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>pt4</span> <span class='op'>&lt;-</span> 
+  <span class='fu'>lme4</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/lme4/man/lmer.html'>lmer</a></span><span class='op'>(</span><span class='va'>Police_Trust</span> <span class='op'>~</span> <span class='va'>Ethnic_Categories</span> <span class='op'>+</span> <span class='va'>year_s</span> <span class='op'>+</span> <span class='va'>Covid_Timeline</span> <span class='op'>+</span> <span class='op'>(</span><span class='fl'>1</span> <span class='op'>|</span> <span class='va'>Id</span><span class='op'>)</span>, data <span class='op'>=</span> <span class='va'>pd</span><span class='op'>)</span>
+
+<span class='va'>pt4_b</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/pkg/ggeffects/man/plot.html'>plot</a></span><span class='op'>(</span>
+  <span class='fu'>ggeffects</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/ggeffects/man/ggpredict.html'>ggpredict</a></span><span class='op'>(</span><span class='va'>pt4</span>,
+                       effects <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"Ethnic_Categories"</span><span class='op'>)</span><span class='op'>)</span>,
+  add.data <span class='op'>=</span> <span class='cn'>TRUE</span>,
+  dot.alpha <span class='op'>=</span> <span class='fl'>.05</span>
+<span class='op'>)</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span> <span class='op'>+</span> 
+  <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/labs.html'>xlab</a></span><span class='op'>(</span><span class='st'>"Ethnic Categories"</span><span class='op'>)</span> <span class='op'>+</span> 
+  <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/labs.html'>ylab</a></span><span class='op'>(</span><span class='st'>"Trust in Police (1-7)"</span><span class='op'>)</span> <span class='op'>+</span>
+  <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/labs.html'>labs</a></span><span class='op'>(</span>title <span class='op'>=</span> <span class='st'>"Predicted values of trust in New Zealand Police by Ethnic Identification"</span>,
+       subtitle <span class='op'>=</span> <span class='st'>"Covid-19 Timeline: source: New Zealand Attitudes and Values Study"</span><span class='op'>)</span>
+<span class='va'>pt4_b</span>
+</code></pre>
+</div>
+</details>
+<p><img src="police_files/figure-html5/unnamed-chunk-11-1.png" width="1152" /></p>
+</div>
+<h3 id="trust-in-police-predicted-by-gender-identity">Trust in Police predicted by gender identity</h3>
+<p>Those who identify as male are more trusting of the police.</p>
+<div class="layout-chunk" data-layout="l-body-outset">
+<details>
+<summary>
+Show code
+</summary>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>pt5</span> <span class='op'>&lt;-</span>
+  <span class='fu'>lme4</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/lme4/man/lmer.html'>lmer</a></span><span class='op'>(</span><span class='va'>Police_Trust</span> <span class='op'>~</span> <span class='va'>Male</span> <span class='op'>+</span> <span class='va'>year_s</span> <span class='op'>+</span> <span class='va'>Covid_Timeline</span> <span class='op'>+</span> <span class='op'>(</span><span class='fl'>1</span> <span class='op'>|</span> <span class='va'>Id</span><span class='op'>)</span>, data <span class='op'>=</span> <span class='va'>pd</span><span class='op'>)</span>
+
+
+<span class='va'>pt5_b</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/pkg/ggeffects/man/plot.html'>plot</a></span><span class='op'>(</span>
+  <span class='fu'>ggeffects</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/ggeffects/man/ggpredict.html'>ggpredict</a></span><span class='op'>(</span><span class='va'>pt5</span>,
+                       effects <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"Male"</span><span class='op'>)</span><span class='op'>)</span>,
+  add.data <span class='op'>=</span> <span class='cn'>TRUE</span>,
+  dot.alpha <span class='op'>=</span> <span class='fl'>.05</span>
+<span class='op'>)</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span> <span class='op'>+</span> 
+  <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/labs.html'>xlab</a></span><span class='op'>(</span><span class='st'>"Indentifies as Male"</span><span class='op'>)</span> <span class='op'>+</span> 
+  <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/labs.html'>ylab</a></span><span class='op'>(</span><span class='st'>"Trust in Police (1-7)"</span><span class='op'>)</span> <span class='op'>+</span>
+  <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/labs.html'>labs</a></span><span class='op'>(</span>title <span class='op'>=</span> <span class='st'>"Predicted values of trust in New Zealand Police by Gender Identity"</span>,
+       subtitle <span class='op'>=</span> <span class='st'>"Covid-19 Timeline: source: New Zealand Attitudes and Values Study"</span><span class='op'>)</span>
+<span class='va'>pt5_b</span>
+</code></pre>
+</div>
+</details>
+<p><img src="police_files/figure-html5/unnamed-chunk-12-1.png" width="1152" /></p>
+</div>
+<h3 id="trust-in-police-predicted-by-age">Trust in Police predicted by age</h3>
+<p>Older people are more trusting of the Police.</p>
+<div class="layout-chunk" data-layout="l-body-outset">
+<details>
+<summary>
+Show code
+</summary>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>pt6</span> <span class='op'>&lt;-</span>
+  <span class='fu'>lme4</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/lme4/man/lmer.html'>lmer</a></span><span class='op'>(</span><span class='va'>Police_Trust</span> <span class='op'>~</span> <span class='va'>AgeDecadeC</span> <span class='op'>+</span> <span class='va'>year_s</span> <span class='op'>+</span> <span class='va'>Covid_Timeline</span> <span class='op'>+</span> <span class='op'>(</span><span class='fl'>1</span> <span class='op'>|</span> <span class='va'>Id</span><span class='op'>)</span>, data <span class='op'>=</span> <span class='va'>pd</span><span class='op'>)</span>
+
+
+<span class='va'>pt6_b</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/pkg/ggeffects/man/plot.html'>plot</a></span><span class='op'>(</span>
+  <span class='fu'>ggeffects</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/ggeffects/man/ggpredict.html'>ggpredict</a></span><span class='op'>(</span><span class='va'>pt6</span>,
+                       effects <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"Age"</span><span class='op'>)</span><span class='op'>)</span>,
+  add.data <span class='op'>=</span> <span class='cn'>TRUE</span>,
+  dot.alpha <span class='op'>=</span> <span class='fl'>.05</span>
+<span class='op'>)</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span> <span class='op'>+</span> 
+  <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/labs.html'>xlab</a></span><span class='op'>(</span><span class='st'>"Age in Decades (centered)"</span><span class='op'>)</span> <span class='op'>+</span> 
+  <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/labs.html'>ylab</a></span><span class='op'>(</span><span class='st'>"Trust in Police (1-7)"</span><span class='op'>)</span> <span class='op'>+</span>
+  <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/labs.html'>labs</a></span><span class='op'>(</span>title <span class='op'>=</span> <span class='st'>"Predicted values of trust in New Zealand Police by Age (centered/decades)"</span>,
+       subtitle <span class='op'>=</span> <span class='st'>"Covid-19 Timeline: source: New Zealand Attitudes and Values Study"</span><span class='op'>)</span>
+<span class='va'>pt6_b</span>
+</code></pre>
+</div>
+</details>
+<p><img src="police_files/figure-html5/unnamed-chunk-13-1.png" width="1152" /></p>
+</div>
+<h3 id="trust-in-police-predicted-by-education-standardised">Trust in Police predicted by education (standardised)</h3>
+<p>Education only weakly predicts greater trust in the police.</p>
+<div class="layout-chunk" data-layout="l-body-outset">
+<details>
+<summary>
+Show code
+</summary>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>pt7</span> <span class='op'>&lt;-</span>
+  <span class='fu'>lme4</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/lme4/man/lmer.html'>lmer</a></span><span class='op'>(</span><span class='va'>Police_Trust</span> <span class='op'>~</span> <span class='va'>Education_S</span> <span class='op'>+</span> <span class='va'>year_s</span> <span class='op'>+</span> <span class='va'>Covid_Timeline</span> <span class='op'>+</span> <span class='op'>(</span><span class='fl'>1</span> <span class='op'>|</span> <span class='va'>Id</span><span class='op'>)</span>, data <span class='op'>=</span> <span class='va'>pd</span><span class='op'>)</span>
+
+<span class='va'>pt7_b</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/pkg/ggeffects/man/plot.html'>plot</a></span><span class='op'>(</span>
+  <span class='fu'>ggeffects</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/ggeffects/man/ggpredict.html'>ggpredict</a></span><span class='op'>(</span><span class='va'>pt7</span>,
+                       effects <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"Education_S"</span><span class='op'>)</span><span class='op'>)</span>,
+  add.data <span class='op'>=</span> <span class='cn'>TRUE</span>,
+  dot.alpha <span class='op'>=</span> <span class='fl'>.05</span>
+<span class='op'>)</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span> <span class='op'>+</span> 
+  <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/labs.html'>xlab</a></span><span class='op'>(</span><span class='st'>"Education in standard deviation units"</span><span class='op'>)</span> <span class='op'>+</span> 
+  <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/labs.html'>ylab</a></span><span class='op'>(</span><span class='st'>"Trust in Police (1-7)"</span><span class='op'>)</span> <span class='op'>+</span>
+  <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/labs.html'>labs</a></span><span class='op'>(</span>title <span class='op'>=</span> <span class='st'>"Predicted values of trust in New Zealand Police by Education "</span>,
+       subtitle <span class='op'>=</span> <span class='st'>"Covid-19 Timeline: source: New Zealand Attitudes and Values Study"</span><span class='op'>)</span>
+<span class='va'>pt7_b</span>
+</code></pre>
+</div>
+</details>
+<p><img src="police_files/figure-html5/unnamed-chunk-14-1.png" width="1152" /></p>
+</div>
 <h3 id="sample-information">Sample information</h3>
 <p>The following table reports the means and standard deviations in responses to these item, as well as sample descriptive details.</p>
 <div class="layout-chunk" data-layout="l-body-outset">
@@ -4286,28 +4400,6 @@ Show code
   <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/dplyr/man/mutate.html'>mutate</a></span><span class='op'>(</span>condition <span class='op'>=</span> <span class='fu'>forcats</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/forcats/man/fct_relevel.html'>fct_relevel</a></span><span class='op'>(</span><span class='va'>condition</span>, <span class='va'>ord_dates_class</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'>arrange</span><span class='op'>(</span><span class='va'>day</span><span class='op'>)</span>
 
-<span class='co'># get COVID date</span>
-<span class='va'>dates_vline0</span><span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/as.Date.html'>as.Date</a></span><span class='op'>(</span><span class='st'>"2018-06-03"</span><span class='op'>)</span>
-<span class='va'>dates_vline1</span><span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/as.Date.html'>as.Date</a></span><span class='op'>(</span><span class='st'>"2019-06-20"</span><span class='op'>)</span>
-<span class='va'>dates_vline2</span><span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/as.Date.html'>as.Date</a></span><span class='op'>(</span><span class='st'>"2020-01-06"</span><span class='op'>)</span>
-<span class='va'>dates_vline3</span><span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/as.Date.html'>as.Date</a></span><span class='op'>(</span><span class='st'>"2020-02-28"</span><span class='op'>)</span>
-<span class='co'># get data of change of baseline</span>
-<span class='va'>dates_vline4</span><span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/as.Date.html'>as.Date</a></span><span class='op'>(</span><span class='st'>"2020-03-25"</span><span class='op'>)</span>
-<span class='va'>dates_vline5</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/as.Date.html'>as.Date</a></span><span class='op'>(</span><span class='st'>"2020-04-27"</span><span class='op'>)</span>
-<span class='va'>dates_vline6</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/as.Date.html'>as.Date</a></span><span class='op'>(</span><span class='st'>"2020-10-15"</span><span class='op'>)</span>
-<span class='co'># for line in a graph</span>
-
-<span class='co'># for line in a graph</span>
-<span class='co'>#</span>
-<span class='va'>dates_vline10</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/which.html'>which</a></span><span class='op'>(</span><span class='va'>carep</span><span class='op'>$</span><span class='va'>day</span> <span class='op'>%in%</span> <span class='va'>dates_vline0</span><span class='op'>)</span>
-<span class='va'>dates_vline1b</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/which.html'>which</a></span><span class='op'>(</span><span class='va'>carep</span><span class='op'>$</span><span class='va'>day</span> <span class='op'>%in%</span> <span class='va'>dates_vline1</span><span class='op'>)</span>
-<span class='va'>dates_vline2b</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/which.html'>which</a></span><span class='op'>(</span><span class='va'>carep</span><span class='op'>$</span><span class='va'>day</span> <span class='op'>%in%</span> <span class='va'>dates_vline2</span><span class='op'>)</span>
-<span class='va'>dates_vline3b</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/which.html'>which</a></span><span class='op'>(</span><span class='va'>carep</span><span class='op'>$</span><span class='va'>day</span> <span class='op'>%in%</span> <span class='va'>dates_vline3</span><span class='op'>)</span>
-<span class='va'>dates_vline4b</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/which.html'>which</a></span><span class='op'>(</span><span class='va'>carep</span><span class='op'>$</span><span class='va'>day</span> <span class='op'>%in%</span> <span class='va'>dates_vline4</span><span class='op'>)</span>
-<span class='va'>dates_vline5b</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/which.html'>which</a></span><span class='op'>(</span><span class='va'>carep</span><span class='op'>$</span><span class='va'>day</span> <span class='op'>%in%</span> <span class='va'>dates_vline5</span><span class='op'>)</span>
-<span class='va'>dates_vline6b</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/which.html'>which</a></span><span class='op'>(</span><span class='va'>carep</span><span class='op'>$</span><span class='va'>day</span> <span class='op'>%in%</span> <span class='va'>dates_vline6</span><span class='op'>)</span>
-
-
 <span class='va'>tline</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/ggplot.html'>ggplot</a></span><span class='op'>(</span><span class='va'>carep</span>, <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/aes.html'>aes</a></span><span class='op'>(</span><span class='va'>day</span>, <span class='va'>n</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>+</span>
   <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/geom_bar.html'>geom_col</a></span><span class='op'>(</span><span class='fu'><a href='https://ggplot2.tidyverse.org/reference/aes.html'>aes</a></span><span class='op'>(</span>fill <span class='op'>=</span> <span class='va'>condition</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>+</span> <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/scale_date.html'>scale_x_date</a></span><span class='op'>(</span>date_labels <span class='op'>=</span> <span class='st'>"%b/%Y"</span>, limits <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/as.Date.html'>as.Date</a></span><span class='op'>(</span><span class='st'>"2017-08-26"</span><span class='op'>)</span>, <span class='fu'><a href='https://rdrr.io/r/base/as.Date.html'>as.Date</a></span><span class='op'>(</span><span class='st'>"2020-10-15"</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span>  <span class='op'>+</span> <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/scale_continuous.html'>scale_y_continuous</a></span><span class='op'>(</span>limits <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fl'>0</span>, <span class='fl'>650</span><span class='op'>)</span><span class='op'>)</span>  <span class='op'>+</span>
   <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/labs.html'>xlab</a></span><span class='op'>(</span><span class='st'>"NZAVS Waves 8, 10 and 11 daily counts: repeated measures"</span><span class='op'>)</span> <span class='op'>+</span> <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/labs.html'>ylab</a></span><span class='op'>(</span><span class='st'>"Counts of Responses"</span><span class='op'>)</span>  <span class='op'>+</span> <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/ggtheme.html'>theme_classic</a></span><span class='op'>(</span><span class='op'>)</span> <span class='op'>+</span>   <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/scale_viridis.html'>scale_fill_viridis_d</a></span><span class='op'>(</span><span class='op'>)</span>
@@ -4316,7 +4408,7 @@ Show code
 </code></pre>
 </div>
 </details>
-<p><img src="police_files/figure-html5/unnamed-chunk-13-1.png" width="1152" /></p>
+<p><img src="police_files/figure-html5/unnamed-chunk-17-1.png" width="1152" /></p>
 </div>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r distill-force-highlighting-css"><code class="sourceCode r"></code></pre></div>
 <!--radix_placeholder_article_footer-->
