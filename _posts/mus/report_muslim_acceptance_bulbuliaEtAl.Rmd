@@ -239,9 +239,6 @@ dindians <- df %>%
   dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack","post_attack")))
 
 
-
-
-
 dpacific <- df %>%
   dplyr::filter(YearMeasured == 1)  %>%
   dplyr::filter(Wave == 2019 |
@@ -314,6 +311,7 @@ km2 <- df %>%
     Warm.Muslims,
     Warm.Immigrants,
     Warm.Asians,
+    Warm.Refugees,
     Wave,
     Warm.Maori,
     Warm.NZEuro,
