@@ -1,0 +1,21 @@
+---
+title: "Joseph Bulbulia"
+description: "About me"
+image: "jb.jpg"
+links:
+  - label: LinkedIn
+    url: "https://www.linkedin.com/in/joseph-bulbulia-1ba5a514/?originalSubdomain=nz"
+  - label: Twitter
+    url: "https://twitter.com/go_bayes"
+  - label: GitHub
+    url: "https://twitter.com/go_bayes"
+  - label: ORCID iD
+    url: "https://orcid.org/0000-0002-5861-2056"
+site: distill::distill_website
+output:
+  postcards::trestles
+---
+ 
+I am a classically trained data scientist living in the San Francisco Bay Area. 
+Currently I work on the Oculus team at Facebook. I love talking about baseball, 
+true crime podcasts, and causal inference.
