@@ -1,21 +1,28 @@
 ---
 title: "Joseph Bulbulia"
-description: "About me"
+description: "Contact"
 image: "jb.jpg"
 links:
-  - label: LinkedIn
-    url: "https://www.linkedin.com/in/joseph-bulbulia-1ba5a514/?originalSubdomain=nz"
+  - label: Personal webpage
+    url: "https://josephbulbulia.netlify.app/"
+  - label: Work webpage
+    url: "https://www.wgtn.ac.nz/psyc/about/staff/prof-joseph-bulbulia"
+  - label: Google scholar
+    url: "https://scholar.google.co.nz/citations?user=82b99k8AAAAJ&hl=en"
   - label: Twitter
     url: "https://twitter.com/go_bayes"
   - label: GitHub
     url: "https://twitter.com/go_bayes"
-  - label: ORCID iD
+  - label: ORCID ID
     url: "https://orcid.org/0000-0002-5861-2056"
 site: distill::distill_website
 output:
   postcards::trestles
 ---
  
-I am a classically trained data scientist living in the San Francisco Bay Area. 
-Currently I work on the Oculus team at Facebook. I love talking about baseball, 
-true crime podcasts, and causal inference.
+
+I'm a professor of psychology at Victoria University of Wellington. I work in the areas of cultural evolution, religion, longitudional research, psychological distress, and the good life. I like to run, play bass, and code.
+
+Her's the fine print. The views expressed here are my own. Most of the work I present here has yet to undergo peer review.  The views I present here do not necessarily represent the views of my collaborators or the institutions I serve.
+
+My contact: joseph.bulbulia@vuw.ac.nz
