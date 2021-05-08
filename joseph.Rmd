@@ -3,7 +3,9 @@ title: "Joseph Bulbulia"
 description: "Contact"
 image: "jb.jpg"
 links:
-  - label: Personal webpage
+  - label: CV
+    url: "https://josephbulbulia.netlify.app/files/bulbuliaCV.pdf"
+  - label: webpage
     url: "https://josephbulbulia.netlify.app/"
   - label: Work webpage
     url: "https://www.wgtn.ac.nz/psyc/about/staff/prof-joseph-bulbulia"
@@ -21,7 +23,7 @@ output:
 ---
  
 
-I'm a professor of psychology at Victoria University of Wellington. I work in the areas of cultural evolution, religion, longitudional research, psychological distress, and the good life. I like to run, play bass, and code.
+I'm a professor of psychology at Victoria University of Wellington. I work in the areas of cultural evolution, religion, longitudional research, psychological distress, rituals, and the good life. I like to run, play bass, and code.
 
 Her's the fine print. The views expressed here are my own. Most of the work I present here has yet to undergo peer review.  The views I present here do not necessarily represent the views of my collaborators or the institutions I serve.
 
