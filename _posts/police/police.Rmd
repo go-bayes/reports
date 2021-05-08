@@ -169,7 +169,6 @@ pd <- df %>%
     Police_Engage = POLICE.ENGAGE
   ) %>%
   dplyr::mutate(Covid_Timeline = forcats::fct_relevel(Covid_Timeline, ord_dates_class))
-
 ```
 
 ## Summary
@@ -178,7 +177,7 @@ pd <- df %>%
 -   There was a boost to this trust during the March/April 2020 lockdown.
 -   Willingness to engage with the police is high but declining.
 -   There was no change in willingness to engage with the police during the March/April 2020 lockdown..
--   By comparison, trust in New Zealand politicians has been increasing since 2017.
+-   By comparison, trust in New Zealand politicians has been decreasing since 2017.
 -   Notably, there was a strong increase in trust in politicians during the March/April 2020 lockdown.
 -   Overall, New Zealanders trust their police much more than they trust their politicians.
 
