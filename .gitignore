@@ -1,5 +1,6 @@
 # History files
 .Rhistory
+.DS_Store
 .Rapp.history
 # Session Data files
 .RData
@@ -43,4 +44,3 @@ docs/templates/**/*.html
 _posts/**/*_files/
 _posts/*.pdf
 docs/posts/**/*.pdf
-.DS_Store
