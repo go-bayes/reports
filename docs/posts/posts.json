@@ -55,5 +55,22 @@
     "input_file": {},
     "preview_width": 2304,
     "preview_height": 1920
+  },
+  {
+    "path": "posts/covid/",
+    "title": "COVID-19 Lockdown",
+    "description": {},
+    "author": [
+      {
+        "name": "Joseph Bulbulia",
+        "url": "https://josephbulbulia.netlify.app"
+      }
+    ],
+    "date": "2021-02-28",
+    "categories": [],
+    "contents": "\n\n\n\nTalk\nClick here to go to the lecture slides.\n\n\n\nfitvids('.shareagain', {players: 'iframe'});\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    "preview": {},
+    "last_modified": "2021-05-09T21:57:06+12:00",
+    "input_file": "covid.knit.md"
   }
 ]
