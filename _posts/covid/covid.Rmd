@@ -39,6 +39,13 @@ knitr::opts_chunk$set(
 ```
 
 
+```{r, layout = "l-body-outset", cache =TRUE}
+bmlm::mlm_path_plot(xlab = "Condition\n(X)",
+              mlab = "Mediator\n(M)",
+              ylab = "Distress\n(Y)")
+```
+
+
 ## Talk
 
 Click [here](slides.html) to go to the lecture slides.

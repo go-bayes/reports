@@ -12,25 +12,34 @@ output:
   distill::distill_article:
     self_contained: false
     toc: true
+    code_folding: true
 bibliography: bib.bib
 ---
 
 
-```{css, echo=FALSE}
-.scroll-100 {
-  max-width: 60px;
-  overflow-x: auto;
-  background-color: inherit;
-}
-```
-
+<!-- ```{css, echo=FALSE} -->
+<!-- .scroll-100 { -->
+<!--   max-width: 60px; -->
+<!--   overflow-x: auto; -->
+<!--   background-color: inherit; -->
+<!-- } -->
+<!-- ``` -->
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(message=FALSE,
-                      warning=FALSE,
-                      collapse =TRUE,
-                      echo=FALSE)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  layout = "l-body-outset",
+  fig.width = 12,
+  fig.height = 15,
+  collapse = TRUE,
+  R.options = list(width = 60
+  )
+)
 ```
+
+
 ```{r, include=FALSE}
 library("tidyverse")
 library("here")
@@ -52,7 +61,7 @@ df<-readRDS(here::here("data","df"))
 
 ## About the New Zealand Atitudes and Values Study
 
-```{r timeline, fig.width=12, fig.height=10, fig.cap="Sampling from the electoral rol combines with repeated measures within the same people across New Zealand's social diversity to enable robust inference about stability and change in attitudes and values across New Zealand over time .", layout = "l-body-outset", cache = TRUE}
+```{r timeline, fig.width=12, fig.height=10, fig.cap="Sampling from the electoral rol combines with repeated measures within the same people across New Zealand's social diversity to enable robust inference about stability and change in attitudes and values across New Zealand over time.", layout = "l-body-outset", cache = TRUE}
 datrep <- df %>%
   dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30) + TSCORE) %>%
   count(day = floor_date(timeline, "day")) %>%

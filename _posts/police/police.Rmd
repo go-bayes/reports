@@ -185,7 +185,7 @@ pd <- df %>%
 
 Here, we investigate stability in change in attitudes to the New Zealand Police and to New Zealand politicians using longitudinal responses from the New Zealand Attitudes and Values Study (NZAVS).
 
-The NZAVS is a panel study. A panel study is a longitudinal study that follows the same individuals over time. A panel study is different from a census, which samples the population as a whole over time, without tracking individuals. Time-series data within the same individuals across a diverse population are powerful because they enable a systematic understanding of the complex interplay between human social and psychological processes that occur within people over time. The NZAVS is distinct from other national panel studies for the breadth of its survey questions which has broad coverage in political and social psychology and health. The study also includes measures of attitudes to the police. Trends in these attitudes since 2017 provide our focus.
+The NZAVS is a panel study. A panel study is a longitudinal study that follows the same individuals over time. A panel study is different from a census, which samples the population as a whole over time, without tracking individuals. Time-series data within the same individuals across a diverse population are powerful because they enable a systematic understanding of the complex interplay between human social and psychological processes that occur within people over time. The NZAVS is distinct from other national panel studies for the breadth of its survey questions, which includes measures of attitudes to the police, for the representativeness of its sample, made possible from sampling from New Zealand's electoral role, and for the high-level of year-to-year sample retention, which is ~80%. 
 
 For more information about the NZAVS see [here](https://www.psych.auckland.ac.nz/en/about/new-zealand-attitudes-and-values-study.html) and [here](https://go-bayes.github.io/reports/posts/nzavs/)
 
@@ -625,7 +625,7 @@ dplyr::mutate(condition = ifelse(
 
 tline <- ggplot(carep, aes(day, n)) +
   geom_col(aes(fill = condition)) + scale_x_date(date_labels = "%b/%Y", limits = c(as.Date("2017-08-26"), as.Date("2020-10-15")))  + scale_y_continuous(limits = c(0, 650))  +
-  xlab("NZAVS Waves 8, 10 and 11 daily counts: repeated measures") + ylab("Counts of Responses")  + theme_classic() +   scale_fill_viridis_d()
+  xlab("NZAVS Waves 9, 10 and 11 daily counts: repeated measures year 2017-2020") + ylab("Counts of Responses")  + theme_classic() +   scale_fill_viridis_d()
 ## covid timeline
 tline
 ```
