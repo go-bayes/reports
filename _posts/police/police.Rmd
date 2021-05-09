@@ -23,7 +23,7 @@ knitr::opts_chunk$set(
   message = FALSE,
   layout = "l-body-outset",
   fig.width = 12,
-  fig.height = 10,
+  fig.height = 15,
   collapse = TRUE,
   R.options = list(width = 60
   )
@@ -210,19 +210,19 @@ To disentangle police-specific distrust from other forms of institutional trust,
 
 ## Trust in the New Zealand police has been increasing since 2017.
 
-First, we model the time trend for trust in the New Zealand police since 2017, using a model that also adjusts for the effects of the Covid-19 pandemic.
+First, we model the time trend for trust in the New Zealand police since 2017.
 
 We find that since 2017, trust in the New Zealand police has been increasing within New Zealanders.
 
 ```{r cache = TRUE}
-pt <-lme4::lmer(Police_Trust ~ year_s + Covid_Timeline + (1|Id), data = pd)
+pt <-lme4::lmer(Police_Trust ~ year_s  + (1|Id), data = pd)
 parameters::model_parameters(pt) %>%
   parameters::print_html(
       caption = "data from the New Zealand Attitudes and Values Study",
       title = "Trust in New Zealand Police: years 2017-2020")
 ```
 
-Graphing the trend while holding pandemic indicators constant, we find a steady increase in trust for the New Zealand Police.
+Graphing the trend:.
 
 ```{r  layout = "l-body-outset"}
 pl1 <- plot(ggeffects::ggpredict(pt,
@@ -238,15 +238,16 @@ pl1
 
 ### There was a boost in willingness to trust the police during New Zealand's March/April 2020 Lockdown
 
-Focusing on Covid specific predictions (while holding the time effect constant), we find a large boost in trust of the New Zealand police during New Zealand's stringent Covid-19 pandemic lockdown of late March/April 2020.
+Focusing on Covid specific predictions, we find a boost in trust of the New Zealand police during New Zealand's stringent Covid-19 pandemic lockdown of late March/April 2020.
 
 ```{r  layout = "l-body-outset"}
+ptt <-lme4::lmer(Police_Trust ~ Covid_Timeline  + (1|Id), data = pd)
 pl1_b <- plot(
-  ggeffects::ggpredict(pt,
-                       effects = c("year_s","Covid_Timeline")),
+  ggeffects::ggpredict(ptt,
+                       effects = c("Covid_Timeline")),
   add.data = TRUE,
   dot.alpha = .05
-)[[2]] + 
+)[[1]] + 
   xlab("Covid 19 Timeline: years: 2017-2020") +
   ylab("Trust in Police (1-7)") +
   labs(title = "Predicted values of Police Trust in New Zealand",
@@ -261,7 +262,7 @@ Second, we model the time trend in willingness to engage with the New Zealand po
 We find that since 2017, willingness to engage with the New Zealand police is generally high but has been dropping within New Zealanders over time.
 
 ```{r cache = TRUE}
-pt2 <-lme4::lmer(Police_Engage ~ year_s + Covid_Timeline + (1|Id), data = pd)
+pt2 <-lme4::lmer(Police_Engage ~ year_s + (1|Id), data = pd)
 parameters::model_parameters(pt2) %>%
   parameters::print_html(
       caption = "Data from the New Zealand Attitudes and Values Study",
@@ -269,11 +270,11 @@ parameters::model_parameters(pt2) %>%
   )
 ```
 
-Graphing the trend (holding pandemic effects constant) reveals this steady decrease in willingness to assist the police.
+Graphing the trend reveals this steady decrease in willingness to assist the police.
 
 ```{r layout = "l-body-outset"}
 pl2 <- plot(ggeffects::ggpredict(pt2,
-                                 effects = c("year_s", "Covid_Timeline")),
+                                 effects = c("year_s")),
             add.data = TRUE,
             dot.alpha = .05)[[1]] + 
   xlab("Years 2017-2020") + 
@@ -288,12 +289,14 @@ pl2
 Focusing on Covid specific predictions (while holding the time effect constant), we find no evidence for change in willingness to engage with the police during New Zealand's stringent Covid-19 pandemic lockdown of late March/April 2020.
 
 ```{r layout = "l-body-outset"}
+pt2t <-lme4::lmer(Police_Engage ~ Covid_Timeline + (1|Id), data = pd)
+
 pl2_b <- plot(
-  ggeffects::ggpredict(pt2,
-                       effects = c("year_s","Covid_Timeline")),
+  ggeffects::ggpredict(pt2t,
+                       effects = "Covid_Timeline"),
   add.data = TRUE,
   dot.alpha = .05
-)[[2]] + 
+)[[1]] + 
   xlab("Covid 19 Timeline: years: 2017-2020") + 
   ylab("Trust in Police (1-7)") +
   labs(title = "Predicted values of Willingness to enage the NZ Police",
@@ -303,24 +306,22 @@ pl2_b
 
 ## Trust in New Zealand politicians has dropped since 2017, however there was a strong boost during lockdown.
 
-Third we compare the dynamics of trust in the New Zealand Police with the dynamics of trust in New Zealand politicians, employing a parallel model for trust in politicians. As such, we estimate the time trend in trust for the New Zealand politicians since 2017 using a model that also adjusts for the effects of the Covid-19 pandemic.
-
-We find that since 2017, trust in the New Zealand Politicians has dropped within New Zealanders.
+Third we compare the dynamics of trust in the New Zealand Police with the dynamics of trust in New Zealand politicians, employing a parallel model for trust in politicians. We find that since 2017, trust in the New Zealand Politicians has dropped within New Zealanders.
 
 ```{r}
 pt3 <-
-  lme4::lmer(Politicians_Trust ~ year_s + Covid_Timeline + (1 | Id), data = pd)
+  lme4::lmer(Politicians_Trust ~ year_s + (1 | Id), data = pd)
 parameters::model_parameters(pt3) %>%
   parameters::print_html(caption = "Data from the New Zealand Attitudes and Values Study",
                          title = "Trust in Politicians: years 2017-2020")
 ```
 
-Graphing the trend in trust in New Zealand politicians (holding pandemic effects constant) and find no evidence change for a time trend in such trust.
+Graphing the trend for trust in New Zealand politicians: 
 
 ```{r layout = "l-body-outset"}
 pl3 <- plot(
   ggeffects::ggpredict(pt3,
-                       effects = c("year_s", "Covid_Timeline")),
+                       effects = c("year_s")),
   add.data = TRUE,
   jitter = .45,
   dot.alpha = .05
@@ -335,15 +336,17 @@ pl3
 
 ### There was a large boost in trust of politicians during New Zealand's March/April 2020 lockdown
 
-Focusing on Covid specific predictions (while holding the time effect constant), we find evidence for a substantial boost to trust politicians during New Zealand's stringent Covid-19 pandemic lockdown of late March/April 2020. Notably, this boost appears to be reverting to pre-pandemic levels.
+Focusing on Covid specific predictions (while holding the time effect constant), we find evidence for a substantial boost to trust politicians during New Zealand's stringent Covid-19 pandemic lockdown of late March/April 2020. Notably, this boost appears to have reverted to pre-pandemic levels.
 
 ```{r layout = "l-body-outset"}
+pt3t <-
+  lme4::lmer(Politicians_Trust ~ Covid_Timeline + (1 | Id), data = pd)
 pl3_b <- plot(
-  ggeffects::ggpredict(pt3,
-                       effects = c("year_s","Covid_Timeline")),
+  ggeffects::ggpredict(pt3t,
+                       effects = c("Covid_Timeline")),
   add.data = TRUE,
   dot.alpha = .05
-)[[2]] + 
+)[[1]] + 
   xlab("Covid 19 Timeline: years: 2017-2020") + 
   ylab("Trust in Police (1-7)") +
   labs(title = "Predicted values of trust in New Zealand Politicians",
@@ -374,7 +377,7 @@ Maori are much less trusting of the police, on average, than NZ Europeans and ot
 
 ```{r layout = "l-body-outset"}
 pt4 <- 
-  lme4::lmer(Police_Trust ~ Ethnic_Categories + year_s + Covid_Timeline + (1 | Id), data = pd)
+  lme4::lmer(Police_Trust ~ Ethnic_Categories + year_s  + (1 | Id), data = pd)
 
 pt4_b <- plot(
   ggeffects::ggpredict(pt4,
@@ -395,7 +398,7 @@ Those who identify as male are more trusting of the police.
 
 ```{r layout = "l-body-outset"}
 pt5 <-
-  lme4::lmer(Police_Trust ~ Male + year_s + Covid_Timeline + (1 | Id), data = pd)
+  lme4::lmer(Police_Trust ~ Male + year_s + (1 | Id), data = pd)
 
 
 pt5_b <- plot(
@@ -419,7 +422,7 @@ Older people are more trusting of the Police.
 
 ```{r layout = "l-body-outset"}
 pt6 <-
-  lme4::lmer(Police_Trust ~ AgeDecadeC + year_s + Covid_Timeline + (1 | Id), data = pd)
+  lme4::lmer(Police_Trust ~ AgeDecadeC + year_s  + (1 | Id), data = pd)
 
 
 pt6_b <- plot(
@@ -442,7 +445,7 @@ Education only weakly predicts greater trust in the police.
 
 ```{r layout = "l-body-outset"}
 pt7 <-
-  lme4::lmer(Police_Trust ~ Education_S + year_s + Covid_Timeline + (1 | Id), data = pd)
+  lme4::lmer(Police_Trust ~ Education_S + year_s  + (1 | Id), data = pd)
 
 pt7_b <- plot(
   ggeffects::ggpredict(pt7,
@@ -460,20 +463,117 @@ pt7_b
 
 
 
+
+
+### Willingness to engage with the police predicted by ethnic identification
+
+Asians are less willing to engage the police, on average, than are other ethnic groups.
+
+```{r layout = "l-body-outset"}
+pt41 <- 
+  lme4::lmer(Police_Engage ~ Ethnic_Categories + year_s  + (1 | Id), data = pd)
+
+pt4_b1 <- plot(
+  ggeffects::ggpredict(pt41,
+                       effects = c("Ethnic_Categories")),
+  add.data = TRUE,
+  dot.alpha = .05
+)[[1]] + 
+  xlab("Ethnic Categories") + 
+  ylab("Engage with Police (1-7)") +
+  labs(title = "Predicted values of willingness to engage with Police in New Zealand Police by Ethnic Identification",
+       subtitle = "Covid-19 Timeline: source: New Zealand Attitudes and Values Study")
+pt4_b1
+```
+
+### Willingness to engage with the police predicted by gender identity
+
+Those who identify as male are less willing to engage the police.
+
+```{r layout = "l-body-outset"}
+pt51 <-
+  lme4::lmer(Police_Engage ~ Male + year_s + (1 | Id), data = pd)
+
+
+pt5_b1 <- plot(
+  ggeffects::ggpredict(pt51,
+                       effects = c("Male")),
+  add.data = TRUE,
+  dot.alpha = .05
+)[[1]] + 
+  xlab("Indentifies as Male") + 
+  ylab("Trust in Police (1-7)") +
+  labs(title = "Predicted values of trust in New Zealand Police by Gender Identity",
+       subtitle = "Covid-19 Timeline: source: New Zealand Attitudes and Values Study")
+pt5_b1
+
+```
+
+
+### Willingness to engage with the police predicted by age 
+
+Older people are much more willing to engage the police.
+
+```{r layout = "l-body-outset"}
+pt61 <-
+  lme4::lmer(Police_Engage ~ AgeDecadeC + year_s  + (1 | Id), data = pd)
+
+
+pt6_b1 <- plot(
+  ggeffects::ggpredict(pt61,
+                       effects = c("Age")),
+  add.data = TRUE,
+  dot.alpha = .05
+)[[1]] + 
+  xlab("Age in Decades (centered)") + 
+  ylab("Engage with Police (1-7)") +
+  labs(title = "Predicted values of willingness to engage with the New Zealand Police by Age (centered/decades)",
+       subtitle = "Covid-19 Timeline: source: New Zealand Attitudes and Values Study")
+pt6_b1
+
+```
+
+### Willingness to engage with the police by education (standardised)
+
+Educated people are slightly more willing to engage the police.
+
+```{r layout = "l-body-outset"}
+pt71 <-
+  lme4::lmer(Police_Engage ~ Education_S + year_s  + (1 | Id), data = pd)
+
+pt7_b1 <- plot(
+  ggeffects::ggpredict(pt7,
+                       effects = c("Education_S")),
+  add.data = TRUE,
+  dot.alpha = .05
+)[[1]] + 
+  xlab("Education in standard deviation units") + 
+  ylab("Engage with Police (1-7)") +
+  labs(title = "Predicted values of willingness to engage with the New Zealand Police by Education ",
+       subtitle = "Covid-19 Timeline: source: New Zealand Attitudes and Values Study")
+pt7_b1
+
+```
+
+
+
+
 ### Sample information
 
 The following table reports the means and standard deviations in responses to these item, as well as sample descriptive details.
 
 ```{r layout = "l-body-outset"}
-table1::table1( ~ Age +
-                  Ethnic_Categories +
-                  Male +
-                  Household_income + 
-                  Police_Trust +
-                  Police_Engage +
-                  Politicians_Trust| Wave, 
-                overall  = FALSE,
-                data = pd)
+table1::table1(
+  ~ Age +
+    Ethnic_Categories +
+    Male +
+    Household_income +
+    Police_Trust +
+    Police_Engage +
+    Politicians_Trust | Wave,
+  overall  = FALSE,
+  data = pd
+)
 ```
 
 

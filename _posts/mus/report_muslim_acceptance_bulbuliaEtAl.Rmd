@@ -12,14 +12,22 @@ output:
   distill::distill_article:
     self_contained: false
     toc: true
+    code_folding: true
 bibliography: bib.bib
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(message=FALSE,
-                      warning=FALSE,
-                      collapse =TRUE,
-                      echo=FALSE)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  layout = "l-body-outset",
+  fig.width = 12,
+  fig.height = 15,
+  collapse = TRUE,
+  R.options = list(width = 60
+  )
+)
 ```
 
 ```{r libs, include=FALSE}
@@ -35,269 +43,319 @@ library("patchwork")
 library("ggforce")
 library("kableExtra")
 library("lme4")
+library("brms")
+library("rstan")
+library("rstanarm")
+library("bayesplot")
+library("easystats")
+library("kableExtra")
+library("broom")
+library("tidybayes")
+library("bmlm")
+if (!require(tidyLPA)) {
+  install.packages("tidyLPA")
+}
+# rstan options
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores ())
+theme_set(theme_classic())
 ```
 
 ```{r data, cache = TRUE}
 #import data
-df<-readRDS(here::here("data","df"))
+
+df <- readRDS(here::here("data", "df"))
 ```
 
 ```{r dataprep, cache=TRUE}
-#data preparation for graphs -- filtering out key warmth indicators
+# prepare data
 dt <- df %>%
   dplyr::filter(YearMeasured == 1)  %>%
-  dplyr::filter(Wave == 2019 |
-                  Wave == 2018 |
-                  Wave == 2017 |
-                  Wave == 2016 |
-                  Wave == 2015|
-                  Wave == 2014|
-                  Wave == 2013|
-                  Wave == 2012) %>%
+  dplyr::filter(
+    Wave == 2019 |
+      Wave == 2018 |
+      Wave == 2017 |
+      Wave == 2016 |
+      Wave == 2015 |
+      Wave == 2014 |
+      Wave == 2013 |
+      Wave == 2012
+  ) %>%
   dplyr::group_by(Id) %>% filter(n() > 2) %>%
   dplyr::ungroup(Id)  %>%
-  dplyr::select(Id, TSCORE, Warm.Muslims)%>%
+  dplyr::select(Id, TSCORE, Warm.Muslims) %>%
   dplyr::filter(!is.na(Warm.Muslims)) %>%
   dplyr::mutate(
     wm_s = scale(Warm.Muslims),
     days = as.integer(TSCORE),
     yr_0 = ((days - min(days)) / 365),
     yrs = (days / 365),
-    yr_a = 3545/365,
-  ) %>% 
+    yr_a = 3545 / 365,
+  ) %>%
   dplyr::mutate(Pre_PostATTACK = factor(ifelse(
     TSCORE >= 3545, "post_attack",
     "pre_attack"
-  )))%>%
-  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack","post_attack")))
+  ))) %>%
+  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack", "post_attack")))
 
+
+## below are dataframes used for the supplemental timelines in the appendix
+
+
+# For Maori timline
 dm <- df %>%
   dplyr::filter(YearMeasured == 1)  %>%
-  dplyr::filter(Wave == 2019 |
-                  Wave == 2018 |
-                  Wave == 2017 |
-                  Wave == 2016 |
-                  Wave == 2015|
-                  Wave == 2014|
-                  Wave == 2013|
-                  Wave == 2012) %>%
+  dplyr::filter(
+    Wave == 2019 |
+      Wave == 2018 |
+      Wave == 2017 |
+      Wave == 2016 |
+      Wave == 2015 |
+      Wave == 2014 |
+      Wave == 2013 |
+      Wave == 2012
+  ) %>%
   dplyr::group_by(Id) %>% filter(n() > 2) %>%
   dplyr::ungroup(Id)  %>%
-  dplyr::select(Id, TSCORE, Warm.Maori)%>%
+  dplyr::select(Id, TSCORE, Warm.Maori) %>%
   dplyr::filter(!is.na(Warm.Maori)) %>%
   dplyr::mutate(
     wm_s = scale(Warm.Maori),
     days = as.integer(TSCORE),
     yr_0 = ((days - min(days)) / 365),
     yrs = (days / 365),
-    yr_a = 3545/365,
+    yr_a = 3545 / 365,
   ) %>%
   dplyr::mutate(Pre_PostATTACK = factor(ifelse(
     TSCORE >= 3545, "post_attack",
     "pre_attack"
-  )))%>%
-  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack","post_attack")))
+  ))) %>%
+  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack", "post_attack")))
 
 
+# For Migrant timline
 di <- df %>%
   dplyr::filter(YearMeasured == 1)  %>%
-  dplyr::filter(Wave == 2019 |
-                  Wave == 2018 |
-                  Wave == 2017 |
-                  Wave == 2016 |
-                  Wave == 2015|
-                  Wave == 2014|
-                  Wave == 2013|
-                  Wave == 2012) %>%
+  dplyr::filter(
+    Wave == 2019 |
+      Wave == 2018 |
+      Wave == 2017 |
+      Wave == 2016 |
+      Wave == 2015 |
+      Wave == 2014 |
+      Wave == 2013 |
+      Wave == 2012
+  ) %>%
   dplyr::group_by(Id) %>% filter(n() > 2) %>%
   dplyr::ungroup(Id)  %>%
-  dplyr::select(Id, TSCORE, Warm.Immigrants)%>%
+  dplyr::select(Id, TSCORE, Warm.Immigrants) %>%
   dplyr::filter(!is.na(Warm.Immigrants)) %>%
   dplyr::mutate(
     wm_s = scale(Warm.Immigrants),
     days = as.integer(TSCORE),
     yr_0 = ((days - min(days)) / 365),
     yrs = (days / 365),
-    yr_a = 3545/365,
+    yr_a = 3545 / 365,
   ) %>%
   dplyr::mutate(Pre_PostATTACK = factor(ifelse(
     TSCORE >= 3545, "post_attack",
     "pre_attack"
-  )))%>%
-  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack","post_attack")))
+  ))) %>%
+  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack", "post_attack")))
 
 dnz <- df %>%
   dplyr::filter(YearMeasured == 1)  %>%
-  dplyr::filter(Wave == 2019 |
-                  Wave == 2018 |
-                  Wave == 2017 |
-                  Wave == 2016 |
-                  Wave == 2015|
-                  Wave == 2014|
-                  Wave == 2013|
-                  Wave == 2012) %>%
+  dplyr::filter(
+    Wave == 2019 |
+      Wave == 2018 |
+      Wave == 2017 |
+      Wave == 2016 |
+      Wave == 2015 |
+      Wave == 2014 |
+      Wave == 2013 |
+      Wave == 2012
+  ) %>%
   dplyr::group_by(Id) %>% filter(n() > 2) %>%
   dplyr::ungroup(Id)  %>%
-  dplyr::select(Id, TSCORE, Warm.NZEuro)%>%
+  dplyr::select(Id, TSCORE, Warm.NZEuro) %>%
   dplyr::filter(!is.na(Warm.NZEuro)) %>%
   dplyr::mutate(
     wm_s = scale(Warm.NZEuro),
     days = as.integer(TSCORE),
     yr_0 = ((days - min(days)) / 365),
     yrs = (days / 365),
-    yr_a = 3545/365,
+    yr_a = 3545 / 365,
   ) %>%
   dplyr::mutate(Pre_PostATTACK = factor(ifelse(
     TSCORE >= 3545, "post_attack",
     "pre_attack"
-  )))%>%
-  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack","post_attack")))
+  ))) %>%
+  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack", "post_attack")))
+
+
+# For Refugee timline
 
 drefugees <- df %>%
   dplyr::filter(YearMeasured == 1)  %>%
-  dplyr::filter(Wave == 2019 |
-                  Wave == 2018 |
-                  Wave == 2017 |
-                  Wave == 2016 |
-                  Wave == 2015|
-                  Wave == 2014|
-                  Wave == 2013|
-                  Wave == 2012) %>%
+  dplyr::filter(
+    Wave == 2019 |
+      Wave == 2018 |
+      Wave == 2017 |
+      Wave == 2016 |
+      Wave == 2015 |
+      Wave == 2014 |
+      Wave == 2013 |
+      Wave == 2012
+  ) %>%
   dplyr::group_by(Id) %>% filter(n() > 2) %>%
   dplyr::ungroup(Id)  %>%
-  dplyr::select(Id, TSCORE, Warm.Refugees)%>%
+  dplyr::select(Id, TSCORE, Warm.Refugees) %>%
   dplyr::filter(!is.na(Warm.Refugees)) %>%
   dplyr::mutate(
     wm_s = scale(Warm.Refugees),
     days = as.integer(TSCORE),
     yr_0 = ((days - min(days)) / 365),
     yrs = (days / 365),
-    yr_a = 3545/365,
-  ) %>% 
+    yr_a = 3545 / 365,
+  ) %>%
   dplyr::mutate(Pre_PostATTACK = factor(ifelse(
     TSCORE >= 3545, "post_attack",
     "pre_attack"
-  )))%>%
-  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack","post_attack")))
+  ))) %>%
+  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack", "post_attack")))
 
 
-
+# For Chinese timline
 
 dchinese <- df %>%
   dplyr::filter(YearMeasured == 1)  %>%
-  dplyr::filter(Wave == 2019 |
-                  Wave == 2018 |
-                  Wave == 2017 |
-                  Wave == 2016 |
-                  Wave == 2015|
-                  Wave == 2014|
-                  Wave == 2013|
-                  Wave == 2012) %>%
+  dplyr::filter(
+    Wave == 2019 |
+      Wave == 2018 |
+      Wave == 2017 |
+      Wave == 2016 |
+      Wave == 2015 |
+      Wave == 2014 |
+      Wave == 2013 |
+      Wave == 2012
+  ) %>%
   dplyr::group_by(Id) %>% filter(n() > 2) %>%
   dplyr::ungroup(Id)  %>%
-  dplyr::select(Id, TSCORE, Warm.Chinese)%>%
+  dplyr::select(Id, TSCORE, Warm.Chinese) %>%
   dplyr::filter(!is.na(Warm.Chinese)) %>%
   dplyr::mutate(
     wm_s = scale(Warm.Chinese),
     days = as.integer(TSCORE),
     yr_0 = ((days - min(days)) / 365),
     yrs = (days / 365),
-    yr_a = 3545/365,
-  ) %>% 
+    yr_a = 3545 / 365,
+  ) %>%
   dplyr::mutate(Pre_PostATTACK = factor(ifelse(
     TSCORE >= 3545, "post_attack",
     "pre_attack"
-  )))%>%
-  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack","post_attack")))
+  ))) %>%
+  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack", "post_attack")))
+
+
+# For Indians timline
 
 
 dindians <- df %>%
   dplyr::filter(YearMeasured == 1)  %>%
-  dplyr::filter(Wave == 2019 |
-                  Wave == 2018 |
-                  Wave == 2017 |
-                  Wave == 2016 |
-                  Wave == 2015|
-                  Wave == 2014|
-                  Wave == 2013|
-                  Wave == 2012) %>%
+  dplyr::filter(
+    Wave == 2019 |
+      Wave == 2018 |
+      Wave == 2017 |
+      Wave == 2016 |
+      Wave == 2015 |
+      Wave == 2014 |
+      Wave == 2013 |
+      Wave == 2012
+  ) %>%
   dplyr::group_by(Id) %>% filter(n() > 2) %>%
   dplyr::ungroup(Id)  %>%
-  dplyr::select(Id, TSCORE, Warm.Indians)%>%
+  dplyr::select(Id, TSCORE, Warm.Indians) %>%
   dplyr::filter(!is.na(Warm.Indians)) %>%
   dplyr::mutate(
     wm_s = scale(Warm.Indians),
     days = as.integer(TSCORE),
     yr_0 = ((days - min(days)) / 365),
     yrs = (days / 365),
-    yr_a = 3545/365,
-  ) %>% 
+    yr_a = 3545 / 365,
+  ) %>%
   dplyr::mutate(Pre_PostATTACK = factor(ifelse(
     TSCORE >= 3545, "post_attack",
     "pre_attack"
-  )))%>%
-  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack","post_attack")))
+  ))) %>%
+  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack", "post_attack")))
 
+
+# For Pacific Peoples timline
 
 dpacific <- df %>%
   dplyr::filter(YearMeasured == 1)  %>%
-  dplyr::filter(Wave == 2019 |
-                  Wave == 2018 |
-                  Wave == 2017 |
-                  Wave == 2016 |
-                  Wave == 2015|
-                  Wave == 2014|
-                  Wave == 2013|
-                  Wave == 2012) %>%
+  dplyr::filter(
+    Wave == 2019 |
+      Wave == 2018 |
+      Wave == 2017 |
+      Wave == 2016 |
+      Wave == 2015 |
+      Wave == 2014 |
+      Wave == 2013 |
+      Wave == 2012
+  ) %>%
   dplyr::group_by(Id) %>% filter(n() > 2) %>%
   dplyr::ungroup(Id)  %>%
-  dplyr::select(Id, TSCORE, Warm.Pacific)%>%
+  dplyr::select(Id, TSCORE, Warm.Pacific) %>%
   dplyr::filter(!is.na(Warm.Pacific)) %>%
   dplyr::mutate(
     wm_s = scale(Warm.Pacific),
     days = as.integer(TSCORE),
     yr_0 = ((days - min(days)) / 365),
     yrs = (days / 365),
-    yr_a = 3545/365,
-  ) %>% 
+    yr_a = 3545 / 365,
+  ) %>%
   dplyr::mutate(Pre_PostATTACK = factor(ifelse(
     TSCORE >= 3545, "post_attack",
     "pre_attack"
-  )))%>%
-  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack","post_attack")))
+  ))) %>%
+  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack", "post_attack")))
 
 drefugees <- df %>%
   dplyr::filter(YearMeasured == 1)  %>%
-  dplyr::filter(Wave == 2019 |
-                  Wave == 2018 |
-                  Wave == 2017 |
-                  Wave == 2016 |
-                  Wave == 2015|
-                  Wave == 2014|
-                  Wave == 2013|
-                  Wave == 2012) %>%
+  dplyr::filter(
+    Wave == 2019 |
+      Wave == 2018 |
+      Wave == 2017 |
+      Wave == 2016 |
+      Wave == 2015 |
+      Wave == 2014 |
+      Wave == 2013 |
+      Wave == 2012
+  ) %>%
   dplyr::group_by(Id) %>% filter(n() > 2) %>%
   dplyr::ungroup(Id)  %>%
-  dplyr::select(Id, TSCORE, Warm.Refugees)%>%
+  dplyr::select(Id, TSCORE, Warm.Refugees) %>%
   dplyr::filter(!is.na(Warm.Refugees)) %>%
   dplyr::mutate(
     wm_s = scale(Warm.Refugees),
     days = as.integer(TSCORE),
     yr_0 = ((days - min(days)) / 365),
     yrs = (days / 365),
-    yr_a = 3545/365,
-  ) %>% 
+    yr_a = 3545 / 365,
+  ) %>%
   dplyr::mutate(Pre_PostATTACK = factor(ifelse(
     TSCORE >= 3545, "post_attack",
     "pre_attack"
-  )))%>%
-  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack","post_attack")))
-
+  ))) %>%
+  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack", "post_attack")))
 
 ```
 
-```{r danalysisdata, cach=TRUE}
+```{r danalysisdata, cache=TRUE}
  ord_attack <- c("bsline_w09","pre_w10", "pst_w10","pst_w11")
+
+# dataset for models
 
 km2 <- df %>%
   dplyr::select(
@@ -341,7 +399,7 @@ dplyr::filter(Wave == 2017 & YearMeasured == 1 |  Wave == 2018 & YearMeasured ==
       ifelse(TSCORE < 3545 & Wave == 2018, "pre_w10",
              "bsline_w09") )
   ))) %>%
-  dplyr::mutate(Atack = ifelse(TSCORE >= 3545, "Post_Attack", "Pre_Attack"))%>%
+  dplyr::mutate(Attack = ifelse(TSCORE >= 3545, "post_attack", "before_attack"))%>%
   dplyr::mutate(days = as.integer(TSCORE),
                 years = days / 365) %>%
  # dplyr::filter(Muslim == 0) %>%
@@ -356,64 +414,60 @@ dplyr::filter(Wave == 2017 & YearMeasured == 1 |  Wave == 2018 & YearMeasured ==
     yearS = years - min(years) )%>%
   dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, ord_attack))
 
-  # We are merely including these vars for "controls" -- they only policitical consrv will be of interest
-
-               
- 
-
-
-
 #library(table1)  # make pretty tables quickly
 #table1::table1(~Muslim|Wave, data = km, overall=F)# there are 31 muslims in 2017
 ```
 
 ```{r  dagpol, include = FALSE, eval = FALSE}
+## Use DAG to determine indicators on which to condition on, for causal inference. 
+## Note: for now, our focus is on prediction. 
+
 library(ggdag)
-## Use DAG to determine indicators on which to condition
 dg2 <- dagify(
-  wm ~ pp+  cs + ml + news + U + yr + rel  + a + eth + ur,
+  wm ~ pp + cs + ml + news + U + yr + rel  + a + eth + ur,
   cs ~ ml + rel + a,
   rel ~ ml + rel + a + eth,
   pp ~ yr,
   a ~ yr,
-  ur ~ eth + a + time,
+  ur ~ eth + a + yr,
   rel ~ yr + ur,
   edu ~ ml + eth + ur,
   news ~ pp + yr,
   U ~ pp + cs + ml + news + yr  + rel + edu + a + ur,
   exposure =  "pp",
   outcome =   "wm",
-  labels = c("wm" = "Warmth Muslims",
-             "a" = "age",
-             "eth" = "ethnicity",
-             "pp" = "pre/postattacks",
-             "cs" = "political conservativism",
-             "edu" = "education",
-             "ur" = "urban",
-             "yr" = "time",
-             "rel" = "religion",
-             "news" = "media",
-             "ml" = "male",
-            "U" = "Soc Networks")
+  labels = c(
+    "wm" = "Warmth Muslims",
+    "a" = "age",
+    "eth" = "ethnicity",
+    "pp" = "pre/postattacks",
+    "cs" = "political conservativism",
+    "edu" = "education",
+    "ur" = "urban",
+    "yr" = "time",
+    "rel" = "religion",
+    "news" = "media",
+    "ml" = "male",
+    "U" = "Soc Networks"
+  )
 ) %>%
   tidy_dagitty() 
 #%>%
 #  control_for("cs")
 
-dplot1 <-ggdag::ggdag_collider(dg2, use_labels = "label", text = FALSE) + theme_dag_blank() +
+dplot1 <-
+  ggdag::ggdag_collider(dg2, use_labels = "label", text = FALSE) + theme_dag_blank() +
   labs(title = "Causal analysis of Muslim Acceptance requires care to avoid confounding")
-dplot1 
+dplot1
 
 
 ggdag::ggdag_adjustment_set(dg2, use_labels = "label", text = FALSE) + theme_dag_blank() +
   labs(title = "")
 
-ggdag::ggdag_adjustment_set()
-
 ## BETTER
 #(lds_0 + dplot1)/ lds2 /  lds3 / lds4  + plot_annotation(tag_levels = 'a')
 
-marsden_fig1v2 # 1750 x 2000
+#marsden_fig1v2 # 1750 x 2000
 
 ```
 
@@ -422,309 +476,372 @@ library(lme4)
 library(mgcv)
 library(splines)
 library(ggeffects)
-
-m1 <- lmer(Warm.Muslims ~   Pre_PostATTACK  +  yearS +
-             (1 | Id) ,
-           data = km2)
-
 # Check model
 #parameters::model_parameters(m1)
 ## 1.55 years to shooting
 #parameters::model_parameters(m1)  estimate expected effect at day of shooting
 #4.04 + .2 + .1*1.55
 
-# values for predictive graph
-km2%>%
-  select(Pre_PostATTACK,yearS)%>%
-  filter()
+
+## models below
+
+# muslims
+m1 <- lmer(Warm.Muslims ~  Pre_PostATTACK +
+             (1 | Id) ,
+           data = km2)
 
 
-val <- c(0, 1, 1.55, 2 )
+p1 <- ggeffects::ggpredict(m1,
+                           terms = "Pre_PostATTACK")
 
-p1 <-
-  plot(ggeffects::ggpredict(m1, terms = "Pre_PostATTACK", ci = .89)) + xlab("pre-attack") + ylab("Warmth to Muslims (1-7)") + labs(title = "Warm Muslims") +
+p1p <- plot(p1,
+            add.data = TRUE,
+            dot.alpha = .01,
+            jitter = .8) +
+  ylab("Warmth to Muslims (1-7)") + labs(title = "Warm Muslims") +
   geom_hline(yintercept = 4.395, color = "green") +
-  scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + xlab("Attack Timeline")+ geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed")+ theme_classic()
+  # scale_y_continuous(limits = c(1, 7)) +
+  scale_colour_viridis_d() + xlab("Attack timeline") +
+  # geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed") +
+  theme_classic()
 
-p1z <-
-  plot(ggeffects::ggpredict(m1, terms = "yearS[all]", ci = .89)) + xlab("pre-attack") + ylab("Warmth to Muslims (1-7)") + labs(title = "Warm Muslims") +
- # geom_hline(yintercept = 4.395, color = "green") +
-  scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + xlab("Time Trend")+ geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed")+ theme_classic()
-
-p1z
-
-
-m2 <- lmer(Warm.NZEuro ~     Pre_PostATTACK +  yearS +
-             (1 | Id) ,
-           data = km2)
-p2 <-
-  plot(ggeffects::ggpredict(m2, terms = "Pre_PostATTACK", ci = .89)) +
-  # add.data = TRUE,
-  # dot.alpha = 0.03,
-  # jitter = .1) +
-  xlab("Attack Timeline") + ylab("Warmth to NZ Europeans (1-7)") + labs(title = "Warm NZ Euros") +      geom_hline(yintercept = 4.395, color = "green") +
-  scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed")+ theme_classic()
-
-
-p2z <-
-  plot(ggeffects::ggpredict(m2, terms = "yearS[all]", ci = .89)) + xlab("pre-attack") + ylab("Warmth to NZ Europeans (1-7)") + labs(title = "Warm NZ Europeans") +
- # geom_hline(yintercept = 4.395, color = "green") +
-  scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + xlab("Time Trend")+ geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed")+ theme_classic()
-
-p2z
-
-m3 <- lmer(Warm.Maori ~     Pre_PostATTACK +  yearS +
-             (1 | Id) ,
-           data = km2)
-p3 <-
-  plot(ggeffects::ggpredict(m3, terms = "Pre_PostATTACK [all]", ci = .89)) + xlab("pre-attack") + ylab("Warmth to Māori (1-7)") + labs(title = "Warm Māori") +
+## For intro
+p1pp <- plot(p1,
+            add.data = TRUE,
+            dot.alpha = .05,
+            jitter = .8) +
+  ylab("Warmth to Muslims (1-7)") + labs(title = "Warm Muslims") +
   geom_hline(yintercept = 4.395, color = "green") +
-  scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + xlab("Attack Timeline") + geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed")+ theme_classic()
-
-p3
-
-p3z <-
-  plot(ggeffects::ggpredict(m3, terms = "yearS[all]", ci = .89)) + xlab("pre-attack") + ylab("Warmth to Māori (1-7)") + labs(title = "Warm Māori") +
- # geom_hline(yintercept = 4.395, color = "green") +
-  scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + xlab("Time Trend")+ geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed")+ theme_classic()
-
-p3z
+  # scale_y_continuous(limits = c(1, 7)) +
+  scale_colour_viridis_d() + xlab("Attack timeline") +
+  # geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed") +
+  theme_classic()
 
 
-m4 <- lmer(Warm.Immigrants ~    Pre_PostATTACK +  yearS +
+## euro
+m2 <- lmer(Warm.NZEuro  ~    Pre_PostATTACK +
              (1 | Id) ,
            data = km2)
 
+p2 <- ggeffects::ggpredict(m2,
+                           terms = "Pre_PostATTACK")
 
-p4 <-
-  plot(ggeffects::ggpredict(m4, terms = "Pre_PostATTACK", ci = .89)) + xlab("pre-attack") + ylab("Warmth to Immigrants (1-7)") + labs(title = "Warm Immigrants") +
+
+p2p <- plot(p2,
+            add.data = TRUE,
+            dot.alpha = .01,
+            jitter = .8) +
+  ylab("Warmth to NZ Europeans (1-7)") + labs(title = "Warm NZ Europeans") +
   geom_hline(yintercept = 4.395, color = "green") +
-  scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + xlab("Attack Timeline") + geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed") + theme_classic()
-
-m5 <- lmer(Warm.Asians ~    Pre_PostATTACK +  yearS +
-             (1 | Id) ,
-           data = km2)
-
-
-
-p5 <-
-  plot(
-    ggeffects::ggpredict(m5, terms = "Pre_PostATTACK", ci = .89)) + xlab("pre-attack") + ylab("Warmth to Asians (1-7)") + labs(title = "Warm Asians") + geom_hline(yintercept = 4.395, color = "green") +
-      scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + xlab("Attack Timeline") + geom_vline(xintercept = c(2.5), colour = "red", linetype = "dashed")+ theme_classic()
-
-
-
-
-m6 <- lmer(Warm.Indians~     Pre_PostATTACK +  yearS +
-             (1 | Id) ,
-           data = km2)
-
-
-p6 <-
-  plot(
-    ggeffects::ggpredict(m6, terms = "Pre_PostATTACK", ci = .89)) + xlab("pre-attack") + ylab("Warmth to Indians (1-7)") + labs(title = "Warm Indians") + geom_hline(yintercept = 4.395, color = "green") +
-      scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + xlab("Attack Timeline") + geom_vline(xintercept = c(2.5), colour = "red", linetype = "dashed")+ theme_classic()
-
-
-
-
-m7 <- lmer(Warm.Chinese  ~   Pre_PostATTACK +  yearS +
-             (1 | Id) ,
-           data = km2)
-
-
-
-p7 <-
-  plot(
-    ggeffects::ggpredict(m7, terms = "Pre_PostATTACK", ci = .89)) + xlab("pre-attack") + ylab("Warmth to Chinese (1-7)") + labs(title = "Warm Chinese") + geom_hline(yintercept = 4.395, color = "green") +
-      scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + xlab("Attack Timeline") + geom_vline(xintercept = c(2.5), colour = "red", linetype = "dashed")+ theme_classic()
-
-
-
-m8 <- lmer(Warm.Pacific  ~   Pre_PostATTACK +  yearS +
-             (1 | Id) ,
-           data = km2)
-
-
-
-
-p8 <-
-  plot(
-    ggeffects::ggpredict(m8, terms = "Pre_PostATTACK", ci = .89)) + xlab("pre-attack") + ylab("Warmth to Pacific (1-7)") + labs(title = "Warm Pacific") + geom_hline(yintercept = 4.395, color = "green") +
-      scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + xlab("Attack Timeline") + geom_vline(xintercept = c(2.5), colour = "red", linetype = "dashed")+ theme_classic()
-
-
-m9 <- lmer(Warm.Elderly  ~   Pre_PostATTACK +  yearS +
-             (1 | Id) ,
-           data = km2)
-
-
-
-p9 <-
-  plot(
-    ggeffects::ggpredict(m9, terms = "Pre_PostATTACK", ci = .89)) + xlab("pre-attack") + ylab("Warmth to Elderly (1-7)") + labs(title = "Warm Elderly") + geom_hline(yintercept = 4.395, color = "green") +
-      scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + xlab("Attack Timeline") + geom_vline(xintercept = c(2.5), colour = "red", linetype = "dashed")+ theme_classic()
-
-
-p9
-
-
-m10 <- lmer(Warm.MentalIllness  ~   Pre_PostATTACK +  yearS +
-             (1 | Id) ,
-           data = km2)
-
-
-
-p10 <-
-  plot(
-    ggeffects::ggpredict(m10, terms = "Pre_PostATTACK", ci = .89)) + xlab("pre-attack") + ylab("Warmth to Mental Illness (1-7)") + labs(title = "Warm Mental Illness") + geom_hline(yintercept = 4.395, color = "green") +
-      scale_y_continuous(limits = c(4, 6)) + scale_colour_viridis_d() + xlab("Attack Timeline") + geom_vline(xintercept = c(2.5), colour = "red", linetype = "dashed")+ theme_classic()
-
-
-p10
-
-
-m11 <- lmer(Warm.Overweight  ~  Pre_PostATTACK +  yearS +
-             (1 | Id) ,
-           data = km2) 
-
-
-p11 <-
-  plot(ggeffects::ggpredict(m11, terms = "Pre_PostATTACK", ci = .89)) + xlab("pre-attack") + ylab("Warmth to Overweight (1 - 7)") +
-  labs(title = "Warm Overweight") +
-  geom_hline(yintercept = 4.395, color = "green") +
-  scale_y_continuous(limits = c(4, 6)) +
+  # scale_y_continuous(limits = c(1, 7)) +
   scale_colour_viridis_d() +
-  xlab("Attack Timeline") +
-  geom_vline(xintercept = c(2.5),
-             colour = "red",
-             linetype = "dashed") + theme_classic()
+  xlab("Attack timeline") +
+  # geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed") +
+  theme_classic()
 
 
-p11
-
-m12 <- lmer(Warm.Refugees  ~  Pre_PostATTACK +  yearS +
+# maori
+m3 <- lmer(Warm.Maori ~     Pre_PostATTACK  +
              (1 | Id) ,
-           data = km2) 
+           data = km2)
+p3 <- ggeffects::ggpredict(m3,
+                           terms = "Pre_PostATTACK")
 
 
-p12 <-
-  plot(ggeffects::ggpredict(m12, terms = c("Pre_PostATTACK"), ci = .89)) + xlab("pre-attack") + ylab("Warmth to Refugees (1 - 7)") +
-  labs(title = "Warm Refugees") +
+p3p <- plot(p3,
+            add.data = TRUE,
+            dot.alpha = .01,
+            jitter = .8) +
+  ylab("Warmth to Māori (1-7)") + labs(title = "Warmth to Māori") +
   geom_hline(yintercept = 4.395, color = "green") +
-  scale_y_continuous(limits = c(4, 6)) +
-  scale_colour_viridis_d() +
-  xlab("Attack Timeline") +
-  geom_vline(xintercept = c(2.5),
-             colour = "red",
-             linetype = "dashed") + theme_classic()
+  #  scale_y_continuous(limits = c(1, 7)) +
+  scale_colour_viridis_d() + xlab("Attack timeline") +
+  # geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed") +
+  theme_classic()
+
+# migrants
+
+m4 <- lmer(Warm.Immigrants ~    Pre_PostATTACK  +
+             (1 | Id) ,
+           data = km2)
+
+p4 <- ggeffects::ggpredict(m4,
+                           terms = "Pre_PostATTACK")
+
+p4p <- plot(p4,
+            add.data = TRUE,
+            dot.alpha = .01,
+            jitter = .8) +
+  ylab("Warmth to Immigrants (1-7)") + labs(title = "Warmth to Immigrants") +
+  geom_hline(yintercept = 4.395, color = "green") +
+  #  scale_y_continuous(limits = c(1, 7)) +
+  scale_colour_viridis_d() + xlab("Attack timeline") +
+  # geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed") +
+  theme_classic()
 
 
+# asians
+
+m5 <- lmer(Warm.Asians ~ Pre_PostATTACK +
+             (1 | Id) ,
+           data = km2)
+
+p5 <- ggeffects::ggpredict(m5,
+                           terms = "Pre_PostATTACK")
+
+p5p <- plot(p5,
+            add.data = TRUE,
+            dot.alpha = .01,
+            jitter = .8) +
+  ylab("Warmth to Asians (1-7)") + labs(title = "Warmth to Asians") +
+  geom_hline(yintercept = 4.395, color = "green") +
+  #  scale_y_continuous(limits = c(1, 7)) +
+  scale_colour_viridis_d() + xlab("Attack timeline") +
+  # geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed") +
+  theme_classic()
 
 
+# indians
 
+m6 <- lmer(Warm.Indians ~ Pre_PostATTACK +
+             (1 | Id) ,
+           data = km2)
+
+p6 <- ggeffects::ggpredict(m6,
+                           terms = "Pre_PostATTACK")
+
+p6p <- plot(p6,
+            add.data = TRUE,
+            dot.alpha = .01,
+            jitter = .8) +
+  ylab("Warmth to Indians (1-7)") + labs(title = "Warmth to Indians") +
+  geom_hline(yintercept = 4.395, color = "green") +
+  #  scale_y_continuous(limits = c(1, 7)) +
+  scale_colour_viridis_d() + xlab("Attack timeline") +
+  # geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed") +
+  theme_classic()
+
+
+# Chinese
+
+m7 <- lmer(Warm.Chinese  ~  Pre_PostATTACK  +
+             (1 | Id) ,
+           data = km2)
+
+p7 <- ggeffects::ggpredict(m7,
+                           terms = "Pre_PostATTACK")
+
+p7p <- plot(p7,
+            add.data = TRUE,
+            dot.alpha = .01,
+            jitter = .8) +
+  ylab("Warmth to Chinese (1-7)") + labs(title = "Warmth to Chinese") +
+  geom_hline(yintercept = 4.395, color = "green") +
+  #  scale_y_continuous(limits = c(1, 7)) +
+  scale_colour_viridis_d() + xlab("Attack timeline") +
+  # geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed") +
+  theme_classic()
+
+
+## pacific
+
+m8 <- lmer(Warm.Pacific  ~  Pre_PostATTACK  +
+             (1 | Id) ,
+           data = km2)
+
+
+p8 <- ggeffects::ggpredict(m8,
+                           terms = "Pre_PostATTACK")
+
+p8p <- plot(p8,
+            add.data = TRUE,
+            dot.alpha = .01,
+            jitter = .8) +
+  ylab("Warmth to Pacific (1-7)") + labs(title = "Warmth to Pacific Peoples") +
+  geom_hline(yintercept = 4.395, color = "green") +
+  #  scale_y_continuous(limits = c(1, 7)) +
+  scale_colour_viridis_d() + xlab("Attack timeline") +
+  # geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed") +
+  theme_classic()
+
+
+## Elderly (contrast)
+
+m9 <- lmer(Warm.Elderly  ~  Pre_PostATTACK +
+             (1 | Id),
+           data = km2)
+
+
+p9 <- ggeffects::ggpredict(m9,
+                           terms = "Pre_PostATTACK")
+
+p9p <- plot(p9,
+            add.data = TRUE,
+            dot.alpha = .01,
+            jitter = .8) +
+  ylab("Warmth to Elderly (1-7)") + labs(title = "Warmth to Elderly") +
+  geom_hline(yintercept = 4.395, color = "green") +
+  #  scale_y_continuous(limits = c(1, 7)) +
+  scale_colour_viridis_d() + xlab("Attack timeline") +
+  # geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed") +
+  theme_classic()
+
+
+## mental illness
+
+m10 <- lmer(Warm.MentalIllness  ~  Pre_PostATTACK +
+              (1 | Id) ,
+            data = km2)
+
+p10 <- ggeffects::ggpredict(m10,
+                            terms = "Pre_PostATTACK")
+
+p10p <- plot(p10,
+             add.data = TRUE,
+             dot.alpha = .01,
+             jitter = .8) +
+  ylab("Warmth to the Mentally ill (1-7)") + labs(title = "Warmth to the Mentally ill") +
+  geom_hline(yintercept = 4.395, color = "green") +
+  #  scale_y_continuous(limits = c(1, 7)) +
+  scale_colour_viridis_d() + xlab("Attack timeline") +
+  # geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed") +
+  theme_classic()
+
+
+### Overweight
+
+m11 <- lmer(Warm.Overweight  ~ Pre_PostATTACK +
+              (1 | Id) ,
+            data = km2)
+
+
+p11 <- ggeffects::ggpredict(m11,
+                            terms = "Pre_PostATTACK")
+
+p11p <- plot(p11,
+             add.data = TRUE,
+             dot.alpha = .01,
+             jitter = .8) +
+  ylab("Warmth to Overweight (1-7)") + labs(title = "Warmth to Overweight") +
+  geom_hline(yintercept = 4.395, color = "green") +
+  #  scale_y_continuous(limits = c(1, 7)) +
+  scale_colour_viridis_d() + xlab("Attack timeline") +
+  # geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed") +
+  theme_classic()
+
+
+## Refugees
+
+m12 <- lmer(Warm.Refugees  ~  Pre_PostATTACK +
+              (1 | Id) ,
+            data = km2)
+
+p12 <- ggeffects::ggpredict(m12,
+                            terms = "Pre_PostATTACK")
+
+p12p <- plot(p12,
+             add.data = TRUE,
+             dot.alpha = .01,
+             jitter = .8) +
+  ylab("Warmth to Refugees (1-7)") + labs(title = "Warmth to Refugees") +
+  geom_hline(yintercept = 4.395, color = "green") +
+  #  scale_y_continuous(limits = c(1, 7)) +
+  scale_colour_viridis_d() + xlab("Attack timeline") +
+  # geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed") +
+  theme_classic()
+
+## For graphs
 desc <-
   'Large boost in Muslim acceptance following shootings; However Muslim acceptance still lags behind.'
 p1a <-
-  p1 +   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack', description = desc), colour = "red") + theme_classic()
+  p1p #+   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack', description = desc), colour = "red") + theme_classic()
 p2a <-
-  p2 +   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
+  p2p # +   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
 p3a <-
-  p3 +   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
+  p3p # +   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
 p4a <-
-  p4 +   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
+  p4p #+   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
 
 p5a <-
-  p5 +   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
+  p5p #+   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
 
 
 p6a <-
-  p6 +   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
+  p6p #+   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
 
 p7a <-
-  p7 +   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
+  p7p #+   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
 
 
 p8a <-
-  p8 +   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
+  p8p #+   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
 
 p9a <-
-  p9 +   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
+  p9p #+   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
 
 p10a <-
-  p10 +   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
+  p10p #+   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
 
 p11a <-
-  p11 +   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
+  p11p #+   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
 
 p12a <-
-  p12 +   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
+  p12p #+   ggforce::geom_mark_ellipse(aes(label = 'Pre/Post Attack')) + theme_classic()
 
 lds3 <-
   (p1a +
      p4a +
      p5a +
      p6a +
-     p7a + 
+     p7a +
      p12a) +
-   # p8a +
-   # p9a +
-   # p10a +
-   # p11a) + 
   plot_annotation(tag_levels = 'a',
-   title = "Attitudes to Muslims and Non-Pacific Minorities",
-   subtitle = "pre/post attacks") +  plot_layout(guides = 'collect') +
-  # plot_layout(nrow = 1, byrow = TRUE)  +
-  # plot_layout(nrow = 1, byrow = TRUE)  +
+                  title = "Attitudes to Muslims and Non-Pacific Minorities",
+                  subtitle = "pre/post attacks") +
+  plot_layout(guides = 'collect', ncol = 2) +
   theme_classic()
-
-lds3
 
 lds4 <-
   (p2a +
-     p3a + 
+     p3a +
      p8a +
      p9a +
      p10a +
      p11a) + plot_annotation(tag_levels = 'a',
                              title = "Attitudes to contrast groups",
-                             subtitle = "Pacific/Maori/non-Ethnic minorities: pre/post attacks") +  plot_layout(guides = 'collect') 
+                             subtitle = "Pacific/Maori/non-Ethnic minorities: pre/post attacks") +  plot_layout(guides = 'collect', ncol = 2)
 
-lds4
 
  
-
-parameters::model_parameters(m1)
-parameters::model_parameters(m2)
-parameters::model_parameters(m2)
-parameters::model_parameters(m2)
-parameters::model_parameters(m2)
-parameters::model_parameters(m2)
-parameters::model_parameters(m2)
-parameters::model_parameters(m2)
-parameters::model_parameters(m2)
-parameters::model_parameters(m11)
-parameters::model_parameters(m10)
-parameters::model_parameters(m11)
-#
-
-
-plot(ggeffects::ggpredict(m11, terms = c("yearS","Pre_PostATTACK"), ci = .89))
-  
-  
-# lds3 <-
-#   (p1 +  p4 + p3 + p2) + plot_annotation(title = "Increase in Warmth to Muslims After Shootings",
-#                                          subtitle = "However, Muslim acceptance lags behind other minority groups",
-#                                          tag_levels = 'a') +   plot_layout(guides = 'collect') + plot_layout(nrow = 1, byrow = FALSE)
-#
-# lds3a <-
-#   (p1 +  p4 + p3 + p2) + plot_annotation(tag_levels = 'a') +   plot_layout(guides = 'collect') + plot_layout(nrow = 1, byrow = FALSE)
+# RESULTS BELOW
+# parameters::model_parameters(m1)
+# parameters::model_parameters(m2)
+# parameters::model_parameters(m2)
+# parameters::model_parameters(m2)
+# parameters::model_parameters(m2)
+# parameters::model_parameters(m2)
+# parameters::model_parameters(m2)
+# parameters::model_parameters(m2)
+# parameters::model_parameters(m2)
+# parameters::model_parameters(m11)
+# parameters::model_parameters(m10)
+# parameters::model_parameters(m11)
 ```
 
-## Following the Christchurch Mosque attacks, warmth towards Muslim grew but still lags behind other groups
+## Summary
+
+```{r fig.fullwidth = TRUE, layout="l-body-outset", cache=TRUE, fig.cap="\\label{fig:muslimboost} Change in acceptance of Muslims following the Christchurch Mosque attacks March 15, 2019.  Green horizonal line indicates peak acceptance of Muslims, which occurred following the attacks (N = 11272, Years = 2017-2020, Source = New Zealand Attitudes and Values Study)"}
+p1pp
+```
 
 
+- Following the Christchurch Mosque attacks, warmth towards Muslim grew.
+- Despite this growth, warmth to Muslims lags behind all other groups (except overweight people.)
+- Following the mosque attacks non-Pacific/Māori minority groups with Muslims also received a boost in warmth.
+- The Muslim acceptance gap remains large. 
 
+
+## Introduction
 
 We investigate warmth to Muslims before and after the 15 March 2019 mosque attacks in a nationally diverse longitudinal sample of New Zealanders (*N* = 11,272), and clarify how levels of warmth changed to Muslims and other groups.^[
 The New Zealand Attitudes and Values Study (NZAVS) is a nationally representative panel study that Prof Chris Sibley started in 2009 [@nzavs2021], which has measured over 65,000 New Zealanders (see [NZAVS](https://www.psych.auckland.ac.nz/en/about/new-zealand-attitudes-and-values-study.html)]
@@ -735,15 +852,28 @@ The NZAVS measures tolerance using validated "affective thermometers" See [@sibl
 
 ### Findings
 
-  -   Following the attacks there was a substantial increase in warmth to Muslims (Figure \@ref(fig:graphsmodels)a.)
-  -   Following the attacks, there was also a small boost in warmth to immigrants (Figure \@ref(fig:graphsmodels)b.)
-  -   Despite the post-attack boost in warmth to Muslims, warmth to Muslims still lags behind warmth to other groups. (Figure \@ref(fig:graphsmodels)a-d)
+  -   Following the attacks there was a substantial increase in warmth to Muslims (Figure \@ref(fig:graphsmodels)a)
+  -   Following the attacks, there was also a small boost in warmth to Immigrants (Figure \@ref(fig:graphsmodels)b), Asians (Figure \@ref(fig:graphsmodels)c), Indians (Figure \@ref(fig:graphsmodels)d), Chinese people (Figure \@ref(fig:graphsmodels)e), and Refugees (Figure \@ref(fig:graphsmodels)f.)
+  -  The boost in warmth was specific to Muslims and non-Pacific minorities  (Figure \@ref(fig:graphsmodels)a-f.)
+  -  Despite the post-attack boost in warmth to Muslims, warmth to Muslims still lags behind warmth to other groups. (Figure \@ref(fig:graphsmodels)a-f).
+  -  Whether the in boost to warmth to Muslims and ethnic groups associated with Muslims persists remains unclear. 
+  
 
+Muslims and groups non-Pacific ethnic minorities
 
-
-```{r  graphsmodels, fig.fullwidth = TRUE, fig.width=12, fig.height=8,  layout="l-body-outset", cache=TRUE, fig.cap="\\label{fig:graphsmodels} Increase in Warmth to Muslims After Shootings (red-dashed line), however, the acceptance of Muslims lags behind other minority groups. Green horizonal line indicates peak acceptance of Muslims, which occurred following the attacks, and has since dropped. (N = 11272, Years = 2017-2020, Source = New Zealand Attitudes and Values Study)"}
+```{r  graphsmodels, fig.height = 25, fig.fullwidth = TRUE, layout="l-body-outset", cache=TRUE, fig.cap="\\label{fig:graphsmodels} Increase in Warmth to Muslims After Shootings (red-dashed line), however, the acceptance of Muslims lags behind other minority groups. Green horizonal line indicates peak acceptance of Muslims, (N = 11272, Years = 2017-2020, Source = New Zealand Attitudes and Values Study)", echo = FALSE}
 lds3
 ```
+
+
+Contrast groups that are not associated with Muslims.
+
+```{r graphsmodels2, fig.height = 25, fig.fullwidth = TRUE,  layout="l-body-outset", cache=TRUE, fig.cap="\\label{fig:graphsmodels2} There is no evidence for substantial change in prejudice pre-post shootings among groups that are not associated with Muslims.  Green horizonal line indicates peak acceptance of Muslims, which occurred following the attacks (N = 11272, Years = 2017-2020, Source = New Zealand Attitudes and Values Study)", echo = FALSE}
+lds4
+```
+
+
+
 
 ### Importance of findings
 
