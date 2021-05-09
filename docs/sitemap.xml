@@ -2,30 +2,30 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" version="1.0">
   <url>
     <loc>https://go-bayes.github.io/reports/about.html</loc>
-    <lastmod>2021-05-09T21:53:04+12:00</lastmod>
+    <lastmod>2021-05-09T22:16:25+12:00</lastmod>
   </url>
   <url>
     <loc>https://go-bayes.github.io/reports/</loc>
-    <lastmod>2021-05-09T21:56:41+12:00</lastmod>
+    <lastmod>2021-05-09T23:59:03+12:00</lastmod>
   </url>
   <url>
     <loc>https://go-bayes.github.io/reports/joseph.html</loc>
-    <lastmod>2021-05-09T11:06:45+12:00</lastmod>
+    <lastmod>2021-05-09T22:16:26+12:00</lastmod>
   </url>
   <url>
     <loc>https://go-bayes.github.io/reports/posts/police/</loc>
-    <lastmod>2021-05-09T21:04:06+12:00</lastmod>
+    <lastmod>2021-05-09T23:52:58+12:00</lastmod>
   </url>
   <url>
     <loc>https://go-bayes.github.io/reports/posts/mus/</loc>
-    <lastmod>2021-05-09T21:49:08+12:00</lastmod>
-  </url>
-  <url>
-    <loc>https://go-bayes.github.io/reports/posts/nzavs/</loc>
-    <lastmod>2021-03-30T00:55:53+13:00</lastmod>
+    <lastmod>2021-05-09T23:49:44+12:00</lastmod>
   </url>
   <url>
     <loc>https://go-bayes.github.io/reports/posts/covid/</loc>
-    <lastmod>2021-05-09T21:57:06+12:00</lastmod>
+    <lastmod>2021-05-09T23:35:52+12:00</lastmod>
+  </url>
+  <url>
+    <loc>https://go-bayes.github.io/reports/posts/nzavs/</loc>
+    <lastmod>2021-04-23T01:54:59+12:00</lastmod>
   </url>
 </urlset>

@@ -52,9 +52,6 @@ library("kableExtra")
 library("broom")
 library("tidybayes")
 library("bmlm")
-if (!require(tidyLPA)) {
-  install.packages("tidyLPA")
-}
 # rstan options
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores ())
