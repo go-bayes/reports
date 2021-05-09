@@ -18,8 +18,8 @@ navbar:
   source_url: https://github.com/go-bayes/reports
   search: true
   left:
-      - text: "Brief reports"
-        href: index.html
+      - text: "About"
+        href: about.html
       - text: "Contact"
         href: joseph.html
 output:
