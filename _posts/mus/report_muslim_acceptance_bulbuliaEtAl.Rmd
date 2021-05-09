@@ -496,7 +496,7 @@ p1 <- ggeffects::ggpredict(m1,
 
 p1p <- plot(p1,
             add.data = TRUE,
-            dot.alpha = .01,
+            dot.alpha = .05,
             jitter = .8) +
   ylab("Warmth to Muslims (1-7)") + labs(title = "Warm Muslims") +
   geom_hline(yintercept = 4.395, color = "green") +
@@ -529,7 +529,7 @@ p2 <- ggeffects::ggpredict(m2,
 
 p2p <- plot(p2,
             add.data = TRUE,
-            dot.alpha = .01,
+            dot.alpha = .05,
             jitter = .8) +
   ylab("Warmth to NZ Europeans (1-7)") + labs(title = "Warm NZ Europeans") +
   geom_hline(yintercept = 4.395, color = "green") +
@@ -550,7 +550,7 @@ p3 <- ggeffects::ggpredict(m3,
 
 p3p <- plot(p3,
             add.data = TRUE,
-            dot.alpha = .01,
+            dot.alpha = .05,
             jitter = .8) +
   ylab("Warmth to Māori (1-7)") + labs(title = "Warmth to Māori") +
   geom_hline(yintercept = 4.395, color = "green") +
@@ -570,7 +570,7 @@ p4 <- ggeffects::ggpredict(m4,
 
 p4p <- plot(p4,
             add.data = TRUE,
-            dot.alpha = .01,
+            dot.alpha = .05,
             jitter = .8) +
   ylab("Warmth to Immigrants (1-7)") + labs(title = "Warmth to Immigrants") +
   geom_hline(yintercept = 4.395, color = "green") +
@@ -591,7 +591,7 @@ p5 <- ggeffects::ggpredict(m5,
 
 p5p <- plot(p5,
             add.data = TRUE,
-            dot.alpha = .01,
+            dot.alpha = .05,
             jitter = .8) +
   ylab("Warmth to Asians (1-7)") + labs(title = "Warmth to Asians") +
   geom_hline(yintercept = 4.395, color = "green") +
@@ -612,7 +612,7 @@ p6 <- ggeffects::ggpredict(m6,
 
 p6p <- plot(p6,
             add.data = TRUE,
-            dot.alpha = .01,
+            dot.alpha = .05,
             jitter = .8) +
   ylab("Warmth to Indians (1-7)") + labs(title = "Warmth to Indians") +
   geom_hline(yintercept = 4.395, color = "green") +
@@ -633,7 +633,7 @@ p7 <- ggeffects::ggpredict(m7,
 
 p7p <- plot(p7,
             add.data = TRUE,
-            dot.alpha = .01,
+            dot.alpha = .05,
             jitter = .8) +
   ylab("Warmth to Chinese (1-7)") + labs(title = "Warmth to Chinese") +
   geom_hline(yintercept = 4.395, color = "green") +
@@ -655,7 +655,7 @@ p8 <- ggeffects::ggpredict(m8,
 
 p8p <- plot(p8,
             add.data = TRUE,
-            dot.alpha = .01,
+            dot.alpha = .05,
             jitter = .8) +
   ylab("Warmth to Pacific (1-7)") + labs(title = "Warmth to Pacific Peoples") +
   geom_hline(yintercept = 4.395, color = "green") +
@@ -677,7 +677,7 @@ p9 <- ggeffects::ggpredict(m9,
 
 p9p <- plot(p9,
             add.data = TRUE,
-            dot.alpha = .01,
+            dot.alpha = .05,
             jitter = .8) +
   ylab("Warmth to Elderly (1-7)") + labs(title = "Warmth to Elderly") +
   geom_hline(yintercept = 4.395, color = "green") +
@@ -698,7 +698,7 @@ p10 <- ggeffects::ggpredict(m10,
 
 p10p <- plot(p10,
              add.data = TRUE,
-             dot.alpha = .01,
+             dot.alpha = .05,
              jitter = .8) +
   ylab("Warmth to the Mentally ill (1-7)") + labs(title = "Warmth to the Mentally ill") +
   geom_hline(yintercept = 4.395, color = "green") +
@@ -720,7 +720,7 @@ p11 <- ggeffects::ggpredict(m11,
 
 p11p <- plot(p11,
              add.data = TRUE,
-             dot.alpha = .01,
+             dot.alpha = .05,
              jitter = .8) +
   ylab("Warmth to Overweight (1-7)") + labs(title = "Warmth to Overweight") +
   geom_hline(yintercept = 4.395, color = "green") +
@@ -741,7 +741,7 @@ p12 <- ggeffects::ggpredict(m12,
 
 p12p <- plot(p12,
              add.data = TRUE,
-             dot.alpha = .01,
+             dot.alpha = .05,
              jitter = .8) +
   ylab("Warmth to Refugees (1-7)") + labs(title = "Warmth to Refugees") +
   geom_hline(yintercept = 4.395, color = "green") +
@@ -798,7 +798,7 @@ lds3 <-
   plot_annotation(tag_levels = 'a',
                   title = "Attitudes to Muslims and Non-Pacific Minorities",
                   subtitle = "pre/post attacks") +
-  plot_layout(guides = 'collect', ncol = 2) +
+  plot_layout(guides = 'collect', ncol = 1) +
   theme_classic()
 
 lds4 <-
@@ -809,7 +809,7 @@ lds4 <-
      p10a +
      p11a) + plot_annotation(tag_levels = 'a',
                              title = "Attitudes to contrast groups",
-                             subtitle = "Pacific/Maori/non-Ethnic minorities: pre/post attacks") +  plot_layout(guides = 'collect', ncol = 2)
+                             subtitle = "Pacific/Maori/non-Ethnic minorities: pre/post attacks") +  plot_layout(guides = 'collect', ncol = 1)
 
 
  
@@ -861,14 +861,14 @@ The NZAVS measures tolerance using validated "affective thermometers" See [@sibl
 
 Muslims and groups non-Pacific ethnic minorities
 
-```{r  graphsmodels, fig.height = 25, fig.fullwidth = TRUE, layout="l-body-outset", cache=TRUE, fig.cap="\\label{fig:graphsmodels} Increase in Warmth to Muslims After Shootings (red-dashed line), however, the acceptance of Muslims lags behind other minority groups. Green horizonal line indicates peak acceptance of Muslims, (N = 11272, Years = 2017-2020, Source = New Zealand Attitudes and Values Study)", echo = FALSE}
+```{r  graphsmodels, fig.height = 75, fig.fullwidth = TRUE, layout="l-body-outset", cache=TRUE, fig.cap="\\label{fig:graphsmodels} Increase in Warmth to Muslims After Shootings (red-dashed line), however, the acceptance of Muslims lags behind other minority groups. Green horizonal line indicates peak acceptance of Muslims, (N = 11272, Years = 2017-2020, Source = New Zealand Attitudes and Values Study)", echo = FALSE}
 lds3
 ```
 
 
 Contrast groups that are not associated with Muslims.
 
-```{r graphsmodels2, fig.height = 25, fig.fullwidth = TRUE,  layout="l-body-outset", cache=TRUE, fig.cap="\\label{fig:graphsmodels2} There is no evidence for substantial change in prejudice pre-post shootings among groups that are not associated with Muslims.  Green horizonal line indicates peak acceptance of Muslims, which occurred following the attacks (N = 11272, Years = 2017-2020, Source = New Zealand Attitudes and Values Study)", echo = FALSE}
+```{r graphsmodels2, fig.height = 75, fig.fullwidth = TRUE,  layout="l-body-outset", cache=TRUE, fig.cap="\\label{fig:graphsmodels2} There is no evidence for substantial change in prejudice pre-post shootings among groups that are not associated with Muslims.  Green horizonal line indicates peak acceptance of Muslims, which occurred following the attacks (N = 11272, Years = 2017-2020, Source = New Zealand Attitudes and Values Study)", echo = FALSE}
 lds4
 ```
 
@@ -900,7 +900,7 @@ km2 %>%
    kable_classic_2(c("striped", "hover"), full_width = TRUE)
 ```
 
-```{r pptimeline, cache=TRUE, fig.fullwidth = TRUE,  layout="l-body-outset", fig.width=12, fig.height=8, fig.cap="\\label{fig:pptimeline} Within-participant repeated measures covering the years before and following the attacks allow precise estimates of attitudinal change within-people (N = 11,481)."}
+```{r pptimeline, cache=TRUE, fig.fullwidth = TRUE,  layout="l-body-outset", fig.width=12, fig.height=12, fig.cap="\\label{fig:pptimeline} Within-participant repeated measures covering the years before and following the attacks allow precise estimates of attitudinal change within-people (N = 11,481)."}
 ## timeline
 rarep<-df%>%
   dplyr::filter(YearMeasured == 1) %>%
@@ -1094,7 +1094,7 @@ Figure \@ref(fig:warmthtime) shows the longer term trend warmth towards Muslims,
 
 For more analysis of prejudice trends in New Zealand see: [@sibley2020prejudice]
 
-```{r warmthtime, fig.width=12,  layout="l-body-outset", fig.height=8, fig.cap="\\label{fig:warmthtime} Within-person prejudice change pre/post attacks towards (a) Muslims, (b) Immigrants, (c) Māori, (d) NZ Europeans. Redline indicates mosque attacks. Greenline indicates maximum warmth to Muslims, which was strongly boosted post-attacks, yet lags behind other groups", cache = TRUE, fig.fullwidth = TRUE, include = TRUE}
+```{r include = FALSE, warmthtime, fig.width=12,  layout="l-body-outset", fig.height=12, fig.cap="\\label{fig:warmthtime} Within-person prejudice change pre/post attacks towards (a) Muslims, (b) Immigrants, (c) Māori, (d) NZ Europeans. Redline indicates mosque attacks. Greenline indicates maximum warmth to Muslims, which was strongly boosted post-attacks, yet lags behind other groups", cache = TRUE, fig.fullwidth = TRUE, include = TRUE}
 
 ld <- ggplot(data = dt,
              aes(x = yrs,
@@ -1140,10 +1140,10 @@ li_0 <-li + geom_line(alpha = .005) +
   labs(title="Warmth to Immigrants") #+
  # xlab("Years 2011-2020, N = 22,254")
 
-## maori
-lm <- ggplot(data = dm,
+## indians
+lm <- ggplot(data = dindians,
              aes(x = yrs,
-                 y = Warm.Maori))
+                 y = Warm.Indians))
 
 lm_m <-lm + geom_line(alpha = .005) +
   stat_summary(
@@ -1161,14 +1161,14 @@ lm_m <-lm + geom_line(alpha = .005) +
   geom_vline(xintercept= 9.71, linetype="dashed", color = "red") +
   geom_hline(yintercept= 4.4, color = "green") +
   ylab("Warmth (1-7)") +
-  labs(title="Warmth to Māori")
+  labs(title="Warmth to Indians")
   #+
  # xlab("Years 2011-2020, N = 22,254")
 
-# Europeans
-lnz <- ggplot(data = dnz,
+# Chinese
+lnz <- ggplot(data = dchinese,
               aes(x = yrs,
-                  y = Warm.NZEuro))
+                  y = Warm.Chinese))
 
 lnz_0 <-lnz + geom_line(alpha = .005) +
   stat_summary(
@@ -1186,7 +1186,7 @@ lnz_0 <-lnz + geom_line(alpha = .005) +
   geom_vline(xintercept= 9.71, linetype="dashed", color = "red") +
   geom_hline(yintercept= 4.4, color = "green") +
   ylab("Warmth (1-7)") +
-  labs(title="Warmth to NZ Europeans") +
+  labs(title="Warmth to Chinese") +
   xlab("Years 2011-2020, N = 22,254")
 
 lds_0 + li_0 + lm_m + lnz_0 +  plot_layout(guides = 'collect', nrow = 1, byrow = FALSE) +   plot_annotation(title = "Timeline of attitudes to different groups in New Zealand; years 2011-2020: Source: NZAVS, N = 22,254", subtitle = "Green line = maximum level of warmth for Muslims, red line = Mosque attacks; Alpha for points on graph were set to .02 to avoid overplotting; method for estimation", tag_levels = 'a')
@@ -1195,14 +1195,14 @@ lds_0 + li_0 + lm_m + lnz_0 +  plot_layout(guides = 'collect', nrow = 1, byrow =
 
 ```{r  modelspolitics,  cache = TRUE}
 
-m6 <- lmer(Warm.Muslims ~  cons_s * Pre_PostATTACK +  EthnicCats + 
+m6 <- lmer(Warm.Muslims ~  cons_s * Attack +  EthnicCats + 
              a_s +
              r_s + (1|Id) , # dependence owing to the week of response
            data=km2)
 
-p6 <- plot(ggeffects::ggpredict(m6, terms = c("Pre_PostATTACK [all]", "cons_s[all]"), ci = .89)) + xlab("Conservativism") + ylab("Warmth Muslims") +  scale_colour_viridis_d()
+p6 <- plot(ggeffects::ggpredict(m6, terms = c("Attack [all]", "cons_s[all]"), ci = .89)) + xlab("Conservativism") + ylab("Warmth Muslims") +  scale_colour_viridis_d()
 
-p7 <- plot(ggeffects::ggpredict(m6, terms = c("cons_s[all]","Pre_PostATTACK [all]"), ci = .89), add.data = TRUE, dot.alpha = 0.02, jitter = .2 ) + scale_y_continuous(limits = c(.5,7.5)) +
+p7 <- plot(ggeffects::ggpredict(m6, terms = c("cons_s[all]","Attack [all]"), ci = .89), add.data = TRUE, dot.alpha = 0.02, jitter = .2 ) + scale_y_continuous(limits = c(.5,7.5)) +
   xlab("Political Conservativism (SD)") + ylab("Warmth Muslims (1-7") + 
   labs(title = "Warmth to Muslims") + scale_colour_viridis_d()   +
   theme(
@@ -1264,12 +1264,12 @@ p71<-p7 + annotate("rect",
   ) 
 
 ## Compare this to warmth to Maori
-m8 <- lmer(Warm.Maori ~  cons_s * Pre_PostATTACK +  EthnicCats + 
+m8 <- lmer(Warm.Maori ~  cons_s * Attack +  EthnicCats + 
              a_s +
              r_s +(1|Id) , # dependence owing to the week of response
            data=km2)
 
-p8 <- plot(ggeffects::ggpredict(m8, terms = c("cons_s[all]","Pre_PostATTACK [all]"), ci = .89), 
+p8 <- plot(ggeffects::ggpredict(m8, terms = c("cons_s[all]","Attack [all]"), ci = .89), 
           add.data = TRUE, dot.alpha = 0.02, jitter = .2 ) + scale_y_continuous(limits = c(.5,7.5)) +
   xlab("Political Conservativism (SD)") + ylab("Warmth Māori (1-7") + 
   labs(title = "Warmth to Māori") + scale_colour_viridis_d()+ 
@@ -1285,12 +1285,12 @@ p8 <- plot(ggeffects::ggpredict(m8, terms = c("cons_s[all]","Pre_PostATTACK [all
   guides(size = 1.5)
 
 ## Warmth to NZEuro
-m9 <- lmer(Warm.NZEuro ~  cons_s * Pre_PostATTACK +  EthnicCats + 
+m9 <- lmer(Warm.NZEuro ~  cons_s * Attack +  EthnicCats + 
              a_s +
              r_s +(1|Id) , # dependence owing to the week of response
            data=km2)
 
-p9 <- plot(ggeffects::ggpredict(m9, terms = c("cons_s[all]","Pre_PostATTACK [all]"), ci = .89), 
+p9 <- plot(ggeffects::ggpredict(m9, terms = c("cons_s[all]","Attack [all]"), ci = .89), 
           add.data = TRUE, dot.alpha = 0.02, jitter = .2 ) + scale_y_continuous(limits = c(.5,7.5)) +
   xlab("Political Conservativism (SD)") + ylab("Warmth NZ Europeans (1-7") + 
   labs(title = "Warmth to NZ Europeans") + scale_colour_viridis_d() + 
@@ -1305,7 +1305,7 @@ p9 <- plot(ggeffects::ggpredict(m9, terms = c("cons_s[all]","Pre_PostATTACK [all
   )+ 
   guides(size = 1.5)
 
-m10 <- lmer(Warm.Immigrants ~  cons_s * Pre_PostATTACK +  EthnicCats + 
+m10 <- lmer(Warm.Immigrants ~  cons_s * Attack +  EthnicCats + 
              a_s +
              r_s +(1|Id) , # dependence owing to the week of response
            data=km2)
@@ -1314,7 +1314,7 @@ p10 <-
   plot(
     ggeffects::ggpredict(
       m10,
-      terms = c("cons_s[all]", "Pre_PostATTACK [all]"),
+      terms = c("cons_s[all]", "Attack [all]"),
       ci = .89
     ),
     add.data = TRUE,
@@ -1330,16 +1330,61 @@ p10 <-
     # Change legend key size and key width
     legend.key.size = unit(0.2, "cm"),
     legend.key.width = unit(0.2, "cm"),
-    legend.direction = "vertical")+ 
-  guides(size = 1.5)
+    legend.direction = "vertical") +
+  guides(size = 1.5) +
+  annotate(
+    "rect",
+    xmin = 2.,
+    xmax = 2.5,
+    ymin = 4.2,
+    ymax = 4.4,
+    alpha = .2,
+    colour = "red"
+  ) + 
+  annotate(
+    "rect",
+    xmin = -2.,
+    xmax = -1.5,
+    ymin = 4.75,
+    ymax = 4.95,
+    alpha = .2,
+    colour = "red"
+  ) + 
+  annotate(
+    "text",
+    x = 0,
+    y = 7.2,
+    label = "Boost to Immigrant Warmth was linear across political conservativism",
+    colour = "brown3"
+  ) + 
+  annotate(
+    geom = "curve",
+    x = -1,
+    y = 6.7,
+    xend = -1.75,
+    yend = 4.95,
+    curvature = 0,
+    arrow = arrow(length = unit(2, "mm")),
+    colour = "red"
+  ) +
+   annotate(
+    geom = "curve",
+    x = 1,
+    y = 6.7,
+    xend = 2.25,
+    yend = 4.4,
+    curvature = 0,
+    arrow = arrow(length = unit(2, "mm")),
+    colour = "red"
+  ) 
 ```
 
 ## Appendix 4: Political conservatives also grew more accepting of Muslims after the 2019 Mosque attacks.
 
 Generally, greater political conservativism predicts greater minority group prejudice. In absolute terms, however, growth in Muslim acceptance following the shootings was stronger at the conservative end of the scale (see Figure \@ref(fig:graphsmodelsPol). 
 
-```{r  graphsmodelsPol, fig.fullwidth = TRUE,  layout="l-body-outset", fig.width=12, fig.height=10, cache = TRUE, fig.cap="\\label{fig:graphsmodelsPol} Warmth to Muslims (y-axis) and other groups by political conservativism (x-axis) pre/post shootings (the solid lines). The shift betweenand the purple/blue lines (pre-attacks) and the yellow/green lines (post-attacks) shows the magnitude of growth in minority group acceptance. Here we plot all expected values of the model as points. The darkness of the areas on the graph reflect densities of responses. This approach allows us to visualise the variance around average responses. Results reveal that the mosque attacks led to a greater increase in warmth towards Muslims among political conservatives. However, this population had more headroom for growth in warmth. Whether this boost in Muslim warmth is sustained remains to be seen: (N = 11272, Years = 2017-2020, Source = New Zealand Attitudes and Values Study)", eval=TRUE, echo = FALSE}
-lds4 <-  p71 + p10 + p8 + p9 +  plot_annotation(tag_levels = 'a') +   plot_layout(nrow = 1,  byrow = FALSE)  +  plot_layout(guides = 'collect')
+```{r  graphsmodelsPol, fig.fullwidth = TRUE,  layout="l-body-outset", fig.width=12, fig.height=25, cache = TRUE, fig.cap="\\label{fig:graphsmodelsPol} Warmth to Muslims (y-axis) and other groups by political conservativism (x-axis) pre/post shootings (the solid lines). The shift betweenand the purple/blue lines (pre-attacks) and the yellow/green lines (post-attacks) shows the magnitude of growth in minority group acceptance. Here we plot all expected values of the model as points. The darkness of the areas on the graph reflect densities of responses. This approach allows us to visualise the variance around average responses. Results reveal that the mosque attacks led to a greater increase in warmth towards Muslims among political conservatives. However, this population had more headroom for growth in warmth. Whether this boost in Muslim warmth is sustained remains to be seen: (N = 11272, Years = 2017-2020, Source = New Zealand Attitudes and Values Study)", eval=TRUE, echo = FALSE}
+lds4 <-  p71 + p10 + p8 + p9 +  plot_annotation(tag_levels = 'a') +   plot_layout(ncol = 2,  byrow = FALSE)  +  plot_layout(guides = 'collect')
 lds4 
 ```
 
