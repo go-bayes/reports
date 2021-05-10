@@ -174,12 +174,12 @@ pd <- df %>%
 ## Summary
 
 -   Trust in the New Zealand Police has been increasing since 2017.
--   There was a boost to this trust during the March/April 2020 lockdown.
 -   Willingness to engage with the police is high but declining.
--   There was no change in willingness to engage with the police during the March/April 2020 lockdown..
+-   There was no change in willingness to engage with the police during the March/April 2020 lockdown.
+-   There was a boost to this trust during the March/April 2020 lockdown.
 -   By comparison, trust in New Zealand politicians has been decreasing since 2017.
--   Notably, there was a strong increase in trust in politicians during the March/April 2020 lockdown.
--   Overall, New Zealanders trust their police much more than they trust their politicians.
+-   There was a strong increase in trust in politicians during the March/April 2020 lockdown, which has since declined.
+-   Overall, New Zealanders trust their police more than they trust their politicians, and if anything, trust is growing.
 
 ## Introduction
 
@@ -354,9 +354,10 @@ pl3_b <- plot(
 pl3_b
 ```
 
-## Key message: comparison of trust in New Zealand Police and trust in New Zealand politicians shows relatively high and growing confidence in the police with relatively lower and declining confidence in politicians.
+## Key message: comparison of trust in New Zealand Police and trust in New Zealand politicians shows relatively higher and growing confidence in the police compared with relatively lower and declining confidence in politicians.
 
-To better understand differences in trust of the New Zealand Police (Fig4.a) and trust in New Zealand Politicians, we can graph both trends side-by-side. Doing so reveals that rising trust in the police is not the result of a generic increase in institutional trust, but is a unique phenomenon that holds across a diverse population.
+To better understand differences in trust of the New Zealand Police (Fig4.a) and trust in New Zealand Politicians, we can graph both trends side-by-side. Doing so reveals that rising trust in the police is not the result of a generic increase in institutional trust -- quite the opposite, institutional trust in the government has been declining -- but rather a unique phenomenon.
+
 
 ```{r layout = "l-body-outset"}
 library(patchwork)
@@ -367,7 +368,7 @@ pl1 + pl3 +
 
 ```
 
-The evidence we present here for strong and rising trust in the New Zealand Police comes from a national panel sample that repeatedly measures the same individuals in successive years. The NZAVS sample is randomly selected from New Zealand electoral role -- a privilege unique to New Zealand's research community. NZAVS time series data possess an integrity that brings confidence to these preliminary findings. However, the causal processes underpinnings of strong and increasing trust in the New Zealand Police remain unclear. Clarifying why the New Zealand Police is so highly trusted holds importance for New Zealanders who which to sustain such confidence, and may be important for countries who experience lower confidence in their police forces and seek to improve trust. Although New Zealanders express a strong willingness to engage with the police, the causes for the a slight decline in such willingness merit future investigation. 
+The evidence we present here for strong and rising trust in the New Zealand Police comes from a national panel sample that repeatedly measures the same individuals in successive years. The NZAVS sample is randomly selected from New Zealand electoral role -- a privilege unique to New Zealand's research community. NZAVS time series data possess an integrity that brings confidence to these preliminary findings. However, the causal processes underpinning strong and increasing trust in the New Zealand's police remain unclear. Clarifying why the New Zealand Police is highly trusted holds importance for New Zealanders who wish to sustain such confidence; such understanding may also be important to countries who experience lower confidence in their police and seek to improve confidence. The decline in willingness to engage with the poslice also merits future investigation. Speculating, it is possible that this decline is part of a wider loss of confidence in political institutions, however, the causes of the phenomena observed here remain unclear, and there may be no unitary explanation. Critical questions of causation remain matters for future investigations.
 
 ## Appendix
 
