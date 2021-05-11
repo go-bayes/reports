@@ -3,8 +3,6 @@ title: "Longitudinal Anatomy of Covid-19 Distress"
 author: "Joseph Bulbulia, Psychology, Victoria University"
 date: "2020-APRIL-23"
 output:
-  beamer_presentation:
-    incremental: yes
   ioslides_presentation:
     mainfont: roboto
     incremental: yes
@@ -13,6 +11,8 @@ output:
     widescreen: no
     selfcontained: yes
     css: extra.css
+  beamer_presentation:
+    incremental: yes
 bibliography: bibliography.bib
 editor_options:
   markdown:

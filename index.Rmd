@@ -1,5 +1,5 @@
 ---
-title: "Index"
+title: "Reports"
 site: distill::distill_website
 listing: 
   posts:
