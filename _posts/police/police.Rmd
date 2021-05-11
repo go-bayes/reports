@@ -359,6 +359,7 @@ pl3_b
 To better understand differences in trust of the New Zealand Police (Fig4.a) and trust in New Zealand Politicians, we can graph both trends side-by-side. Doing so reveals that rising trust in the police is not the result of a generic increase in institutional trust -- quite the opposite, institutional trust in the government has been declining -- but rather a unique phenomenon.
 
 
+
 ```{r layout = "l-body-outset"}
 library(patchwork)
 
