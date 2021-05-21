@@ -1,5 +1,24 @@
 [
   {
+    "path": "posts/confounding/",
+    "title": "Hidden neighbourhood effects may introduce confounding in regression models",
+    "description": {},
+    "author": [
+      {
+        "name": "Joseph Bulbulia",
+        "url": "https://josephbulbulia.netlify.app"
+      }
+    ],
+    "date": "2021-05-20",
+    "categories": [],
+    "contents": "\n\nContents\nCausal inference when we include neighbourhood effects.\nSimple causal effects\n\n\n\nShow code\n# Set up\n\n# packages\n# install_rethinking\n# function for installing dependencies\n# ipak <- function(pkg){\n# new.pkg <- pkg[!(pkg %in% installed.packages()[, \"Package\"])]\n# if (length(new.pkg)) \n#     install.packages(new.pkg, dependencies = TRUE) \n# sapply(pkg, require, character.only = TRUE)\n# }\n# # usage\n# packages <- c(\"coda\", \"plyr\", \"mvtnorm\", \"scales\", \"dagitty\")\n# ipak(packages)\n# next install rethinking\nif (!require(rethinking)) {\n  devtools::install_github(\"rmcelreath/rethinking\")\n}\n#next install ggdag\nif (!require(ggdag)) {\n  devtools::install_github(\"malcolmbarrett/ggdag\")\n}\n\n\n# libraries\nlibrary(\"tidyverse\")\nlibrary(\"ggdag\")\nlibrary(\"brms\")\nlibrary(\"rstan\")\nlibrary(\"rstanarm\")\nlibrary(\"tidybayes\")\nlibrary(\"bayesplot\")\nlibrary(\"easystats\")\n# rstan options\nrstan_options(auto_write=TRUE)\noptions(mc.cores=parallel::detectCores ())\ntheme_set(theme_classic())\n\n\n\nShow code\n# options\nknitr::opts_chunk$set(\n  echo = TRUE,\n  warning = FALSE,\n  message = FALSE,\n  layout = \"l-body-outset\",\n  fig.width = 12,\n  fig.height = 10,\n  collapse = TRUE,\n  R.options = list(width = 60)\n)\n\nImagine a word in which we have the following relationships:\n\n\nShow code\nlibrary(ggdag)\n# code for creating a DAG\nggdag_ov <- dagify(Y ~ X + M,\n                   M ~ X + U,\n                   exposure = \"X\",\n                   outcome = \"Y\") %>%\n  control_for(\"M\")\n\n# plot the DAG\nggdag_ov %>%\n  ggdag() + theme_dag_blank()\n\n\nSuppose that we want to write a mediation model in which we partition out the direct effect of X\\(\\to\\)Y and total effect of X\\(\\to\\)Y through M. However there is an unmeasured neighbourhood effect of U on M. Note that neighbourhood is a collider.\n\n\nShow code\n# find colliders\nggdag::ggdag_collider( ggdag_ov )  + theme_dag_blank()\n\n\nBecause of this, neighbourhood effects can lead to confounding, making it appear as though the effect of X on Y is negative when we condition on M.\nTo show this, we simulate some data:\nNote that in our simulation, X has a positive effect on Y. However, M is a collider, and including M in our model makes it appear as if X is negatively related to Y, even though in our simulation there is no relationship.\nWe can write a mediation model that does not adjust for neighbourhood effects (U), imagining these neighbourhood effects are unmeasured (as in our current dataset).\n\n\nShow code\nbmlm::mlm_path_plot(xlab = \"Focal\\n(X)\",\n              mlab = \"Mediator\\n(M)\",\n              ylab = \"Outcome\\n(Y)\")\n\n\n\n\nShow code\npath_m <- brms::bf(M ~ X)\npath_y <- brms::bf(Y ~ X + M)\n\nm1 <- brms::brm(\n  path_m + path_y + set_rescor(FALSE),\n  data = d,\n  file = here::here(\"models\", \"mediation-confound-simulation\")\n)\n\n# output\n# parameters::model_parameters(m1)\n\nFor the mediation model we recover the indirect, direct and total effects as follow:\n\n\nShow code\n# get posterior distributions\npost <- brms::posterior_samples(m1)\n\n# sum and multiply the posterior distributions to obtain parameter estimates\npost2 <- post %>%\n  dplyr::transmute(\n    a = b_M_X,\n    b = b_Y_M,\n    cp = b_Y_X,\n    me = a * b,\n    c = cp + me#,\n    # pme = me / c\n  )\n\nThe direct effect (cp) appears to be negative!\n\n\nShow code\n# plot the results\nmcmc_intervals(post2) \n\n\nBut recall, we simulated a direct effect coefficient of 0. This seemingly negative effect of X on Y is the result of conditioning on a collider, which opens a path between X and U.\n\n\nShow code\nggdag::ggdag_dseparated(ggdag_ov, controlling_for = \"M\", collider_lines = TRUE )  + theme_dag_blank()\n\n\nCausal inference when we include neighbourhood effects.\nThis time, let’s included the previously un-modelled effect of neighbourhoods.\n\n\nShow code\npath_m <- brms::bf(M ~ X )\npath_y <- brms::bf(Y ~ X + M + U)\n\nm2 <- brms::brm(\n  path_m + path_y + set_rescor(FALSE),\n  data = d,\n  file = here::here(\"models\", \"mediation-confound-simulation-2\")\n)\n\n# output\n# parameters::model_parameters(m2)\n\nGraphing results in a model that adjusts for neighbourhoods effects we correct for the confounding\n\n\nShow code\n# get posterior distributions\npost2 <- brms::posterior_samples(m2)\n\n# sum and multiply the posterior distributions to obtain parameter estimates\npost2.2 <- post2 %>%\n  dplyr::transmute(\n    a = b_M_X,\n    b = b_Y_M,\n    cp = b_Y_X,\n    me = a * b,\n    c = cp + me#,\n    # pme = me / c\n  )\n\n# plot the results\nmcmc_intervals(post2.2) \n\n\nThat is, we recover the simulated direct effect (namely 0)\nIn short, if we are modelling relationships in which covariates are affected by neighbourhood effects, we might confound our results.\nSimple causal effects\nThe goods news is that for models in which we are only interested in the total effect of X on Y, it is sufficient for us to condition only X. (All backdoor paths are closed)\n\n\nShow code\n# code for creating a DAG\nggdag_ov2 <- dagify(Y ~ X + M,\n                   M ~ X + U,\n                   exposure = \"X\",\n                   outcome = \"Y\")\n\nggdag::ggdag_adjustment_set(ggdag_ov2)\n\n\nDoing so gives us X’s total effect, which arises through X’s effect on M.\n\n\nShow code\npar <- lm( Y ~ X, data = d) \n\ntab_par <- parameters::model_parameters(par) \n\ntab_par\nParameter   | Coefficient |   SE |        95% CI | t(98) |     p\n----------------------------------------------------------------\n(Intercept) |       -0.03 | 0.40 | [-0.83, 0.77] | -0.08 | 0.937\nX           |        1.30 | 0.43 | [ 0.44, 2.16] |  3.01 | 0.003\n\nShow code\ntab_par %>%\n  plot()\n\n\nHowever, in such a model, the mechanism for the total effect of X on Y would remain obscure. And we should not be misled into thinking that X directly causes Y, even if this model contains no other covariates.\n\n\n",
+    "preview": "posts/confounding/distill-preview.png",
+    "last_modified": "2021-05-21T01:13:43+12:00",
+    "input_file": "confounding.knit.md",
+    "preview_width": 2304,
+    "preview_height": 1920
+  },
+  {
     "path": "posts/police/",
     "title": "Trust in the New Zealand Police has been increasing since 2017",
     "description": "However willingness to enage with the police, and trust in politicians, have been decreasing: evidence from the New Zealand Attitudes and Values Study (N = 11,481)",
@@ -49,10 +68,12 @@
     ],
     "date": "2021-02-28",
     "categories": [],
-    "contents": "\n\n\n\nTalk\nClick here to go to the lecture slides.\n\n\n\nfitvids('.shareagain', {players: 'iframe'});\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
-    "preview": {},
-    "last_modified": "2021-05-09T21:57:06+12:00",
-    "input_file": {}
+    "contents": "\n\n\n\n\n\n\nTalk\nClick here to go to the lecture slides.\n\n\n\nfitvids('.shareagain', {players: 'iframe'});\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    "preview": "posts/covid/covid_files/figure-html5/unnamed-chunk-2-1.png",
+    "last_modified": "2021-05-21T00:31:40+12:00",
+    "input_file": "covid.knit.md",
+    "preview_width": 1920,
+    "preview_height": 1536
   },
   {
     "path": "posts/nzavs/",
