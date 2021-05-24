@@ -1386,3 +1386,170 @@ lds4
 ```
 
 
+## Appendix 5: Regression Discontinuity Analysis 
+
+
+```{r}
+glimpse(df)
+df_rdd <- df %>%
+  dplyr::select(
+    Id,
+    Age,
+    TSCORE,
+    EthnicCats,
+    Warm.Overweight,
+    Warm.Elderly,
+    Warm.MentalIllness,
+    Warm.Muslims,
+    Warm.Immigrants,
+    Warm.Asians,
+    Warm.Refugees,
+    Wave,
+    Warm.Maori,
+    Warm.NZEuro,
+    Warm.Indians,
+    Warm.Chinese,
+    Warm.Refugees,
+    Warm.Pacific,
+    Muslim,
+    Euro,
+    Relid,
+    Religious,
+    Pol.Orient,
+    TSCORE,
+    WSCORE,
+    Terrorism.Anxiety,
+    KESSLER6sum,
+    KESSLER6,
+    BELONG,
+    PWI,
+    YearMeasured
+  ) %>%
+  dplyr::filter(TSCORE >= 3395 & TSCORE <= 3695
+  )%>%
+  dplyr::mutate(Pre_Post_attack = as.factor(ifelse(
+    TSCORE >= 3545, "Post_Attack", "Pre_Attack"
+  ))) %>%
+  dplyr::mutate(Pre_Post_attack = forcats::fct_relevel(Pre_Post_attack, c("Pre_Attack", "Post_Attack"))) %>%
+  dplyr::mutate(days = as.integer(TSCORE),
+                years = days / 365) %>%
+  dplyr::filter(Muslim == 0)
+
+
+length(unique(df_rdd$Id))
+
+
+#library(table1)  # make pretty tables quickly
+#table1::table1(~Muslim|Wave, data = km, overall=F)# there are 31 muslims in 2017
+```
+
+
+```{r}
+## RDD FULL SAMPLE
+
+np <-
+  ggplot(data = df_rdd,
+         aes(
+           x = days,
+           y = KESSLER6,
+           group = Pre_Post_attack,
+           colour = Pre_Post_attack
+         ))+ scale_fill_viridis_c(option = "plasma")
+change_distress <- np +
+  geom_point(alpha = .03) +
+  geom_smooth() +
+  theme_classic() + 
+  scale_color_viridis_d(option = "plasma") +  
+  labs(title = "Regression discontinuity attack shows little change in distress")  +   theme(
+    legend.position = "right",
+    legend.text = element_text(size = 6),
+    legend.title = element_text(color = "Black", size = 8)) + 
+  ylab("Kessler 6: scale 0-4")
+
+cd <- change_distress + ggtitle("Regression Discontinuity Analysis of Kessler6 Distress", subtitle ="150 days prior to/following 15 March 2019 Mosque Shootings")
+```
+
+```{r}
+## RDD FULL SAMPLE
+
+np2 <-
+  ggplot(data = df_rdd,
+         aes(
+           x = days,
+           y = Terrorism.Anxiety,
+           group = Pre_Post_attack,
+           colour = Pre_Post_attack
+         ))+ scale_fill_viridis_c(option = "plasma")
+change_terror <- np2 +
+  geom_point(alpha = .03) +
+  geom_smooth() +
+  theme_classic() + 
+  scale_color_viridis_d(option = "plasma") +  
+  labs(title = "Regression discontinuity attack shows greater change in terrorism anxiety")  +   theme(
+    legend.position = "right",
+    legend.text = element_text(size = 6),
+    legend.title = element_text(color = "Black", size = 8))+ 
+  ylab("Terrorism Anxiety: scale 1-7")
+
+ct <-change_terror + ggtitle("Regression Discontinuity Analysis of Terrorism Anxiety", subtitle ="150 days prior to/following 15 March 2019 Mosque Shootings")
+
+
+np3 <-
+  ggplot(data = df_rdd,
+         aes(
+           x = days,
+           y = BELONG,
+           group = Pre_Post_attack,
+           colour = Pre_Post_attack
+         ))+ scale_fill_viridis_c(option = "plasma")
+change_belong <- np3 +
+  geom_point(alpha = .03) +
+  geom_smooth() +
+  theme_classic() + 
+  scale_color_viridis_d(option = "plasma") +  
+  labs(title = "Regression discontinuity attack shows greater change in community belonging")  +   theme(
+    legend.position = "right",
+    legend.text = element_text(size = 6),
+    legend.title = element_text(color = "Black", size = 8))+ 
+  ylab("Social Belonging: scale 1-7")
+
+sb <-change_belong + ggtitle("Regression Discontinuity Analysis of Social Belonging", subtitle ="150 days prior to/following 15 March 2019 Mosque Shootings")
+
+
+np4 <-
+  ggplot(data = df_rdd,
+         aes(
+           x = days,
+           y = PWI,
+           group = Pre_Post_attack,
+           colour = Pre_Post_attack
+         ))+ scale_fill_viridis_c(option = "plasma")
+change_pwi <- np4 +
+  geom_point(alpha = .03) +
+  geom_smooth() +
+  theme_classic() + 
+  scale_color_viridis_d(option = "plasma") +  
+  labs(title = "Regression discontinuity attack shows greater change in Personal Wellbeing")  +   theme(
+    legend.position = "right",
+    legend.text = element_text(size = 6),
+    legend.title = element_text(color = "Black", size = 8))+ 
+  ylab("Personal Wellbeing: scale 1-7")
+
+pwb <-change_belong + ggtitle("Regression Discontinuity Analysis of Personal Well-being", subtitle ="150 days prior to/following 15 March 2019 Mosque Shootings")
+
+pwb
+
+library(patchwork)
+
+ct /cd /sb /pwb + plot_annotation(title= "Specificity of Wellbeing/Distress Response", subtitle = "Non-Muslims Distress Dimenisons Pre/Post Mosque Attacks,  n =  17407", tag_levels = "a")
+
+
+
+
+
+
+```
+
+
+
+
