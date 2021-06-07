@@ -379,13 +379,15 @@ Maori are much less trusting of the police, on average, than NZ Europeans and ot
 
 ```{r layout = "l-body-outset"}
 pt4 <- 
-  lme4::lmer(Police_Trust ~ Ethnic_Categories + year_s  + (1 | Id), data = pd)
+  lme4::lmer(Police_Trust ~ Ethnic_Categories +  year_s  + (1 | Id), data = pd)
 
-pt4_b <- plot(
+parameers::model_parameters(pt4)
+
+pt4_b <#- plot(
   ggeffects::ggpredict(pt4,
-                       effects = c("Ethnic_Categories")),
-  add.data = TRUE,
-  dot.alpha = .05
+                       effects = c("year_s","Ethnic_Categories"),
+add.data = TRUE,
+ dot.alpha = .05
 )[[1]] + 
   xlab("Ethnic Categories") + 
   ylab("Trust in Police (1-7)") +
@@ -393,6 +395,8 @@ pt4_b <- plot(
        subtitle = "Covid-19 Timeline: source: New Zealand Attitudes and Values Study")
 pt4_b
 ```
+
+
 
 ### Trust in police predicted by gender identity
 
@@ -486,6 +490,7 @@ pt4_b1 <- plot(
   labs(title = "Predicted values of willingness to engage with Police in New Zealand Police by Ethnic Identification",
        subtitle = "Covid-19 Timeline: source: New Zealand Attitudes and Values Study")
 pt4_b1
+#model_parameters(pt41)
 ```
 
 ### Willingness to engage with the police predicted by gender identity

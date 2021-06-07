@@ -1067,6 +1067,7 @@ post_marF <- post1F %>%
 ```
 ```{r}
 mcmc_intervals(post_marF)
+??mcmc_intervals
 ```
 
 ## Results: fatigue - L4
