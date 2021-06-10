@@ -1627,16 +1627,18 @@ p11a
 
 
 ## Summary
+
 <div class="columns-2">
+
 ```{r fig.fullwidth = TRUE, layout="l-body-outset", cache=TRUE}
 p1pp
 ```
 
-- Following the Christchurch Mosque attacks, warmth towards Muslim grew substantially beyond its current rate of increase.
+- Following the Christchurch Mosque attacks, warmth towards Muslim grew.
 - Despite this growth, warmth to Muslims still lags behind all other groups (except overweight people.)
 - There was shallower post-attack boost in warmth for non-mormative minorities, such as immigrants.
-- The attacks did not affect warmth towards normative minorities.
-- It is unclear whether the boost to warm towards Muslims and non-normative minorities will regress to the pre-attack growth-rate. 
+- The attacks did not affect warmth towards normative minorities, such as the mentally-ill.
+- It is unclear whether the boost to warm towards Muslims will be sustained
 </div>
 
 
