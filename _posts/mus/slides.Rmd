@@ -9,7 +9,7 @@ output:
     transition: 0
     smaller: yes
     css: extra.css
-    font_adjustment: -1
+    font_adjustment: 0
     widescreen: yes
     selfcontained: yes
   beamer_presentation:
@@ -828,7 +828,7 @@ ned17
 
 
 
-## Warmth to Muslims is increasing| but still a gap {.centered}
+## Warmth to Muslims is slowly increasing| but still a gap {.centered}
 
 ```{r warmthtime2, layout="l-body-outset", cache = TRUE}
 ld <- ggplot(data = dt,
@@ -952,7 +952,7 @@ knitr::include_graphics("alnoor.png")
 # Why is there a Muslim Acceptance Gap? 
 
 
-## Muslims face a PR problem
+## Muslims face a PR problem | People know Muslims from the news
 
 ```{r layout="l-body-outset", fig.width=12, fig.height=12}
 knitr::include_graphics("pr.png")
@@ -1003,6 +1003,13 @@ knitr::include_graphics("shoot3.png")
 knitr::include_graphics("shoot4.png")
 ```
 
+
+
+## {.centered}
+
+```{r layout="l-body-outset", fig.width=12, fig.height=12}
+knitr::include_graphics("al_noor_men.png")
+```
 
 ## Muslim Acceptance Gap Post Shootings 2019/20 |  Muslims 18.3% < 4 (26.8%)  vs. Immigrant 10.6% < 4 (14%) {.centered}
 
@@ -1135,7 +1142,7 @@ lds_0 + li_0 +  plot_layout(guides = 'collect', nrow = 1, byrow = FALSE) +   plo
 ```
 
 
-## How did the 15 March 2019 Mosque attacks affect prejudice? | Pre/Post Data from The New Zealand Attitudes and Values Study
+## How did the 15 March 2019 Mosque attacks affect prejudice? | Here, we use Pre/Post Data from The New Zealand Attitudes and Values Study
 
   - Planned 20-year longitudinal study, started by Prof. Chris Sibley (Auckland), currently in its 12$^{th}$ year.
     
@@ -1531,8 +1538,9 @@ p1a
 ```
 
 ## Results
-```{r}
-parameters::model_parameters(m1)
+```{r cache = TRUE}
+parameters::model_parameters(m1)%>%
+  print_html()
 ```
 
 
@@ -1616,9 +1624,77 @@ p11a
 
 
 
+
+
+## Summary
+<div class="columns-2">
+```{r fig.fullwidth = TRUE, layout="l-body-outset", cache=TRUE}
+p1pp
+```
+
+- Following the Christchurch Mosque attacks, warmth towards Muslim grew substantially beyond its current rate of increase.
+- Despite this growth, warmth to Muslims still lags behind all other groups (except overweight people.)
+- There was shallower post-attack boost in warmth for non-mormative minorities, such as immigrants.
+- The attacks did not affect warmth towards normative minorities.
+- It is unclear whether the boost to warm towards Muslims and non-normative minorities will regress to the pre-attack growth-rate. 
+</div>
+
+
+## Importance of findings
+
+  -   Although the purpose of the Mosque attacks was to incite division, the attacks caused a strong boost in acceptance.
+  -  Within the next century, Muslims will become the global religious majority. Non-Muslims should better understand Muslim diversity.
+  -  New Zealanders value democratic freedom and fairness. It should be OK for people to believe or disbelieve after their conscience 
+
+
+
+
+## Thanks 
+
+-   Prof Chris G. Sibley & the NZAVS team
+-   NZAVS participants
+
+
+#  {.centered}
+
+```{r layout="l-body-outset", fig.width=12, fig.height=12}
+knitr::include_graphics("team.png")
+```
+
+
+#   {.centered}
+
+
+```{r}
+knitr::include_graphics("trt.png")
+#Templeton Religion Trust Grant 0196
+```
+
+## Slides here
+
+https://go-bayes.github.io/reports/posts/mus/
+
+
+# Extra slides
+
+
 ## {.centered}
 
-```{r  modelspolitics,  cache = TRUE}
+```{r layout="l-body-outset", fig.width=12, fig.height=12}
+knitr::include_graphics("grow1.png")
+```
+
+
+## {.centered}
+
+```{r layout="l-body-outset", fig.width=12, fig.height=12}
+knitr::include_graphics("grow2.png")
+```
+
+## Political conservatives also grew more accepting of Muslims {.centered}
+
+
+```{r  modelspolitics,  cache = TRUE, include = FALSE}
 
 m6 <- lmer(Warm.Muslims ~  cons_s * Attack +  EthnicCats + 
              a_s +
@@ -1805,79 +1881,6 @@ p10 <-
 p10
 ```
 
-
-
-## Summary
-<div class="columns-2">
-```{r fig.fullwidth = TRUE, layout="l-body-outset", cache=TRUE}
-p1pp
-```
-
-
-- Following the Christchurch Mosque attacks, warmth towards Muslim grew.
-- Despite this growth, warmth to Muslims lags behind all other groups (except overweight people.)
-- Following the mosque attacks non-Pacific/Māori minority groups with Muslims also received a boost in warmth.
-- The Muslim acceptance gap remains large. 
-</div>
-
-
-## Importance of findings
-
-  -   Although the purpose of the Mosque attacks was to incite division, the attacks caused a strong boost in acceptance.
-  -   The reasons for the boost in Muslim acceptance are unclear.
-<aside>
-Speculating, the government's response, media's response [@shaver2017news], and non-Muslim church responses [@Shaver2016-fs] likely played a role in boosting Muslim acceptance.
-</aside>
-  -   Whether growth in acceptance will be sustained remains unclear
-  -   Whether acceptance reverts to pre-shooting levels remains unclear.
-
-
-
-
-## Thanks 
-
--   Prof Chris G. Sibley & the NZAVS team
--   NZAVS participants
-
-
-#  {.centered}
-
-```{r layout="l-body-outset", fig.width=12, fig.height=12}
-knitr::include_graphics("team.png")
-```
-
-
-#   {.centered}
-
-
-```{r}
-knitr::include_graphics("trt.png")
-#Templeton Religion Trust Grant 0196
-```
-
-## Slides here
-
-https://go-bayes.github.io/reports/posts/mus/
-
-
-# Extra slides
-
-
-## {.centered}
-
-```{r layout="l-body-outset", fig.width=12, fig.height=12}
-knitr::include_graphics("grow1.png")
-```
-
-
-## {.centered}
-
-```{r layout="l-body-outset", fig.width=12, fig.height=12}
-knitr::include_graphics("grow2.png")
-```
-
-
-## Political conservatives also grew more accepting of Muslims {.centered}
 
 ```{r  graphsmodelsPol, fig.fullwidth = TRUE,  layout="l-body-outset", cache = TRUE}
 lds4 <-  p71 + p10 + p8 + p9 +  plot_annotation(tag_levels = 'a') +   plot_layout(ncol = 2,  byrow = FALSE)  +  plot_layout(guides = 'collect')

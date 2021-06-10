@@ -825,6 +825,23 @@ lds4 <-
 # parameters::model_parameters(m11)
 ```
 
+
+```{r echo = FALSE}
+if (!require(xaringanExtra)) {
+  devtools::install_github("gadenbuie/xaringanExtra")
+}
+```
+
+
+## Talk
+
+Click [here](slides.html) to go to the lecture slides.
+
+```{r embed-xaringan, layout="l-body-outset"}
+xaringanExtra::embed_xaringan(url = "slides.html", ratio = "16:9")
+```
+
+
 ## Summary
 
 ```{r fig.fullwidth = TRUE, layout="l-body-outset", cache=TRUE, fig.cap="\\label{fig:muslimboost} Change in acceptance of Muslims following the Christchurch Mosque attacks March 15, 2019.  Green horizonal line indicates peak acceptance of Muslims, which occurred following the attacks (N = 11272, Years = 2017-2020, Source = New Zealand Attitudes and Values Study)"}

@@ -5,4 +5,4 @@ df<-readRDS("/Users/jbul176/The\ Virtues\ Project\ Dropbox/Joseph\ Bulbulia/00Bu
 
 glimpse(df)
 
-saveRDS(df, "data/df")
+saveRDS(df, here::here("data","df"))
