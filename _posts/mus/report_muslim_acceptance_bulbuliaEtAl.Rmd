@@ -1406,7 +1406,7 @@ lds4
 ## Appendix 5: Regression Discontinuity Analysis 
 
 
-```{r}
+```{r cache = TRUE}
 
 df_rdd <- df %>%
     dplyr::filter(Wave == 2018) %>%
@@ -1586,7 +1586,7 @@ df_rdd4 <- df %>%
 ```
 
 
-```{r}
+```{r cache = TRUE}
 ## RDD FULL SAMPLE
 
 
@@ -1872,7 +1872,7 @@ table1::table1(
 
 
 
-```{r}
+```{r cache =TRUE}
 
 npN <-
   ggplot(data = df_rdd,
