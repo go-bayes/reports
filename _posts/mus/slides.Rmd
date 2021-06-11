@@ -795,7 +795,7 @@ wm_e <-
   ggplot(ds) +  geom_bar(mapping = aes(x = Warm.NZEuro)) + ylab("Counts in Bins") + xlab("Warmth to NZ Europeans")
 
 ned17 <-
-  wm_mus + wm_immigrants + wm_e + plot_annotation(title = "Histogram of warmth responses to (a) Muslims (b)Immigrants and (c) NZ Europeans", subtitle = "source = NZAVS wave 9 (2017-2018), N = 16473")
+  wm_mus + wm_immigrants + wm_e + plot_annotation(title = "Histogram of warmth responses to different groups", subtitle = "`Please rate your feelings of WARMTH toward the following groups using the `feeling thermometer scale` for \neach group`source = NZAVS wave 9 (2017-2018), N = 16473") 
 ned17
 ```
 
@@ -828,112 +828,7 @@ ned17
 
 
 
-## Warmth to Muslims is slowly increasing| but still a gap {.centered}
-
-```{r warmthtime2, layout="l-body-outset", cache = TRUE}
-ld <- ggplot(data = dt,
-             aes(x = yrs,
-                 y = Warm.Muslims))
-
-lds_0 <-ld + geom_line(alpha = .005) +
-  stat_summary(
-    geom = "point",
-    fun = mean,
-    size = .1,
-    alpha = .2
-  ) +
-  geom_smooth(method ="gam" ) +  theme_minimal() + labs("")   + theme(
-    legend.position = "right",
-    legend.text = element_text(size = 6),
-    legend.title = element_text(color = "Black", size = 8)
-  ) + scale_colour_viridis_d(option = "plasma") +   geom_vline(xintercept= 9.71, linetype="dashed", color = "red") +
-  geom_hline(yintercept= 4.395, color = "green") +
-  ylab("Warmth (1-7)") +
-  xlab("Years 2011-2020") +
-  labs(title="Warmth to Muslims") # +
-#  xlab("Years 2011-2020, N = 22,254")
-
-li <- ggplot(data = di,
-             aes(x = yrs,
-                 y = Warm.Immigrants))
-
-li_0 <-li + geom_line(alpha = .005) +
-  stat_summary(
-    geom = "point",
-    fun = mean,
-    size = .1,
-    alpha = .2
-  ) +
-  geom_smooth(method = "gam") +
-  theme_minimal() + labs("")   + theme(
-    legend.position = "right",
-    legend.text = element_text(size = 6),
-    legend.title = element_text(color = "Black", size = 8)
-  ) + scale_colour_viridis_d(option = "plasma") +
-  geom_vline(xintercept= 9.71, linetype="dashed", color = "red") +
-  geom_hline(yintercept= 4.4, color = "green") +
-  ylab("Warmth (1-7)") +
-  xlab("Years 2011-2020") +
-  labs(title="Warmth to Immigrants") #+
- # xlab("Years 2011-2020, N = 22,254")
-
-## indians
-lm <- ggplot(data = dindians,
-             aes(x = yrs,
-                 y = Warm.Indians))
-#
-# lm_m <-lm + geom_line(alpha = .005) +
-#   stat_summary(
-#     geom = "point",
-#     fun = mean,
-#     size = .1,
-#     alpha = .2
-#   ) +
-#   geom_smooth( method = "gam" ) +
-#   theme_minimal() + labs("")   + theme(
-#     legend.position = "right",
-#     legend.text = element_text(size = 6),
-#     legend.title = element_text(color = "Black", size = 8)
-#   ) + scale_colour_viridis_d(option = "plasma") +
-#   geom_vline(xintercept= 9.71, linetype="dashed", color = "red") +
-#   geom_hline(yintercept= 4.4, color = "green") +
-#   ylab("Warmth (1-7)") +
-#   labs(title="Warmth to Indians")
-#   #+
-#  # xlab("Years 2011-2020, N = 22,254")
-#
-# # Chinese
-# lnz <- ggplot(data = dchinese,
-#               aes(x = yrs,
-#                   y = Warm.Chinese))
-#
-# lnz_0 <-lnz + geom_line(alpha = .005) +
-#   stat_summary(
-#     geom = "point",
-#     fun = mean,
-#     size = .1,
-#     alpha = .2
-#   ) +
-#   geom_smooth( method = "gam" ) +
-#   theme_classic() + labs("")   + theme(
-#     legend.position = "right",
-#     legend.text = element_text(size = 6),
-#     legend.title = element_text(color = "Black", size = 8)
-#   ) + scale_colour_viridis_d(option = "plasma") +
-#   geom_vline(xintercept= 9.71, linetype="dashed", color = "red") +
-#   geom_hline(yintercept= 4.4, color = "green") +
-#   ylab("Warmth (1-7)") +
-#   labs(title="Warmth to Chinese") +
-#   xlab("Years 2011-2020, N = 22,254")
-
-lds_0 + li_0 +  plot_layout(guides = 'collect', nrow = 1, byrow = FALSE) +   plot_annotation(title = "Timeline of attitudes to Muslims (a) and Migrants (b) in New Zealand; years 2011-2020: Source: NZAVS, N = 22,254", subtitle = "Green line = maximum level of warmth for Muslims, red line = Mosque attacks; Alpha for points on graph were set to .02 to avoid overplotting; method for estimation", tag_levels = 'a')
-
-```
-
-
 ## Anti-Muslim prejudice is surprising
-
-- New Zealand ranks among the world's most tolerant societies [@Oecd2011-qv]. However, Muslims are New Zealand's least accepted minority group [@Shaver2016-fs; @shaver2017news; @hawi2019terrorism; @yogeeswaran2019exploring; @greaves2020comparative; @sibley2020prejudice; @highland2019attitudes; @hawi2019terrorism].
 
 - New Zealand's cultural diversity exceeds that of Australia, the United Kingdom, France, Germany, the Netherlands, and Scandinavia. Muslims are only a small part of this diversity [@shaver2017news]. 
 
@@ -1004,7 +899,6 @@ knitr::include_graphics("shoot4.png")
 ```
 
 
-
 ## {.centered}
 
 ```{r layout="l-body-outset", fig.width=12, fig.height=12}
@@ -1032,16 +926,15 @@ wm_immigrants2 <- ggplot(ds2) +  geom_bar(mapping = aes(x = Warm.Immigrants),fil
 
 wm_e2 <- ggplot(ds2) +  geom_bar(mapping = aes(x = Warm.NZEuro),fill= "dodgerblue") + ylab("Counts in Bins") + xlab("Warmth to NZ Europeans")
 
-ned19<- (wm_mus2 + wm_immigrants2 + wm_e2) + plot_annotation(title="Histogram of warmth responses to (a) Muslims (b) Immigrants", subtitle = "source = NZAVS wave 11 (2019-2020), N = 35339")
+ned19<- (wm_mus2 + wm_immigrants2 + wm_e2) 
 
-
-ned17 / ned19 +  plot_annotation(tag_levels = 'a')
+ned19
+ned17 / ned19 + plot_annotation(title="Histogram of warmth responses to different groups pre/post shootings", subtitle ="`Please rate your feelings of WARMTH toward the following groups using the `feeling thermometer scale` for each group`\n source = NZAVS wave 9 & wave 11, n's = 16473/35339")
 ```
 
 
 
 ```{r warmthtime, layout="l-body-outset", cache = TRUE, include = FALSE}
-
 ld <- ggplot(data = dt,
              aes(x = yrs,
                  y = Warm.Muslims))
@@ -1157,13 +1050,7 @@ lds_0 + li_0 +  plot_layout(guides = 'collect', nrow = 1, byrow = FALSE) +   plo
   - Current sample contains ~ 38,000 unique people, > 1% of the NZ adult population.
   
   - See:[NZAVS](https://www.psych.auckland.ac.nz/en/about/new-zealand-attitudes-and-values-study.html)
-  
 
-## {.centered}
-
-```{r layout="l-body-outset"}
-knitr::include_graphics("questions.png")
-```
 
 ## {.centered}
 
@@ -1288,6 +1175,21 @@ ggplot2::ggplot(datrep, aes(day, n)) +
 #   ) +
 #   xlab("NZAVS daily counts") + ylab("Count of Responses") + ggtitle("NZAVS Daily Counts")  + theme_blank()  +  scale_fill_viridis_d()
 ```
+
+
+## {.centered}
+
+```{r layout="l-body-outset"}
+knitr::include_graphics("questions.png")
+```
+
+## {.centered}
+
+```{r layout="l-body-outset", fig.width=12, fig.height=12}
+knitr::include_graphics("scales.png")
+```
+
+
 
 ##  {.centered}
 
@@ -1472,6 +1374,109 @@ km2 %>%
 
 
 
+##   Model? | Warmth to minority groups is slowly increasing {.centered}
+
+```{r warmthtime2, layout="l-body-outset", cache = TRUE}
+ld <- ggplot(data = dt,
+             aes(x = yrs,
+                 y = Warm.Muslims))
+
+lds_0 <-ld + geom_line(alpha = .005) +
+  stat_summary(
+    geom = "point",
+    fun = mean,
+    size = .1,
+    alpha = .2
+  ) +
+  geom_smooth(method ="gam" ) +  theme_minimal() + labs("")   + theme(
+    legend.position = "right",
+    legend.text = element_text(size = 6),
+    legend.title = element_text(color = "Black", size = 8)
+  ) + scale_colour_viridis_d(option = "plasma") +   geom_vline(xintercept= 9.71, linetype="dashed", color = "red") +
+  geom_hline(yintercept= 4.395, color = "green") +
+  ylab("Warmth (1-7)") +
+  xlab("Years 2011-2020") +
+  labs(title="Warmth to Muslims") # +
+#  xlab("Years 2011-2020, N = 22,254")
+
+li <- ggplot(data = di,
+             aes(x = yrs,
+                 y = Warm.Immigrants))
+
+li_0 <-li + geom_line(alpha = .005) +
+  stat_summary(
+    geom = "point",
+    fun = mean,
+    size = .1,
+    alpha = .2
+  ) +
+  geom_smooth(method = "gam") +
+  theme_minimal() + labs("")   + theme(
+    legend.position = "right",
+    legend.text = element_text(size = 6),
+    legend.title = element_text(color = "Black", size = 8)
+  ) + scale_colour_viridis_d(option = "plasma") +
+  geom_vline(xintercept= 9.71, linetype="dashed", color = "red") +
+  geom_hline(yintercept= 4.4, color = "green") +
+  ylab("Warmth (1-7)") +
+  xlab("Years 2011-2020") +
+  labs(title="Warmth to Immigrants") #+
+ # xlab("Years 2011-2020, N = 22,254")
+
+## indians
+lm <- ggplot(data = dindians,
+             aes(x = yrs,
+                 y = Warm.Indians))
+#
+# lm_m <-lm + geom_line(alpha = .005) +
+#   stat_summary(
+#     geom = "point",
+#     fun = mean,
+#     size = .1,
+#     alpha = .2
+#   ) +
+#   geom_smooth( method = "gam" ) +
+#   theme_minimal() + labs("")   + theme(
+#     legend.position = "right",
+#     legend.text = element_text(size = 6),
+#     legend.title = element_text(color = "Black", size = 8)
+#   ) + scale_colour_viridis_d(option = "plasma") +
+#   geom_vline(xintercept= 9.71, linetype="dashed", color = "red") +
+#   geom_hline(yintercept= 4.4, color = "green") +
+#   ylab("Warmth (1-7)") +
+#   labs(title="Warmth to Indians")
+#   #+
+#  # xlab("Years 2011-2020, N = 22,254")
+#
+# # Chinese
+# lnz <- ggplot(data = dchinese,
+#               aes(x = yrs,
+#                   y = Warm.Chinese))
+#
+# lnz_0 <-lnz + geom_line(alpha = .005) +
+#   stat_summary(
+#     geom = "point",
+#     fun = mean,
+#     size = .1,
+#     alpha = .2
+#   ) +
+#   geom_smooth( method = "gam" ) +
+#   theme_classic() + labs("")   + theme(
+#     legend.position = "right",
+#     legend.text = element_text(size = 6),
+#     legend.title = element_text(color = "Black", size = 8)
+#   ) + scale_colour_viridis_d(option = "plasma") +
+#   geom_vline(xintercept= 9.71, linetype="dashed", color = "red") +
+#   geom_hline(yintercept= 4.4, color = "green") +
+#   ylab("Warmth (1-7)") +
+#   labs(title="Warmth to Chinese") +
+#   xlab("Years 2011-2020, N = 22,254")
+
+lds_0 + li_0 +  plot_layout(guides = 'collect', nrow = 1, byrow = FALSE) +   plot_annotation(title = "GAM of attitudes/years to (a) Muslims and (b) Migrants in New Zealand;  2011-2020: N = 22,254", subtitle = "Green line = maximum level of warmth for Muslims, red line = Mosque attacks", tag_levels = 'a')
+
+```
+
+
 
 ## {.centered}
 ```{r }
@@ -1500,7 +1505,7 @@ dg2 <- dagify(
     "cs" = "political conservativism",
     "edu" = "education",
     "ur" = "urban",
-    "yr" = "time",
+    "yr" = "years",
     "rel" = "religion",
     "news" = "media",
     "ml" = "male",
@@ -1531,13 +1536,13 @@ ggdag::ggdag_adjustment_set(dg2, use_labels = "label", text = FALSE) + theme_dag
 
 
 
-## Muslim Change  {.centered}
+## Results: Muslim-warmth boost  {.centered}
 
 ```{r cache = TRUE}
 p1a
 ```
 
-## Results
+## Results: table
 ```{r cache = TRUE}
 parameters::model_parameters(m1)%>%
   print_html()
