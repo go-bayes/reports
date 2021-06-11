@@ -1,5 +1,6 @@
 ---
-title: "Transformation and transferral of acceptance following the 2019 Christchurch New Zealand Mosque Attacks"
+title: Transformation and transferral of acceptance following the 2019 Christchurch
+  New Zealand Mosque Attacks
 author: "Joseph Bulbulia, Psychology, Victoria University"
 date: "2021-JUNE-11"
 output:
@@ -12,6 +13,8 @@ output:
     font_adjustment: 0
     widescreen: yes
     selfcontained: yes
+  slidy_presentation:
+    incremental: no
   beamer_presentation:
     incremental: yes
 bibliography: bib.bib
