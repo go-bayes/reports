@@ -46,11 +46,19 @@ bmlm::mlm_path_plot(xlab = "Condition\n(X)",
 ```
 
 
-## Talk
+## Talks
 
-Click [here](slides.html) to go to the lecture slides.
+Click [here](student_slides.html) to go to student lecture slides (17 June 2021)
 
-```{r embed-xaringan, layout="l-body-outset"}
+```{r embed-xaringan1, layout="l-body-outset"}
+xaringanExtra::embed_xaringan(url = "student_slides.html", ratio = "16:9")
+```
+
+
+
+Click [here](slides.html) to go to the longer lecture slides (23 April 2021)
+
+```{r embed-xaringan2, layout="l-body-outset"}
 xaringanExtra::embed_xaringan(url = "slides.html", ratio = "16:9")
 ```
 
