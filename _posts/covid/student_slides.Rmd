@@ -623,6 +623,7 @@ Hours.Work <- lmer(Hours.Work ~ Covid_Timeline + (1|Id),  cv)
 plot(ggeffects::ggpredict(Hours.Work, terms = "Covid_Timeline"))
 ```
 
+
 ## Hours housework - more
 
 ```{r cache=TRUE}
@@ -647,6 +648,14 @@ plot(ggeffects::ggpredict(Hours.Commute, terms = "Covid_Timeline"))
 Fatigue <- lmer(Fatigue ~  Covid_Timeline + (1 | Id), data = cv)
 plot(ggeffects::ggpredict(Fatigue,
                           terms =  "Covid_Timeline"))
+```
+
+
+## Relationship of Work to Fatigue
+
+```{r cache=TRUE}
+Hours.f <- lmer(Fatigue ~  Hours.Work   + (1|Id),  cv)
+plot(ggeffects::ggpredict(Hours.f, terms = "Hours.Work"), add = TRUE, dot.alpha =.1, jitter = 1)
 ```
 
 ## Meaning of life
