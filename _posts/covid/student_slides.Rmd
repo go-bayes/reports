@@ -1,0 +1,1559 @@
+---
+title: "Longitudinal Anatomy of Covid-19 Distress: For High School Students"
+author: "Joseph Bulbulia, Psychology, Victoria University"
+date: "2020-APRIL-23"
+output:
+  ioslides_presentation:
+    mainfont: roboto
+    incremental: no
+    transition: 0
+    smaller: no
+    widescreen: no
+    selfcontained: yes
+    css: extra.css
+  beamer_presentation:
+    incremental: yes
+bibliography: bibliography.bib
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r load_libraries, include=FALSE}
+# see: https://github.com/rjknell/Ioslides_css
+library("tidyverse")
+library("easystats")
+library("patchwork")
+library("kableExtra")
+library("ggpubr")
+#library("viridis")
+#library("wesanderson")
+# library("papaja")
+library("here")
+library("citr")
+library("here")
+library("brms")
+library("rstan")
+library("rstanarm")
+# library("tidybayes")
+library("lubridate")
+library("ggdag")
+library("viridisLite")
+library("bmlm")
+library("bayesplot")
+library("broom")
+library("purrr")
+library("lme4")
+library("ggeffects")
+library("tidybayes")
+library("glmmTMB")
+#library("cmdstanr")  #multithreading bayesian models
+# rstan options
+rstan_options(auto_write=TRUE)
+options(mc.cores=parallel::detectCores ())
+theme_set(theme_classic())
+```
+
+```{r setup, include=FALSE}
+# See: https://rstudio-pubs-static.s3.amazonaws.com/27777_55697c3a476640caa0ad2099fe914ae5.html#/
+# setup
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE #,
+#  layout = "l-body-outset" #,
+ # fig.width= 12,
+ # fig.height= 10,
+#  collapse =TRUE,
+#  R.options = list(width = 60)
+)
+
+```
+
+```{r cache=TRUE, echo = FALSE}
+# import data
+df <- readRDS(here::here("data", "df"))
+```
+
+```{r cache = TRUE, echo = FALSE}
+ord_dates_class <- c(
+  "Baseline", 
+  "PreCOVID", 
+  "JanFeb", 
+  "EarlyMarch", 
+  "Lockdown",
+  "PostLockdown")
+
+# 3665 days after 30 June 2009 Saturday 13 July 2019
+# 3842 days after 30 June 2009 Monday 6 January 2020
+# 3895 days after 30 June 2009 Friday 28 February 2020
+# 3921 days after 30 June 2009 WED MAR 25th
+# 3954 days after 30 June 2009 Monday 27 April 2020
+# 3672 days after June 30 2009 Saturday 20 July 2019
+```
+
+
+```{r cache = TRUE, echo = FALSE}
+cv <- df %>%
+  dplyr::filter(YearMeasured == 1) %>%
+  dplyr::filter(Wave == 2018 | Wave == 2019) %>%
+  dplyr::group_by(Id) %>% 
+  filter(n() > 1) %>%
+  dplyr::filter(n() != 0) %>%
+  dplyr::ungroup(Id) %>%
+  dplyr::mutate(Covid_Timeline =
+                    as.factor(ifelse(
+                      TSCORE %in% 3896:3921, # feb 29 - march 25th
+                      "EarlyMarch",
+                      ifelse(
+                        TSCORE %in% 3922:3954,
+                        "Lockdown", #march 26- Mon 27 April 2020
+                        ifelse(
+                          TSCORE > 3954, # after april 27th 20202
+                          "PostLockdown",
+                          ifelse(
+                            TSCORE %in% 3842:3895, # jan 6 to feb 28
+                            "JanFeb",
+                          ifelse(
+                            TSCORE %in% 3665:3841 &
+                              Wave == 2019,
+                            "PreCOVID",
+                            "Baseline"  # 3672 TSCORE or  20 July 2019
+                          )
+                        )
+                      )
+                    ) 
+                 ) ))%>%
+  dplyr::mutate(PrePostCovid =
+                  ifelse(
+                    TSCORE > 3895, "PostLockdown",
+                    ifelse(
+                      TSCORE < 3895 &
+                        Wave == 2019,
+                      "PreCOVID",
+                      "Baseline"
+                    )
+                  ))%>% 
+  dplyr::group_by(PrePostCovid) %>% 
+  filter(n() > 1) %>%
+  ungroup() %>% # There is overlap between waves, we only want repeated measures 
+  dplyr::select(
+    TSCORE,
+    WSCORE,
+    Wave,
+    Partner,
+    Employed,
+    Sat.Government,
+    NZ.Business.Conditions,
+    NZ.Economic.Situation,
+    PrePostCovid,
+    Rel.Conflict,
+    Rel.Satisfaction,
+    Hours.SocialMedia,
+    Hours.Exercise,
+    HoursCharity,
+    Hours.Internet,
+    Hours.News,
+    Hours.Family,
+    Hours.Friends,
+    Hours.Housework,
+    Hours.Children,
+    Hours.Religious,
+    Hours.Work,
+    Hours.Commute,
+    Hours.TV,
+    Hours.CompGames,
+    Hours.Community,
+    Family.Time,
+    Community.Time,
+    Friends.Time,
+    Family.Money,
+    Friends.Money,
+    Community.Money,
+    years,
+    Id,
+    Parent,
+    SWB.SatPWI02, # your health
+    Hours.Work,
+    Hours.Exercise,
+    LIFEMEANING,
+    KESSLER6,
+    KESSLER6sum,
+    Age,
+    Male,
+    Relid,
+    Pol.Orient,
+    Urban,
+    GenCohort,
+    Edu,
+    YearMeasured,
+    Covid_Timeline,
+    HLTH.SleepHours,
+    HLTH.Fatigue,
+    LIFESAT,
+    PWI,
+    EthnicCats,
+    NZdep,
+    Partner,
+    Pol.Orient,
+    Urban,
+    Euro,
+    Religious,
+    NZdep,
+    WSCORE,
+    Religion.Church,
+    Emp.JobSecure,
+    Emp.JobSat,
+    Emp.JobValued,
+    Alcohol.Intensity,
+    Alcohol.Frequency,
+    Your.Future.Security
+  ) %>%
+  dplyr::group_by(Id) %>% filter(n() > 1) %>%
+  dplyr::filter(n() != 0) %>%
+  dplyr::ungroup(Id) %>%
+  dplyr::mutate(
+    Urban = (Urban),
+    Euro = (Euro),
+    Religious = as.factor(Religious),
+    Your_Health = (SWB.SatPWI02),
+    Your_Future_Security = Your.Future.Security,
+    Covid_Timeline = as.factor(Covid_Timeline)
+  ) %>%
+  dplyr::mutate(
+    WSCORE = as.factor(WSCORE),
+    #EduC = scale(as.numeric(Edu), scale = F, center = TRUE),
+    Sat.Government = scale(Sat.Government),
+   # AgeDecadeC = scale(Age, scale = F, center = T) / 10,
+    Hours.Work10 = as.integer(Hours.Work) / 10,
+    Hours.Sleep = as.integer(HLTH.SleepHours),
+    Hours.Exercise = as.integer(Hours.Exercise),
+    Fatigue = as.integer(HLTH.Fatigue),
+    K6sum = as.integer(KESSLER6 * 6),
+    LIFEMEANING_S = scale(LIFEMEANING),
+    NZdepS = scale(NZdep),
+    PolOrientS = scale(Pol.Orient, scale = T, center = T),
+    Conservative = Pol.Orient,
+    logSM = log(Hours.SocialMedia + 1),
+    logINT = log(Hours.Internet + 1),
+    logEX = log(Hours.Exercise + 1),
+    logWK= log(Hours.Work + 1),
+    logCT = log(Hours.Commute + 1),
+    KESSLER6sum = as.integer(KESSLER6sum),
+    Alcohol.Intensity_S = scale(Alcohol.Intensity),
+    Alcohol.Frequency_S = scale(Alcohol.Frequency),
+    Hours.Work = as.integer(Hours.Work),
+    Hours.Exercise = as.integer(Hours.Exercise),
+    yearS = years - min(years)
+  ) %>%
+  dplyr::mutate(Covid_Timeline = forcats::fct_relevel(Covid_Timeline, ord_dates_class))
+```
+
+```{r cache = TRUE, echo = FALSE}
+# Subset Employed
+cvE <- cv%>%
+  dplyr::filter(Employed == 1)
+
+# Subset Partner
+cvP <- cv%>%
+  dplyr::filter(Partner == 1)
+
+# Subset Religious
+cvR <- cv%>%
+  dplyr::filter(Relid != 0)
+```
+
+```{r cache = TRUE, echo = FALSE}
+cv <- cbind(cv,
+            demean(
+              cv,
+              select = c(
+                "KESSLER6sum",
+                "logEX",
+                "logSM",
+                "logINT",
+                "logWK",
+                "logCT",
+                "Hours.Sleep",
+                "Hours.Work10",
+                "Hours.Exercise",
+                "Sat.Government",
+                "Hours.Children",
+                "Hours.Internet",
+                "Hours.Friends",
+                "Hours.Family",
+                "Hours.Religious",
+                "Hours.Community",
+                "Rel.Satisfaction",
+                "Rel.Conflict",
+                "Family.Time",
+                "Family.Money",
+                "Friends.Time",
+                "Friends.Money",
+                "Community.Time",
+                "Community.Money",
+                "Fatigue",
+                "Alcohol.Intensity",
+                "Alcohol.Frequency",
+                "Emp.JobSecure",
+                "Friends.Time",
+                "Family.Time",
+                "Community.Time",
+                "Hours.SocialMedia",
+                "Hours.Internet",
+                "Your_Future_Security",
+                "LIFEMEANING"
+              ),
+              group = "Id"
+            )) 
+
+
+
+# Demean employed
+# cf <- dplyr::filter(df, Wave == 2019)%>% filter(YearMeasured ==1)
+# length(unique(cf$Id))
+
+# test that we only have repeated measures
+# test <-cv %>%
+#   group_by(Id)%>%
+#   count()%>%
+#   ungroup() 
+```
+
+```{r cache = TRUE}
+# covid timeline
+# 3665 days after 30 June 2009 Saturday 13 July 2019
+# 3842 days after 30 June 2009 Monday 6 January 2020
+# 3895 days after 30 June 2009 Friday 28 February 2020
+# 3921 days after 30 June 2009 WED MAR 25th
+library(lubridate)
+library(tidyverse)
+
+
+carep <- cv %>%
+  dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30) + TSCORE) %>%
+  count(day = floor_date(timeline, "day")) %>%
+dplyr::mutate(condition = ifelse(
+    day < "2019-06-20",
+    "Baseline",
+    ifelse(
+      day >= "2019-06-20" &
+        day < "2020-01-06",
+      "PreCOVID",
+      ifelse(
+        day >= "2020-01-06" & day < "2020-02-29",
+        "Jan_Feb",
+        ifelse(
+          day >= "2020-02-29" & day < "2020-03-25",
+          "EarlyMarch",
+          ifelse(
+            day >= "2020-03-25" &
+              day < "2020-04-28",
+            "Lockdown",
+            "Postlockdown"
+            )))))) %>%
+  dplyr::mutate(condition = forcats::fct_relevel(condition, ord_dates_class)) %>%
+  arrange(day)
+
+# get COVID date
+dates_vline0<- as.Date("2018-06-03")
+dates_vline1<- as.Date("2019-06-20")
+dates_vline2<- as.Date("2020-01-06")
+dates_vline3<- as.Date("2020-02-28")
+# get data of change of baseline
+dates_vline4<- as.Date("2020-03-25")
+dates_vline5 <- as.Date("2020-04-27")
+dates_vline6 <- as.Date("2020-10-15")
+# for line in a graph
+
+# for line in a graph
+#
+dates_vline10 <- which(carep$day %in% dates_vline0)
+dates_vline1b <- which(carep$day %in% dates_vline1)
+dates_vline2b <- which(carep$day %in% dates_vline2)
+dates_vline3b <- which(carep$day %in% dates_vline3)
+dates_vline4b <- which(carep$day %in% dates_vline4)
+dates_vline5b <- which(carep$day %in% dates_vline5)
+dates_vline6b <- which(carep$day %in% dates_vline6)
+
+
+tline <- ggplot(carep, aes(day, n)) +
+  geom_col(aes(fill = condition)) + scale_x_date(date_labels = "%b/%Y", limits = c(as.Date("2018-06-10"), as.Date("2020-10-15")))  + scale_y_continuous(limits = c(0, 1000))  +
+ geom_vline(xintercept = as.numeric(carep$day[dates_vline10]),
+             col = "black",
+             linetype = "dashed") +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline1b]),
+             col = "red",
+             linetype = "dashed") +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline2b]),
+             col = "red") +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline3b]),
+             col = "red",
+             linetype = "dashed") +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline4b]),
+             col = "red",
+             linetype = "dashed") +
+    geom_vline(xintercept = as.numeric(carep$day[dates_vline5b]),
+             col = "red",
+             linetype = "dashed") + 
+  xlab("NZAVS Waves 10 and 11 daily counts: repeated measures") + ylab("Count of Responses")  + theme_classic() +   scale_fill_viridis_d() + theme(
+    legend.position = "top",
+    legend.text = element_text(size = 6),
+    legend.title = element_text(color = "Black", size = 8)
+  ) +
+  annotate(
+    "rect",
+    xmin = as.Date("2018-01-03"),
+    xmax = dates_vline1,
+    ymin = 0,
+    ymax = 1000,
+    alpha = .1,
+    fill = "darkblue"
+  )  +
+  annotate(
+    "rect",
+    xmin = dates_vline1,
+    xmax = dates_vline6,
+    ymin = 0,
+    ymax = 1000,
+    alpha = .001
+  ) +
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-07-10"),
+    y = 750,
+    xend = as.Date("2019-10-15"),
+    yend = 800,
+    curvature = -.2,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-07-10"),
+    y = 750,
+    xend = as.Date("2020-01-30"),
+    yend = 850,
+    curvature = -.2,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-07-10"),
+    y = 750,
+    xend = as.Date("2020-03-10"),
+    yend = 875,
+    curvature = -.2,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-07-10"),
+    y = 750,
+    xend = as.Date("2020-04-10"),
+    yend = 900,
+    curvature = -.2,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-07-10"),
+    y = 750,
+    xend = as.Date("2020-06-10"),
+    yend = 925,
+    curvature = -.2,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate("text",
+           x = as.Date("2018-07-01"),
+           y = 755,
+           label = "0") +  annotate("text",
+           x = as.Date("2019-10-25"),
+           y = 800,
+           label = "1") + 
+   annotate("text",
+           x = as.Date("2020-02-10"),
+           y = 850,
+           label = "2") + 
+  annotate("text",
+           x = as.Date("2020-03-15"),
+           y = 875,
+           label = "3") +
+  annotate("text",
+           x = as.Date("2020-04-20"),
+           y = 900,
+           label = "4") +
+  annotate("text",
+           x = as.Date("2020-06-10"),
+           y = 925,
+           label = "5")
+```
+
+## Interest
+
+-   How did Covid-19 affected people?
+-   What do these effects tell us about human psychology?
+
+## The New Zealand Attitudes and Values Study
+
+-   Planned 20-year longitudinal study, currently in its 12$^{th}$ year.
+-   Sample frame drawn randomly from NZ Electoral Roll.
+-   Postal questionnaire (coverage; retention \~ 80%)
+-   Focus on personality, social attitudes, values, religion,
+    meaning-making, perfectionism, virtues, habits, employment,
+    experiences of discrimination, physical and psychological health,
+    and environmental attitudes ...
+-   Current sample contains `36524` unique people, which is $>$ 1% of
+    the NZ adult population.
+-   Here, *N* = `r  length(unique(cv$Id))` longitudinal participants who responded
+    to **both** the 2018/19 and 2019/20 NZAVS waves.
+
+## 
+
+```{r cache = TRUE}
+# GRAPH
+tline + plot_annotation(title = "NZAVS COVID timeline", 
+subtitle = "0(34778) 1.PreCVD(23460) 2.JanFeb(2678) 3.March(2537) 4.LckDwn(1647) 5.PostLD(4456)")
+```
+
+# What we did with our time?
+
+## Slept - more
+
+```{r cache=TRUE}
+Hours.Sleep <- lmer(Hours.Sleep ~ Covid_Timeline + (1|Id),  cv)
+plot(ggeffects::ggpredict(Hours.Sleep, terms = "Covid_Timeline")) 
+```
+
+##  Exercised - more
+
+```{r}
+Hours.Exercise <- glmer(Hours.Exercise ~ Covid_Timeline + (1|Id), cv, family = "poisson")
+plot(ggeffects::ggpredict(Hours.Exercise,  terms = "Covid_Timeline"))
+```
+
+## Hours with friends - loss
+
+```{r cache=TRUE}
+Hours.Friends <- lmer(Hours.Friends ~ Covid_Timeline + (1|Id),  cv)
+plot(ggeffects::ggpredict(Hours.Friends, terms = "Covid_Timeline"))
+# check_zeroinflation(Hours.Friends, tolerance = 0.05) ## NEEDS ZERO INFLATION
+```
+
+## Hours with family - more
+
+```{r cache=TRUE}
+Hours.Family <- lmer(Hours.Family ~ Covid_Timeline + (1|Id),  cv)
+plot(ggeffects::ggpredict(Hours.Family, terms = "Covid_Timeline"))
+#check_zeroinflation(Hours.Family, tolerance = 0.05)
+```
+
+## Hours with community - loss
+
+```{r cache=TRUE}
+Hours.Community <- lmer(Hours.Community ~ Covid_Timeline + (1|Id),  cv)
+plot(ggeffects::ggpredict(Hours.Community,terms = "Covid_Timeline"), add.data=TRUE, dot.alpha =.05) +   
+  scale_y_continuous(trans = 'log2') + labs(subtitle = "log2 y axis")
+```
+
+## Religious community - loss
+
+```{r cache=TRUE}
+Hours.Religious <- lmer(Hours.Religious ~ Covid_Timeline + (1|Id),  cvR)
+plot(ggeffects::ggpredict(Hours.Religious,terms = "Covid_Timeline"))
+#check_zeroinflation(Hours.Religious, tolerance = 0.05)
+```
+
+## Hours charity - loss
+
+```{r cache=TRUE}
+HoursCharity <- glmer(HoursCharity ~ Covid_Timeline + (1|Id), family = "poisson", cv)
+plot(ggeffects::ggpredict(HoursCharity, terms = "Covid_Timeline")) 
+```
+
+
+
+## Hours news - big gain
+
+```{r cache=TRUE}
+Hours.News <- glmer(Hours.News ~ Covid_Timeline + (1 | Id),  cv)
+plot(ggeffects::ggpredict(Hours.News, terms = "Covid_Timeline"))
+```
+
+## Hours TV - yes/Ozark?
+
+```{r cache=TRUE}
+Hours.TV <- glmer(Hours.TV ~ Covid_Timeline + (1|Id),  cv)
+plot(ggeffects::ggpredict(Hours.TV , terms = "Covid_Timeline"))
+```
+
+## Computer games - yes
+
+```{r cache=TRUE}
+Hours.CompGames <- lmer(Hours.CompGames ~ Covid_Timeline + (1|Id), cv)
+plot(ggeffects::ggpredict(Hours.CompGames , terms = "Covid_Timeline"))
+```
+
+## Hours internet - big gain
+
+```{r cache=TRUE}
+Hours.Internet <- glmer(Hours.Internet ~ Covid_Timeline + (1|Id),  cv)
+plot(ggeffects::ggpredict(Hours.Internet , terms = "Covid_Timeline"))
+```
+
+## Hours social media - big gain
+
+```{r cache=TRUE}
+Hours.SocialMedia <- glmer(Hours.SocialMedia ~ Covid_Timeline + (1|Id), cv)
+plot(ggeffects::ggpredict(Hours.SocialMedia , terms = "Covid_Timeline"))
+```
+
+## Hours work - fewer
+
+```{r cache=TRUE}
+Hours.Work <- lmer(Hours.Work ~ Covid_Timeline + (1|Id),  cv)
+plot(ggeffects::ggpredict(Hours.Work, terms = "Covid_Timeline"))
+```
+
+## Hours housework - more
+
+```{r cache=TRUE}
+Hours.Housework <- lmer(Hours.Housework ~ Covid_Timeline + (1|Id), cv)
+plot(ggeffects::ggpredict(Hours.Housework, terms = "Covid_Timeline"))
+```
+
+## Hours commuting - much less
+
+```{r cache=TRUE}
+Hours.Commute <- lmer(Hours.Commute ~ Covid_Timeline + (1|Id), cv)
+
+plot(ggeffects::ggpredict(Hours.Commute, terms = "Covid_Timeline"))
+```
+
+# Core psycho-physical effects
+
+## Fatigue - huge drop
+
+```{r cache=TRUE}
+## MENTAL HEALTH 
+Fatigue <- lmer(Fatigue ~  Covid_Timeline + (1 | Id), data = cv)
+plot(ggeffects::ggpredict(Fatigue,
+                          terms =  "Covid_Timeline"))
+```
+
+## Meaning of life - unreliable
+
+```{r cache=TRUE}
+LIFEMEANING <- lmer(LIFEMEANING ~  Covid_Timeline + (1|Id), data = cv)
+plot(ggeffects::ggpredict(LIFEMEANING,
+                          terms =  "Covid_Timeline"))
+```
+
+## Sat with gov't - big gain
+
+```{r cache=TRUE}
+Sat.Government <- lmer(Sat.Government ~ Covid_Timeline + (1|Id), cv)
+plot(ggeffects::ggpredict(Sat.Government,
+                          terms =  "Covid_Timeline"))
+```
+
+## Future security -  gain > March
+
+```{r cache=TRUE}
+Your_Future_Security <- lmer(Your_Future_Security ~ Covid_Timeline + (1|Id), cv)
+plot(ggeffects::ggpredict(Your_Future_Security,
+                          terms =  "Covid_Timeline"))
+```
+
+## Job security - March slide
+
+```{r cache=TRUE}
+Emp.JobSecure <- lmer(Emp.JobSecure ~  Covid_Timeline + (1|Id),  data = cvE)
+plot(ggeffects::ggpredict(Emp.JobSecure,
+                          terms =  "Covid_Timeline"))
+```
+
+## Valued by employer - steady
+
+```{r cache=TRUE}
+Emp.JobValued <- lmer( Emp.JobValued ~ Covid_Timeline + (1|Id), cv)
+plot(ggeffects::ggpredict(Emp.JobValued,
+                          terms =  "Covid_Timeline"))
+```
+
+## Partner conflict - steady
+
+```{r cache=TRUE}
+Rel.Conflict <- lmer(Rel.Conflict ~ Covid_Timeline + (1|Id), cvP)
+plot(ggeffects::ggpredict(Rel.Conflict,
+                          terms =  "Covid_Timeline"))
+```
+
+## Partner satisfaction - steady-ish?
+
+```{r cache=TRUE}
+Rel.Satisfaction <- lmer(Rel.Satisfaction ~ Covid_Timeline + (1|Id), cv)
+plot(ggeffects::ggpredict(Rel.Satisfaction, terms = "Covid_Timeline"),add.data=TRUE, dot.alpha =.05) 
+```
+
+## Business optimism - slide 
+
+```{r cache=TRUE}
+NZ.Business.Conditions <- lmer(NZ.Business.Conditions ~ Covid_Timeline + (1|Id), cv)
+plot(ggeffects::ggpredict(NZ.Business.Conditions, terms = "Covid_Timeline"))
+```
+
+## Economic outlook - slide 
+
+```{r cache=TRUE}
+NZ.Economic.Situation <- lmer(NZ.Economic.Situation ~ Covid_Timeline + (1|Id), cv)
+plot(ggeffects::ggpredict(NZ.Economic.Situation , terms = "Covid_Timeline"))
+```
+
+# Kessler-6 distress
+
+## Kessler-items
+
+during the past 30 days, how often did... 
+
+(a). . . . you feel hopeless;
+(b). . . . you feel so depressed that nothing could cheer you up; 
+(c). . . . you feel restless or fidgety; 
+(d). . . . you feel that everything
+was an effort; 
+(e). . . . you feel worthless; 
+(f). . . you feel
+nervous? 
+
+Answers: None of the time; A little of the time; Some of the time;
+Most of the time; All of the time."
+
+## Pandemic distress
+
+1.  Distress elevation from SARS-CoV-2 health risks
+    [@Qiu2020-qa][@Twenge2020-xc]
+2.  Distress elevation from economic downturn [@Twenge2020-xc];
+3.  Distress elevation from social isolation [@Van_Bavel2020-po].
+4.  Distress buffering from greater institutional trust [@Sibley2020-kp].
+5.  Distress buffering from an elevated sense of civic community
+    [@Sibley2020-kp].
+
+
+
+## Distress by timeline
+
+```{r cache=TRUE}
+k6_cv <- glmer(KESSLER6sum ~ Covid_Timeline + (1|Id), cv, family = "poisson")
+plot(ggeffects::ggpredict(k6_cv, terms = 
+                            c("Covid_Timeline"))) + theme_classic()
+```
+
+<!-- ## Estimated means -->
+
+<!-- ```{r cache=TRUE} -->
+<!-- modelbased::estimate_means(k6_cv) -->
+<!-- ``` -->
+
+## Estimated Contrasts
+
+```{r cache=TRUE}
+modelbased::estimate_contrasts(k6_cv)%>%
+  slice(1:5)
+```
+
+
+## Distress was all about March!
+
+<!-- ```{r} -->
+<!-- cv1 <- cv %>% -->
+<!--   dplyr::filter(TSCORE> 3302) -->
+<!-- p <- # Date is 15 July 2018 -->
+<!--   ggplot(data = cv1, -->
+<!--          aes( -->
+<!--            x = yearS, -->
+<!--            y = KESSLER6sum, -->
+<!--            group = Covid_Timeline, -->
+<!--            colour = Covid_Timeline -->
+<!--          )) + -->
+<!--   geom_point(alpha = .01) +  -->
+<!--   #geom_line(alpha = .01) + -->
+<!--   # stat_summary( -->
+<!--   #   aes(group = 1), -->
+<!--   #   geom = "point", -->
+<!--   #   fun = mean, -->
+<!--   #   size = 1, -->
+<!--   #   alpha = .01 -->
+<!--   # ) +  -->
+<!--   scale_fill_viridis_c(option = "plasma") -->
+
+<!-- k6_disc_smooth <- -->
+<!--   p + geom_smooth( -->
+<!--     aes(group = Covid_Timeline), -->
+<!--     method = "lm", -->
+<!--     formula = y ~ s(x),  #y ~ bs(x), -->
+<!--     se = TRUE -->
+<!--   ) + scale_color_viridis_d(option = "plasma")  + theme_classic() + labs("Regression discontinuity model of Wave 11 Covid Timeline")  +   theme( -->
+<!--     legend.position = "right", -->
+<!--     legend.text = element_text(size = 6), -->
+<!--     legend.title = element_text(color = "Black", size = 8) -->
+<!--   ) -->
+
+<!-- k6_disc_smooth_points <- p + -->
+<!--   geom_smooth() + -->
+<!--   theme_classic() +  -->
+<!--   scale_color_viridis_d(option = "plasma") +    labs(title = "Regression discontinuity covid timeline (gam smooth)")  +   theme( -->
+<!--     legend.position = "right", -->
+<!--     legend.text = element_text(size = 6), -->
+<!--     legend.title = element_text(color = "Black", size = 8) -->
+<!--   ) -->
+<!-- k6_disc_smooth_points   -->
+<!-- ``` -->
+
+```{r cache=TRUE}
+cv2 <- cv %>%
+  dplyr::filter(TSCORE> 3842) # Jan62020
+np <-
+  ggplot(data = cv2,
+         aes(
+           x = years,
+           y = KESSLER6sum,
+           group = Covid_Timeline,
+           colour = Covid_Timeline
+         ))+ scale_fill_viridis_c(option = "plasma")
+marlock <- np +
+  geom_point(alpha = .03) +
+  geom_smooth() +
+  theme_classic() + 
+  scale_color_viridis_d(option = "plasma") +  
+  labs(title = "Regression discontinuity covid timeline reveals stress pulse was prior to lockdown")  +   theme(
+    legend.position = "right",
+    legend.text = element_text(size = 6),
+    legend.title = element_text(color = "Black", size = 8))
+
+marlock + ylab("NZAVS Years Data collection: Jan-6-2020 to Oct-15-2020")
+```
+
+
+# What **buffered** us from distress?
+
+## Not gov't satisfaction
+
+```{r cache = TRUE}
+Sat.GovernmentK6 <- glmer(KESSLER6sum ~ Sat.Government_within + Sat.Government_between + (1|Id), cv, family = "poisson")
+plot(ggeffects::ggpredict(Sat.GovernmentK6,
+                          terms =  c("Sat.Government_within", "Sat.Government_between")), facet=TRUE)
+```
+
+## Loss of fatigue = buffer?
+
+```{r cache = TRUE}
+library(tidyverse)
+library(patchwork)
+p1 <- cv %>% 
+  ggplot(aes(Covid_Timeline, Fatigue)) +
+  stat_summary(fun.data = mean_cl_boot, size = 1) +
+  geom_point(position = position_jitter(.15, .1), shape = .5, alpha = .01)+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+p2 <- cv %>% 
+  ggplot(aes(Covid_Timeline, KESSLER6sum)) +
+  stat_summary(fun.data = mean_cl_boot, size = 1) +
+  geom_point(position = position_jitter(.15, .1), shape = .5, alpha = .01)+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+p3 <- cv %>% 
+  ggplot(aes(Fatigue, KESSLER6sum)) +
+  geom_point(position = position_jitter(.15, .1), shape = .5, alpha = .01) +
+  stat_smooth(aes(Fatigue, KESSLER6sum), method = "gam")
+p1 | p2 | p3
+```
+
+## Fatigue counterfactual
+
+```{r cache = TRUE}
+FatigueK6 <- glmer(KESSLER6sum ~ Fatigue_within + Fatigue_between + (1|Id), cv, family ="poisson")
+plot(ggeffects::ggpredict(FatigueK6,
+                          terms =  c("Fatigue_within", "Fatigue_between")))
+```
+
+## Existential insecurity?
+
+```{r cache = TRUE}
+p7 <- cv %>% 
+  ggplot(aes(Covid_Timeline, Your_Future_Security)) +
+  stat_summary(fun.data = mean_cl_boot, size = 1) +
+  geom_point(position = position_jitter(.15, .1), shape = .5, alpha = .01) + 
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+p8 <- cv %>% 
+  ggplot(aes(Covid_Timeline, KESSLER6sum)) +
+  stat_summary(fun.data = mean_cl_boot, size = 1) +
+  geom_point(position = position_jitter(.15, .1), shape = .5, alpha = .01) + 
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+p9 <- cv %>% 
+  ggplot(aes(Your_Future_Security, KESSLER6sum)) +
+  geom_point(position = position_jitter(.15, .1), shape = .5, alpha = .01) +
+  geom_smooth(method = 'loess') 
+p7 | p8 | p9
+```
+
+## Security counterfactual
+
+```{r, cache = TRUE}
+Your_Future_SecurityK6 <- glmer(KESSLER6sum ~ Your_Future_Security_within + Your_Future_Security_between + (1|Id),
+                               family = "poisson", cv)
+plot(ggeffects::ggpredict(Your_Future_SecurityK6,
+                          terms =  c("Your_Future_Security_within", "Your_Future_Security_between")))
+```
+
+## Exercise increase?
+
+```{r cache = TRUE}
+library(patchwork)
+p4 <- cv %>% 
+  ggplot(aes(Covid_Timeline, log(Hours.Exercise+1))) +
+  stat_summary(fun.data = mean_cl_boot, size = 1) +
+  geom_point(position = position_jitter(.15, .1), shape = .5, alpha = .01) + 
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+p5 <- cv %>% 
+  ggplot(aes(Covid_Timeline, KESSLER6sum)) +
+  stat_summary(fun.data = mean_cl_boot, size = 1) +
+  geom_point(position = position_jitter(.15, .1), shape = .5, alpha = .01) + 
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+p6 <- cv %>% 
+  ggplot(aes(log(Hours.Exercise+1), KESSLER6sum)) +
+  geom_point(position = position_jitter(.15, .1), shape = .5, alpha = .01) +
+  geom_smooth(method = 'loess') 
+p4 | p5 | p6
+```
+
+## Exercise counterfactual
+
+```{r  cache = TRUE}
+logEXK6 <- glmer(KESSLER6sum ~ logEX_within + logEX_between + (1|Id),
+                               family = "poisson", cv)
+plot(ggeffects::ggpredict(logEXK6,
+                          terms =  c("logEX_within", "logEX_between")))
+```
+
+## Mediation Models
+
+-   Manipulate X, measure M and Y
+-   Regress M on X; Y on X and M
+
+```{r, layout = "l-body-outset", cache =TRUE}
+mlm_path_plot(xlab = "Condition\n(X)",
+              mlab = "Mediator\n(M)",
+              ylab = "Distress\n(Y)")
+```
+
+## Assumptions
+
+-   Y does not affect M
+-   No 3rd variable on M to Y relationship
+-   M is measured without error
+-   Y and M residuals are not correlated [@vuorre2020multilevel]
+
+
+## Set up
+
+```{r echo = TRUE, eval = FALSE}
+path_m <- bf(
+  mF ~ x + (1 | c | id)
+  )
+path_y <- bf(
+  y ~ x + mF_w + mF_b +
+               (1 | c | id)
+  )
+m1 <- brm(
+  path_m + path_y + set_rescor(FALSE),
+  data = datF,
+  file = here("models/mediation-k6-covid-fatigue")
+)
+```
+
+
+## Fatigue: DAG
+
+```{r}
+library(ggdag)
+dg <- dagify(k6  ~ fatigue +  covid,
+             fatigue ~  sleep + exercise + covid,
+             sleep ~ covid,
+             exercise ~ covid,
+             exposure =  "fatigue",
+             outcome =   "k6")
+ggdag::ggdag_collider(dg) +   theme_dag_blank()
+```
+
+## Adjustment set: Fatigue
+
+```{r}
+ggdag::ggdag_adjustment_set(dg, node_size = 14) +
+  theme(legend.position = "bottom") + theme_dag_blank()
+```
+
+# Mediation: Fatigue
+
+## Model form 
+```{r echo = FALSE}
+x <-cv$Covid_Timeline
+mF <-cv$Fatigue
+y<- cv$KESSLER6sum
+id <-cv$Id
+mF_w <-as.integer(cv$Fatigue_within)
+mF_b <-as.integer(cv$Fatigue_between)
+datF <-data.frame(x,mF,mF_w,mF_b,y,id)
+```
+
+```{r echo = FALSE}
+path_m <- bf(
+  mF ~ x + (1 | id)
+  )
+path_y <- bf(
+  y ~ x + mF_w + mF_b +
+               (1 | id)
+  )
+f1a <- brm(
+  path_m + path_y + set_rescor(FALSE),
+  data = datF,
+  file = here("models/mediation-k6-covid-fatigueW")
+)
+```
+
+## Results: fatigue - March
+
+```{r echo=FALSE, cache = FALSE}
+post1F <- brms::posterior_samples(f1a)
+post_marF <- post1F %>% 
+  transmute(
+    a = b_mF_xEarly_March_2020,
+    b = b_y_mF_w,
+    cp = b_y_xEarly_March_2020,
+    me = a * b,
+    c = cp + me#,
+   # pme = me / c
+  )
+# posterior_summary(post_marF)
+```
+```{r}
+mcmc_intervals(post_marF)
+??mcmc_intervals
+```
+
+## Results: fatigue - L4
+
+```{r echo=FALSE, cache = TRUE}
+## Results: Fatigue Mediation in Lockodown
+post_lF <- post1F %>% 
+  transmute(
+    a = b_mF_xL4_Lockdown_2020,
+    b = b_y_mF_w,
+    cp = b_y_xL4_Lockdown_2020,
+    me = a * b,#+ covab,
+    c = cp + me
+  )
+
+# posterior_summary(post_lF)
+```
+
+```{r echo=FALSE, cache = TRUE}
+mcmc_intervals(post_lF)
+```
+
+# Mediation: Future Security
+
+## Future Security: DAG
+
+```{r}
+library(ggdag)
+dg2 <- dagify(k6  ~ FS +  covid,
+             FS ~  health + income,
+             health ~ covid,
+             income ~ covid,
+             FS ~ covid,
+             exposure =  "FS",
+             outcome =   "k6")
+ggdag::ggdag_collider(dg2) +   theme_dag_blank()
+```
+
+## Adjustment set: Future Security
+
+```{r}
+ggdag::ggdag_adjustment_set(dg2, node_size = 14) +
+  theme(legend.position = "bottom") + theme_dag_blank()
+```
+
+## F.Security - March
+
+```{r}
+x <-cv$Covid_Timeline
+mFS <-cv$Your_Future_Security
+y<- cv$KESSLER6sum
+id <-cv$Id
+mFS_w <-as.integer(cv$Your_Future_Security_within)
+mFS_b <-as.integer(cv$Your_Future_Security_between)
+datFS <-data.frame(x,mFS,mFS_w,mFS_b,y,id)
+```
+
+```{r echo = FALSE}
+path_m <- bf(
+  mFS ~ x + 
+    (1 |  id)
+)
+path_y <- bf(
+  y ~ x + mFS_w + mFS_b + 
+    ( 1 | id)
+)
+f3 <- brm(
+  path_m + path_y + set_rescor(FALSE),
+  data = datFS,
+  file = here("models/mediation-k6-covid-future-security")
+)
+post3 <- posterior_samples(f3)
+```
+
+```{r}
+post_marFS <- post3%>% 
+  transmute(
+    a = b_mFS_xEarly_March_2020,
+    b = b_y_mFS_w,
+    cp = b_y_xEarly_March_2020,
+    me = a * b,
+    c = cp + me,
+    pme = me / c
+  )
+# posterior_summary(post_marFS )
+```
+```{r}
+mcmc_intervals(post_marFS)
+```
+
+## F.Security - L4
+
+```{r}
+post_lFS <- post3 %>% 
+  transmute(
+    a = b_mFS_xL4_Lockdown_2020,
+    b = b_y_mFS_w,
+    cp = b_y_xL4_Lockdown_2020,
+    me = a * b,#+ covab,
+    c = cp + me 
+  )
+
+#posterior_summary(post_lFS )
+```
+```{r}
+mcmc_intervals(post_lFS)
+```
+
+#  Mediation:Exercise
+
+## Exercise: DAG
+
+```{r}
+library(ggdag)
+dg3 <- dagify(k6  ~ exercise +  covid,
+             exercise ~  work + freetime + Latent,
+             work ~ covid,
+             freetime ~ covid,
+             latent = "Latent",
+             exposure =  "exercise",
+             outcome =   "k6")
+ggdag::ggdag_collider(dg3) +   theme_dag_blank()
+```
+
+## Adjustment set: Exercise
+
+```{r}
+ggdag::ggdag_adjustment_set(dg3, node_size = 14) +
+  theme(legend.position = "bottom") + theme_dag_blank()
+```
+
+## Exercise - March
+
+```{r}
+x <-cv$Covid_Timeline
+mEX <-cv$logEX
+y<- cv$KESSLER6sum
+id <-cv$Id
+mEX_w <-as.integer(cv$logEX_within)
+mEX_b <-as.integer(cv$logEX_between)
+datEX <-data.frame(x,mEX,mEX_w,mEX_b,y,id)
+```
+```{r echo = FALSE}
+path_m <- bf(
+  mEX ~ x + 
+    (1| id)
+)
+path_y <- bf(
+  y ~ x + mEX_w  + mEX_b + 
+    ( 1  |  id)
+)
+f4 <- brm(
+  path_m + path_y + set_rescor(FALSE),
+  data = datEX,
+  file = here("models/mediation-k6-covid-logEX")
+)
+post4 <- posterior_samples(f4)
+```
+```{r}
+post_marEX <- post4%>% 
+  transmute(
+    a = b_mEX_xEarly_March_2020,
+    b = b_y_mEX_w,
+    cp = b_y_xEarly_March_2020,
+    me = a * b,
+    c = cp + me#,
+   # pme = me / c
+  )
+#posterior_summary(post_marEX)
+```
+```{r}
+mcmc_intervals(post_marEX)
+```
+
+## Exercise: L4
+
+```{r}
+post_lEX <- post4 %>% 
+  transmute(
+    a = b_mEX_xL4_Lockdown_2020,
+    b = b_y_mEX_w,
+    cp = b_y_xL4_Lockdown_2020,
+    me = a * b,#+ covab,
+    c = cp + me
+  )
+# posterior_summary(post_lEX)
+```
+```{r}
+mcmc_intervals(post_lEX)
+```
+
+## Excercise: March vs. L4
+
+```{r}
+h1 <- c(
+  a = "mEX_xEarly_March_2020  = 0",
+  b = "y_mEX_w = 0",
+  cp = "y_xEarly_March_2020 = 0",
+  me = "mEX_xL4_Lockdown_2020 * y_mEX_w = 0",
+  c = "mEX_xEarly_March_2020 * y_mEX_w + y_xEarly_March_2020 = 0"
+)
+
+h2 <- c(
+  a = "mEX_xL4_Lockdown_2020  = 0",
+  b = "y_mEX_w = 0",
+  cp = "y_xL4_Lockdown_2020 = 0",
+  me = "mEX_xL4_Lockdown_2020 * y_mEX_w = 0",
+  c = "mEX_xL4_Lockdown_2020 * y_mEX_w + y_xL4_Lockdown_2020 = 0"
+)
+
+h3 <- c(
+  a = "mEX_xL4_Lockdown_2020  < mEX_xEarly_March_2020",
+ # b = "y_mEX_w"
+  cp = "y_xL4_Lockdown_2020 < y_xEarly_March_2020",
+  me = "mEX_xL4_Lockdown_2020 * y_mEX_w < mEX_xEarly_March_2020 * y_mEX_w",
+  c = "mEX_xL4_Lockdown_2020 * y_mEX_w + y_xL4_Lockdown_2020 < mEX_xEarly_March_2020 * y_mEX_w + y_xEarly_March_2020"
+)
+# plot(
+#   hypothesis(f4, h1)
+# )
+# 
+# plot(  
+#   hypothesis(f4, h2)
+# )
+#   
+plot(
+  hypothesis(f4, h3)
+)
+```
+
+## Future: employer gratitude?
+
+```{r}
+Valemployer <- glmer( KESSLER6sum ~ Emp.JobValued + (1|Id), cv, family = "poisson")
+plot(ggeffects::ggpredict(Valemployer,
+                          terms =  "Emp.JobValued"))
+```
+
+## Recap
+
+-   L4-Lockdown eased distress
+-   Rest, security, exercise were buffers
+-   Relevant for future pandemic planning 
+-   contact: joseph.bulbulia@vuw.ac.nz
+
+## Thanks
+
+-   Prof Chris G. Sibley & the NZAVS team
+-   Dr.Matti Vuorre (former VUW graduate, now at Oxford) for his
+    [workshop](https://mvuorre.github.io/brms-workshop/)
+-   NZAVS participants
+
+
+## Funders {.flexbox .vcenter}
+ 
+Templeton Religion Trust Grant 0196
+
+
+## Slides here
+
+https://go-bayes.github.io/reports/posts/covid/
+
+
+# EXTRA SLIDES
+
+## Commute -> Distress: dag
+
+```{r echo = TRUE}
+library("ggdag")
+d1<-dagify(
+  k6  ~ covid + commute + work,
+  commute ~ work + covid,
+  work ~ covid,
+  exposure =  "commute",
+  outcome =   "k6",
+  labels = c(k6 = "Kessler 6", 
+             covid = "Covid Timeline", 
+             work = "hours work",
+             commute = "hours commute"
+             ))
+```
+
+## Colliders
+
+```{r}
+ggdag::ggdag_collider(d1) +   theme_dag_blank()
+```
+
+## Commute -> Distress adjustment
+
+```{r}
+ggdag::ggdag_adjustment_set(d1, node_size = 14) +
+  theme(legend.position = "bottom") + theme_dag_blank()
+```
+
+## Commute and distress
+
+```{r cache=TRUE}
+Hours.CommuteK6 <- lmer(KESSLER6sum ~ Covid_Timeline * (logCT_within + logCT_between + logWK_within + logWK_between) +  (1|Id), cv)
+plot(ggeffects::ggpredict(Hours.CommuteK6, terms = 
+                            c( "logCT_within", "Covid_Timeline")), facet = TRUE) + theme_classic()
+```
+
+<!-- ## Note: COVID->DISTRESS -->
+
+<!-- ```{r} -->
+<!-- d2 <- dagify( -->
+<!--   k6  ~ covid + commute + work, -->
+<!--   commute ~ work + covid, -->
+<!--   work ~ covid, -->
+<!--   exposure =  "covid", -->
+<!--   outcome =   "k6", -->
+<!--   labels = c( -->
+<!--     k6 = "Kessler 6", -->
+<!--     covid = "Covid Timeline", -->
+<!--     work = "hours work", -->
+<!--     commute = "hours commute" -->
+<!--   ) -->
+<!-- ) -->
+<!-- ggdag::ggdag_adjustment_set(d2, node_size = 14) + -->
+<!--   theme(legend.position = "bottom") + theme_dag_blank() -->
+<!-- ``` -->
+
+## Many causes = many colliders!
+
+```{r}
+d3 <- dagify(
+  k6  ~ covid + income + jobsecurity + age + fatigue +
+    childcare + partner + male + exercise + healthsecurity + Hours.SocialMedia + hourswork + hoursfriends,
+  income ~ hourswork  + edu + ethnicity + male + hourscommute,
+  Hours.SocialMedia ~ hourswork + hoursfriends + age,
+  exercise ~ age + ethnicity + hourswork,
+  hourscommute ~ covid,
+  hourswork ~ covid, 
+  childcare ~ hourswork + male, 
+  partner ~ jobsecurity + childcare + hourswork,
+  fatigue ~  age + hourswork + sleep + exercise,
+  sleep ~   age + hourswork + exercise,
+  jobsecurity ~  govconfidence,
+  healthsecurity ~ govconfidence + edu + exercise + age,
+  govconfidence ~  pol.orient, 
+  buisnessconfidence ~ govconfidence,
+  exposure =  "covid",
+  outcome =   "k6",
+  labels = c(k6 = "Kessler 6", 
+             covid = "Covid Timeline", 
+             hourscommute = "hourscommute",
+             fatigue = "fatigue",
+             Hours.SocialMedia = "Hours \n Social Media",
+             income = "income",
+             age = "age",
+             healthsecurity = "health security",
+             govconfidence = "government confidence",
+             exercise = "exercise",
+             sleep = "sleep",
+             buisnessconfidence = "buisness confidence",
+             childcare = "childcare",
+             partner = "partner \n dissatifaction",
+             employed = "employed",
+             jobsecurity = "job security",
+             exercise = "exercise",
+             pol.orient = "political orientation",
+             edu = "education",
+             ethnicity = "ethnicity",
+             male = "male",
+             hourswork = "hours work"
+             ))%>%
+  control_for(c("covid"))
+  
+ggdag::ggdag_collider(d3) +   theme_dag_blank()
+```
+
+## Covid --> K6: keep it simple.
+
+```{r}
+# graph adjustment sets
+ggdag::ggdag_adjustment_set(d3, node_size = 14) +
+  theme(legend.position = "bottom") + theme_dag_blank()
+```
+
+
+<!-- ## Mediation model: meaning -->
+
+<!-- ```{r echo=FALSE, cache = TRUE} -->
+
+<!-- ## Meaning of life -->
+
+<!-- x <-cv$Covid_Timeline -->
+
+<!-- mLM <-cv$LIFEMEANING -->
+
+<!-- y<- cv$KESSLER6sum -->
+
+<!-- id <-cv$Id -->
+
+<!-- mLM_w <-as.integer(cv$LIFEMEANING_within) -->
+
+<!-- mLM_b <-as.integer(cv$LIFEMEANING_between) -->
+
+<!-- datLM <-data.frame(x,mLM,mLM_w,mLM_b,y,id) -->
+
+<!-- ``` -->
+
+<!-- ```{r echo = FALSE, cache=FALSE} -->
+
+<!-- path_m <- bf( -->
+
+<!--   mLM ~ x +  -->
+
+<!--     (1|  id) -->
+
+<!-- ) -->
+
+<!-- path_y <- bf( -->
+
+<!--   y ~ x + mLM_w + mLM_b + -->
+
+<!--     ( 1  | id) -->
+
+<!-- ) -->
+
+<!-- f7 <- brm( -->
+
+<!--   path_m + path_y + set_rescor(FALSE), -->
+
+<!--   data = datLM, -->
+
+<!--   file = here("models/mediation-k6-covid-lifemeaning.rds") -->
+
+<!-- ) -->
+
+<!-- ``` -->
+
+<!-- ## Results: meaning - early March -->
+
+<!-- ```{r cache = FALSE, echo=FALSE} -->
+
+<!-- library(bayesplot) -->
+
+<!-- postLM <- posterior_samples(f7) -->
+
+<!-- post_marLM <- postLM%>%  -->
+
+<!--   transmute( -->
+
+<!--     a = b_mLM_xEarlyMarch, -->
+
+<!--     b = b_y_mLM_w, -->
+
+<!--     cp = b_y_xEarlyMarch, -->
+
+<!--     me = a * b, -->
+
+<!--     c = cp + me -->
+
+<!--   ) -->
+
+<!-- # -->
+
+<!-- ``` -->
+
+<!-- ## Graph -->
+
+<!-- ```{r cache = FALSE, echo=FALSE} -->
+
+<!-- brms::posterior_summary(post_marLM) -->
+
+<!-- mcmc_intervals(post_marLM) +   -->
+
+<!--   labs( -->
+
+<!--     title = "Meaning of Life mediated distress in March"#, -->
+
+<!--   #  subtitle = "A wide, uncertain interval is spread thin when areas are equal" -->
+
+<!--    ) + scale_x_discrete(limits = c(-1,1)) -->
+
+<!-- ``` -->
+
+<!-- ## Results: meaning - Lockdown -->
+
+<!-- ```{r echo=FALSE, cache = FALSE} -->
+
+<!-- ## Results: Fatigue Mediation in Lockdown -->
+
+<!-- post_LLM <- postLM%>%  -->
+
+<!--   transmute( -->
+
+<!--     a = b_mLM_xLockdown, -->
+
+<!--     b = b_y_mLM_w, -->
+
+<!--     cp = b_y_xLockdown, -->
+
+<!--     me = a * b, -->
+
+<!--     c = cp + me -->
+
+<!--   ) -->
+
+<!-- posterior_summary(post_LLM) -->
+
+<!-- ``` -->
+
+<!-- ## Graph -->
+
+<!-- ```{r echo=FALSE, cache = FALSE} -->
+
+<!-- mcmc_intervals(post_LLM) +  -->
+
+<!--   labs( -->
+
+<!--     title = "Meaning of Life did not meadiate distress during lockdown"#, -->
+
+<!--   #  subtitle = "A wide, uncertain interval is spread thin when areas are equal" -->
+
+<!--    ) + scale_x_discrete(limits = c(-1,1)) -->
+
+<!-- ``` -->
+
+## Bibliography
