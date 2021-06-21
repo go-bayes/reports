@@ -193,12 +193,13 @@ mutate(total = sum(
       sea,
       wa
     ) != 0
-  ))
+  )) %>%
+  mutate(diversity_f = factor(diverse))
 
 glimpse(dt_1)
 
 
-wdat <- df %>%
+awdat <- df %>%
   dplyr::filter(YearMeasured == 1) %>%
     dplyr::filter(
       Wave == 2018
