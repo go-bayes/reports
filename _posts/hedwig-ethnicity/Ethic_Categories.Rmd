@@ -63,17 +63,16 @@ options(mc.cores = parallel::detectCores ())
 theme_set(theme_classic())
 ```
 
-```{r data, cache = FALSE, include = FALSE}
+```{r cache = FALSE, include = FALSE}
 #import data
 df<-read.csv(here::here("data_raw","data_emapaccept_210614.csv"))
 
 # check format
-str(df)
+#str(df)
 
 
 # select variables
 library(tidyverse)
-
 
 dat <- df %>%
   select(
@@ -107,9 +106,9 @@ dat <- df %>%
     euro = as.integer(ET06_09_European - 1),
     ea =  as.integer(ET06_11_EA - 1) ,
     # check with Hedwig what these mean
-    sa_08 = as.integer(ET06_08_SA - 1),
+    sa08 = as.integer(ET06_08_SA - 1),
     # check with Hedwig what these mean
-    se_12 = as.integer(ET06_12_SA - 1),
+    se12 = as.integer(ET06_12_SA - 1),
     # check with Hedwig what these mean
     sea = as.integer(ET06_13_SeA - 1),
     # check with Hedwig what these mean
@@ -135,32 +134,17 @@ dat <- df %>%
     missing,
     euro,
     ea,
-    sa_08,
-    se_12,
+    sa08,
+    se12,
     sea,
     wa
   ) 
 glimpse(dat)
-dt <- dat %>% rowwise(id,age,edu, gender_id)
+dt <- dat %>% rowwise(id)
 glimpse(dt)
 
+
 dt_1 <- dt %>%
-mutate(total = sum(
-    c(nzeuro,
-      maori,
-      pacific,
-      chinese,
-      indian,
-      african,
-      missing,
-      euro,
-      ea,
-      sa_08,
-      se_12,
-      sea,
-      wa
-    )
-  )) %>%
   mutate(total = sum(
     c(nzeuro,
       maori,
@@ -171,13 +155,13 @@ mutate(total = sum(
       missing,
       euro,
       ea,
-      sa_08,
-      se_12,
+      sa08,
+      se12,
       sea,
       wa
     )
   ),
-  diverse = 
+  diversity = 
   sum(
     c(nzeuro,
       maori,
@@ -188,251 +172,563 @@ mutate(total = sum(
       missing,
       euro,
       ea,
-      sa_08,
-      se_12,
+      sa08,
+      se12,
       sea,
       wa
     ) != 0
   )) %>%
-  mutate(diversity_f = factor(diverse))
-
-glimpse(dt_1)
-
-
-awdat <- df %>%
-  dplyr::filter(YearMeasured == 1) %>%
-    dplyr::filter(
-      Wave == 2018
+  group_by(id) %>%
+  mutate(max_ethnic = max(
+    c(
+      nzeuro,
+      maori,
+      pacific,
+      chinese,
+      indian,
+      african,
+      missing,
+      euro,
+      ea,
+      sa08,
+      se12,
+      sea,
+      wa
+    )
+  )) %>%
+  mutate(
+    proportion_maori = as.numeric(maori / total),
+    proportion_nzeuro = as.numeric(nzeuro / total),
+    proportion_pacific = as.numeric(pacific / total),
+    proportion_indian = as.numeric(indian / total),
+    proportion_chinese = as.numeric(chinese / total)
   ) %>%
-  dplyr::select(
-    Id,
-    Age,
-    Male,
-  #  EthnicCats,
-    Edu,
-    Wave,
-    YearMeasured,
-    SexualPrejudice01r,
-    SDO,
-    BS,
-    HS,
-  ) %>%
-  dplyr::mutate(anti_gay = SexualPrejudice01r,
-                male = as.numeric(Male)-1,
-                benevolent_sexism = BS,
-                hostile_sexism = HS,
-                edu = as.numeric(Edu)) %>%
- dplyr::select(-c(SexualPrejudice01r, Wave, YearMeasured, BS, HS))
+  mutate(superidentified = as.integer(ifelse(total >= 120, 1, 0))) %>%
+  mutate(underidentified = as.integer(ifelse(total <=80, 1, 0))) %>%
+  ungroup()
+
+nrow(dt_1)
+
+
+nm1<- c("nzeuro",
+      "maori",
+      "pacific",
+      "chinese",
+      "indian",
+      "african",
+      "missing",
+      "euro",
+      "ea",
+      "sa08",
+      "se12",
+      "sea",
+      "wa")
+
+
+dtt <- dt_1 %>%
+  mutate(mak = pmax(!!!rlang::syms(nm1))) 
+
+nrow(dtt)
+
+# dtt<- dtt%>% 
+#   mutate(max_eth = ifelse(maori == mak & across(nzeuro:wa) != mak, "maori_max", 
+#                            ifelse(nzeuro == mak &  across(nzeuro:wa) != mak, "nzeuro_max", 
+#                                   ifelse(indian == mak & across(nzeuro:wa) != mak, "indian_max", 
+#                                           ifelse(pacific == mak & across(nzeuro:wa) != mak, "pacific_max", 
+#                                                  ifelse (chinese == mak & across(nzeuro:wa) != mak, "chinese_max", 
+#                                                      ifelse(maori == mak &  nzeuro == mak, "maori_euro_max", 
+#                                                             ifelse(pacific == mak & nzeuro == mak, "pacific_euro_max",
+#                                                                    ifelse(indian == mak & nzeuro == mak, "indian_euro_max", 
+#                                                                           ifelse(chinese == mak & nzeuro == mak, "chinese_euro_max", "others"))))))))))
+#                                                     
+
+dtt<- dtt%>% 
+  mutate(max_eth = ifelse(maori == mak & nzeuro != mak, "maori_max", 
+                           ifelse(nzeuro == mak &  maori != mak, "nzeuro_max", 
+                                  ifelse(indian == mak & nzeuro != mak, "indian_max", 
+                                          ifelse(pacific == mak & nzeuro != mak, "pacific_max", 
+                                                 ifelse (chinese == mak & nzeuro != mak, "chinese_max", 
+                                                     ifelse(maori == mak &  nzeuro == mak, "maori_euro_max", 
+                                                            ifelse(pacific == mak & nzeuro == mak, "pacific_euro_max",
+                                                                   ifelse(indian == mak & nzeuro == mak, "indian_euro_max", 
+                                                                          ifelse(chinese == mak & nzeuro == mak, "chinese_euro_max", "others"))))))))))
+                                        
+glimpse(dtt)
   
 
-# code for selecting longitudinal data by waves returned
+
+
+```
+
+Total
+
+```{r cache = FALSE, include = FALSE}
+hist(dt_1$total, breaks=100)
+```
+
+Diversity
+
+```{r cache = FALSE, include = FALSE}
+hist(dt_1$diversity)
+```
+
+
+Instances of diversity scores (range 1 - 6)
+
+```{r}
+dt_1 %>%
+  group_by(diversity) %>%
+  count(counts = n_distinct()) %>%
+  select(-counts)
+```
+
+
+
+Table of superidentified
+
+```{r  cache = FALSE, include = FALSE}
+table(dt_1$superidentified)
+```
+
+Table of unidentified
+
+```{r}
+table(dt_1$underidentified)
+```
+
+
+Graph of spread of proportions by ethnicity 
+
+```{r  cache = FALSE, include = FALSE}
+
+# NZ Euro identity
+dt_nz <-dt_1%>%
+filter(proportion_nzeuro > .01) 
+
+nze<- qplot(dt_nz$proportion_nzeuro, geom = "histogram",bins =100)+ 
+    ggtitle("Histogram of identity in sample\nwho identify as > 1% NZ European") + xlab("Distributions of NZ European proportions")
+
+# Māori Identity
+
+dt_maori <- dt_1 %>%
+  filter(proportion_maori > .01)
+
+nzm <- qplot(dt_maori$proportion_maori, geom = "histogram", bins = 100) +
+  ggtitle("Histogram of identity in sample\nwho identify as > 1% Māori") + xlab("Distributions of Māori proportions")
+
+
+# Pacific Identity
+
+dt_pac <-dt_1%>%
+filter(proportion_pacific > .01) 
+
+nzp <- qplot(dt_pac$proportion_pacific, geom = "histogram",bins =100) + 
+  ggtitle("Histogram of identity in sample\nwho identify as > 1% Pacific") + xlab("Distributions of Pacific idenity proportions")
+
+
+
+# Indian identity
+dt_indian <-dt_1%>%
+filter(proportion_indian > .01) 
+
+nzi <- qplot(dt_indian$proportion_indian, geom = "histogram",bins =100) + 
+  ggtitle( "Histogram of identity in sample\nwho identify as > 1% Indian") + xlab("Distributions of Indian idenity proportions")
+
+
+# Chinese identity
+
+dt_chinese <-dt_1%>%
+filter(proportion_chinese > .01) 
+
+nzc<- qplot(dt_chinese$proportion_chinese, geom = "histogram",bins =100) + ggtitle("Histogram of identity in sample\nwho identify as > 1% Chinese") + xlab("Distributions of Chinese idenity proportions")
+
+
+
+library(patchwork)
+
+nze + nzm + nzp + nzi + nzc +  plot_annotation("Historgrams of sample Ethnic proportions",  subtitle = "Histograms review greater distribution of identities among Māori and Pacific ethnic identities", tag_levels = 'a')
+
+```
+
+
+Create longer data frame for models
+
+```{r cache = FALSE, include = FALSE}
+
+dt_2 <- dt_1 %>%
+  pivot_longer(
+    !c(
+      id,
+      age,
+      edu,
+      gender_id,
+      max_ethnic,
+      total,
+      diversity,
+      superidentified,
+      underidentified,
+      starts_with("proportion")
+    ),
+    names_to = "eth_id",
+    values_to = "ethnicity_rating"
+  ) %>%
+  mutate(eth_id = factor(eth_id))
+# 
+# # not used
+# dt_3<- dt_1%>%
+#   pivot_longer(
+#     !c(
+#       id,
+#       age,
+#       edu,
+#       gender_id,
+#       max_ethnic,
+#       total,
+#       diversity,
+#       superidentified,
+#       underidentified,
+#       nzeuro,
+#       maori,
+#       pacific,
+#       chinese,
+#       indian,
+#       african,
+#       missing,
+#       euro,
+#       ea,
+#       sa08,
+#       se12,
+#       sea,
+#       wa
+#     ),
+#     names_to = "prop_eth",
+#     values_to = "eth_prop"
+#   )
+
+```
+
+
+Table of unique identities
+
+```{r cache = FALSE, include = FALSE}
+dt_2%>%
+  group_by(eth_id)%>%
+  tally(ethnicity_rating !=0) %>%
+  arrange(desc(n))
+```
+
+
+## Some simple analyses (TBC)
+
+How many people are >= 50% european or nzeuro and at least one other ethnicity?
+
+```{r}
+dt_1 %>%
+  tally((nzeuro >= 50  | euro >= 50) & c_across(nzeuro:ea)!=0)
+```
+
+
+How many people are part maori and part european? 
+
+```{r}
+dt_1 %>%
+  tally((maori > 1  & nzeuro > 1) )
+```
+
+
+## Latent profile analysis 
+
+Here we perform a latent profile analysis to extract ethnic identity types
+
+```{r, cache = TRUE}
+library(tidyLPA)
+
+# LPA on proportional identity 
+
+out <- dt_1 %>%
+  dplyr::select(
+    proportion_chinese,
+    proportion_indian,
+    proportion_nzeuro,
+    proportion_maori,
+    proportion_nzeuro,
+    proportion_pacific
+  )
 #%>%
-  # droplevels() %>%
-  # group_by(Id) %>%
-  # filter(n() == 3) %>%
-  # ungroup() %>%
- # dplyr::mutate(Covid_Timeline = forcats::fct_relevel(Covid_Timeline, ord_dates_class))
+ # dplyr::mutate_all(., scale)
+
+out%>%
+  single_imputation() %>%
+  tidyLPA::estimate_profiles(5) %>%
+    plot_profiles(add_line = TRUE)
 ```
 
-> 
-Paul and I have recently started on a project looking at associations of voice pitch related to so-called 'biological codes', i.e. supposed biological links with high and low pitch related to size, sex and how these are used in mammalian communication. The idea of these codes is that these links influence linguistic and paralinguistic meanings of pitch through associations with, e.g. 'dominance'=low pitch and 'submission'=high pitch. We want to test these associations in general, and also the extent to which they are influenced by the attitudes of different listeners, particularly gender attitudes related to normative ideas of gender along the lines of dominant=male, submissive=female.
- 
-> We've been looking around at different gender surveys to try to measure these, and finding parts of different surveys which we think would work in a NZ context, but not one that seems to fit the bill.
- 
->We were wondering about the gender-related questions in the NZAVS - which have the advantage of being well tested in the NZ context. We were hoping for your help as part of the project team, with the following info which doesn't seem to be published (that we've found):
-is it possible to see the variance in the responses to the gender and social dominance related questions in the NZAVS data (e.g. from the latest round)?
-is it possible to see how the responses vary by age and participant gender for each of these questions?
-is it possible to see how correlated the responses are to these questions and participant age/gender?
-We think this would be useful to know better how likely responses to these questions would be to show sufficient spread in gender attitudes for our participants.
- 
->If you had any other thoughts on gender surveys in general we'd also be happy to hear 🙂
- 
-
-## Data summary
+Arguably a better way to estimate profiles is to use the raw scores. This allows us to adjust for super-identifiers and under-identifiers.
 
 
-Descriptive summary for variables relevant to inferring the relationshp between vocal pitch and perceived dominance.  Note we make "male" a numeric indicator to assess the frequency of males in the sample, with not-male encompassing women and others who identify other than male.
+
+```{r cache = TRUE}
+## Try this with counts 
+out2 <- dt_1 %>%
+  dplyr::select(
+    chinese,
+    indian,
+    nzeuro,
+    maori,
+    nzeuro,
+    pacific
+  )
+
+out2%>%
+  single_imputation() %>%
+  tidyLPA::estimate_profiles(5) %>%
+    plot_profiles(add_line = TRUE)
+
+```
 
 
-<!-- ```{r} -->
-<!-- library("table1") -->
-<!-- table1::table1(~ Age + Male + SDO + benevolent_sexism + hostile_sexism + anti_gay, data = dat) -->
-<!-- ``` -->
+Here we find that those who are find that the Māori category appears to be superidentified as Maori and NZeuro wheree as the Pacific category appears to be superidentified as Pacific and NZeuro. 
 
 
-<!-- We can quickly visualise the distribution of the variables using the `skimr` package. -->
+
+##  Formal models
+
+Next we attempt to formally model total identity and diversity 
+
+
+## Predictors of total identity
 
 ```{r}
-dat %>%
- # dplyr::group_by(Wave) %>%
-  select(Age, male, SDO, Edu,hostile_sexism, benevolent_sexism, anti_gay)  %>%
-  skimr::skim() 
+hist(dt_1$total, breaks = 100)
 ```
 
-
-## Sample correlations
-
-
-First we prepare the data:
 
 ```{r}
-dt <- dat %>%
-  dplyr::mutate(
-   age_z = scale(Age),
-  #  male = as.numeric(Male) - 1,
-    sdo_z = scale(SDO),
-    bs_z = scale(benevolent_sexism),
-    hs_z = scale(hostile_sexism),
-    anti_gay_z = scale(anti_gay)
-  ) %>%
-  select(age_z, sdo_z, bs_z, hs_z, anti_gay_z)
-nrow(dt)
+#mix <- mixture(gaussian, gaussian, gaussian)
+
+# #
+# prior <- c(
+#   prior(normal(0, 2), Intercept, dpar = mu1),
+#   prior(normal(0, 2), Intercept, dpar = mu2),
+#   prior(normal(0, 2), Intercept, dpar = mu3)
+# )
+
+
+# Filter dominent ids or model will not run
+# dt_3 <- dt_2 %>%
+#   group_by(id) %>%
+#   filter(eth_id == "nzeuro" | eth_id == "maori" |  eth_id == "chinese" | 
+#            eth_id == "indian" | eth_id == "pacific" ) %>% ungroup() %>% droplevels()
+
+# # This captures 180 ids
+# length(unique(dt_3$id))
+# 
+# glimpse(dt_3)
+
+
+
+fit_t <- brm(bf(ethnicity_rating ~ eth_id - 1  + (1|id)) , # random intercept for ids
+            data = dt_2,
+          # family = mix, # mixture takes *way* too long
+           file = here::here("models", "hedwig-total"))
+summary(fit_t)
+
+
 ```
 
+This just tells us that the expect response for nzeuro is higher.
 
-Here are the raw correlations
+
+Lets focus on the predictors of superidentification
+
 
 ```{r}
-library(correlation)
-dt %>%
-  correlation(partial = FALSE,
-              multilevel = FALSE) %>%
-  summary()
+
+
+fit_t2 <-
+  brm(bf(superidentified ~ max_eth-1),
+    data = dtt,
+    family =  "bernoulli",
+    file = here::here("models", "hedwig-total_2")
+  )
+par_m2 <- parameters::model_parameters(fit_t2)
+par_m2
+plot(par_m2)
 ```
 
-Here are the partial correlations
 
+We can graph the predicted probabilities for classification as superidentified on the probability scale, and we see it is the Maori / NZeuropean joint identifiers that are maximally identified. 
 
-Graph for the (unadjusted) correlations:
 
 ```{r}
-library(correlation)
-library(ggraph)
+plot(
+  conditional_effects(
+    fit_t2,
+    categorical = FALSE,
+    prob = 0.89,
+    re_formula = NA,
+  ),   # WE cannot graph points when the points arg = TRUE
+  points = TRUE,
+  point_args = list(
+    alpha = 1,
+    width = .1,
+    size = .2
+  )
+) 
 
-dt %>%
-  correlation(partial = FALSE, multilevel = FALSE ) %>%
-  plot()
 ```
 
 
-The indicators here look to be moderately correlated.  Indeed a single component accounts for half the variance in these indicators. 
+
+This result suggests that those who rate themselves as equally maximally european and maori are more likely to be superidentified.
+
+
+
+Next lets focus on under identification. Because there are no instances of maximally maori_europeans who were underidentified we remove this group from the model to avoid complete separation. 
+
 
 ```{r}
- ddt <- dt%>%
-  select(bs_z, hs_z, sdo_z, anti_gay_z) 
+dtt_removed <- dtt %>%
+  filter(max_eth!= "maori_euro_max")
 
-# see: https://easystats.github.io/parameters/
-parameters::principal_components(ddt)
+table(dtt$max_eth)
+# 173 cases
+#nrow(dtt_removed)
+
+fit_t3 <-
+  brm(bf(underidentified ~ max_eth-1),
+    data = dtt_removed,
+    family =  "bernoulli",
+    file = here::here("models", "hedwig-total_3")
+  )
+
+summary(fit_t3)
+par_m3 <- parameters::model_parameters(fit_t3)
+par_m3
+plot(par_m3)
 ```
 
 
-We can estimate the extent to which age, male, and education predict these indictators. 
-
-Begin male and being older predicts greater sdo, benevolent sexism, hostile sexism, and anti-homosexual attitudes.  Education predicts lower prejudice. 
+Again we plot our results, and find that the expected classification for all groups as underidentified is low, with maori_max the lowest overall in underidentification (although with broad uncertainty). 
 
 ```{r}
-# get data in shape
-dt2 <- dat %>%
-  dplyr::mutate(
-    age_z = scale(Age),
-    #  male = as.numeric(Male) - 1,
-    sdo_z = scale(SDO),
-    bs_z = scale(benevolent_sexism),
-    hs_z = scale(hostile_sexism),
-    anti_gay_z = scale(anti_gay),
-    edu_z = scale(edu),
-    male_f = Male
-  ) %>%
-  select(age_z, sdo_z, bs_z, hs_z, anti_gay_z, edu_z, age_z, male_f)
+plot(
+  conditional_effects(
+    fit_t3,
+    categorical = FALSE,
+    prob = 0.89,
+    re_formula = NA,
+  ),   # WE cannot graph points when the points arg = TRUE
+  points = TRUE,
+  point_args = list(
+    alpha = 0.1,
+    width = .1,
+    size = .2
+  )
+) 
 
-# prepare model
-bf1 <- bf(sdo_z ~ age_z + edu_z + male_f, family = "gaussian")
-bf2 <- bf(bs_z ~ age_z + edu_z + male_f, family = "gaussian")
-bf3 <- bf(hs_z ~ age_z + edu_z + male_f, family = "gaussian")
-bf4 <- bf(anti_gay_z ~ age_z + edu_z + male_f, family = "gaussian")
-
-# fit model, we do not set the rescor to TRUE because this will take days to run
-fit <- brm(
-  bf1 + bf2 + bf3 + bf4 +  set_rescor(rescor = FALSE),
-  # allow estimation of residual correlations
-  data = dt2,
-  file = here::here("models", "voical-pitch-cor-outcomes")
-)
-mcmc_plot(fit,  type = "areas")
-parameters::model_parameters(fit)
 ```
 
 
 
+Finally we estimate diversity using an ordinal model
 
-## Appendix 1
-
-Note, there is substantial missingness in the ant-homosexuality indicator.  
-
-We can inspect missingness using the `naniar` package.
 
 ```{r}
-library(naniar)
-naniar::vis_miss(dat)
+fit_4 <- brm(bf(diversity ~ max_eth),  # random intercept for repeated measures
+            data = dtt,
+           family = cumulative(link = "logit"), 
+           file = here::here("models", "hedwig-diversity"))
+
+par_m4 <- parameters::model_parameters(fit_4)
+par_m4
+plot(par_m4)
 ```
 
 
-If we were to model the relationships betweeen variables, we would want to multiply impute missing responses. 
+We can plot the conditional expectations. Here we find that those who are maximally indian and maximally european reveal separation in the expected probabilities for one or at most two identities. 
 
-For now, we press on. 
+In all other groups however, we substantial overlap with three or more expected numbers of identities.  
 
-## Appendix 2 Causal model
+```{r}
+plot(
+  conditional_effects(
+    fit_4,
+    categorical = TRUE,
+    prob = 0.89,
+    re_formula = NA,
+  ),   # WE cannot graph points when the points arg = TRUE
+  points = TRUE,
+  point_args = list(
+    alpha = 0.1,
+    width = .1,
+    size = .2
+  )
+) 
 
-It is a good idea to investigate the causal assumptions of a study using a directed acyclical graph (DAG). For causal inference, we must close all backdoor paths between an exposure of interest and the outcome of interest, and we must not introduce any collider confounds. 
+```
 
-Assume the following model for potential causal influences, where the exposure variable of interest is vocal pitch and the outcome variable of interest is perceived dominance. We have theoretical reasons to assume that age, male, benevolent sexism , hostile sexism, and social dominance orientation (SDO) can moderate how pitch affects perceived dominance. 
 
-To make things harder on ourselves, let's assume there is a latent variable, called "nastiness', which gives rise to the correlations we just observed. 
+We caution that the sample used here is not representative of the New Zealand population.  We do no extrapolate to features of this society. 
 
+However, these results are nevertheless important because as a proof of concept that within people may exhibit multiple ethnic identities. 
+
+Moreover, we find that people with join Maori and NZ european identities are abundant, and that among this group there is a greater tendency to super-identification. 
+
+Finally those who are maximally Maori are in absolute terms the least likely group to present under-identification, wherease those who identify as maximally indian and those who idnetify as maximally chinese have a greater probability of expressing underidentification. NZ europeans sit somwehere between maori and indians/chinese population from which our sample is drawn. There is two much varaibility in the Pacific response to estimate a reliable difference. 
+
+
+
+
+
+## Appendix: estimating causal effects.
+
+
+```{r cache = FALSE}
+###   Causal graph. What might affect identifcation? 
 ```{r}
 library(ggdag)
 dg <- dagify(
-  dom ~ pitch + age + male + bs + hs + sdo + U,
-  hs ~  age + male + U,
-  bs ~ age + male + U,
-  sdo ~ age  + male + U,
-  pitch ~ age + male + hs + bs + sdo + biology,
-  latent = "U",
-  exposure =  "pitch",
-  outcome =   "dom",
-  labels = c(
-    "dom" = "dominance",
-    "pitch" = "pitch",
-    "age" = "age",
-    "male" = "male",
-    "biology" = "biological endowment",
-    "hs" = "hostile sexism",
-    "bs" = "benevolent sexism",
-    "sdo" = "Soc Dom Orientation",
-    "U" = "Nastiness"
-  )
+  total ~ age + norm + gender + diversity + edu,
+  diversity ~ age + gender + edu,
+ # latent = "U",
+  exposure =  "norm",
+  outcome =   "diversity" #,
+  # labels = c(
+  #   "dom" = "dominance",
+  #   "pitch" = "pitch",
+  #   "age" = "age",
+  #   "male" = "male",
+  #   "biology" = "biological endowment",
+  #   "hs" = "hostile sexism",
+  #   "bs" = "benevolent sexism",
+  #   "sdo" = "Soc Dom Orientation",
+  #   "U" = "Nastiness"
+  # )
 ) %>%
   tidy_dagitty() 
 
 dg %>%
-  ggdag(use_labels = "label", text = FALSE) + theme_dag_blank()
+  ggdag(#use_labels = "label", 
+        text = TRUE) + theme_dag_blank()
 ```
 
 
 Note that on this DAG, there are many potential collider confounds
 
 ```{r}
-ggdag::ggdag_collider(dg, use_labels = "label", text = FALSE) + theme_dag_blank() +
+ggdag::ggdag_collider(dg, 
+                    #  use_labels = "label", 
+                      text = TRUE) + theme_dag_blank() +
  labs(title = "Colliders")
 ```
 
 
-It therefore  makes sense to assess which adjustements are needed to obtain an un-baised causal inference:
-
-
 
 ```{r}
-ggdag::ggdag_adjustment_set(dg, use_labels = "label", text = FALSE) + theme_dag_blank() +
+ggdag::ggdag_adjustment_set(dg, 
+                            #use_labels = "label", t
+                            text = TRUE) + theme_dag_blank() +
   labs(title = "")
 ```
 
