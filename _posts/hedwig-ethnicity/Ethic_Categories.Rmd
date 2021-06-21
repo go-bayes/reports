@@ -1,0 +1,455 @@
+---
+title: "Ethnicity Analysis"
+description: "Intial work for Hedwig"
+author:
+  - name: Joseph Bulbulia
+    url: https://josephbulbulia.netlify.app
+    affiliation: Victoria University of Wellington
+    affiliation_url: https://www.wgtn.ac.nz
+    orcid_id: 0000-0002-5861-2056
+date: 2021-JUN-21
+output:
+  distill::distill_article:
+    self_contained: true
+    toc: true
+    code_folding: true
+---
+
+```{r setup, include=FALSE}
+# setup
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  layout = "l-body-outset",
+  fig.width = 12,
+  fig.height = 15,
+  collapse = TRUE,
+  R.options = list(width = 60
+  )
+)
+```
+
+```{r libs, include=FALSE}
+library("tidyverse")
+library("here")
+library("equatiomatic")
+library("lubridate")
+library("ggplot2")
+library("ggthemes") #themes
+library("ggpubr")
+library("viridis")
+library("patchwork")
+library("ggforce")
+library("kableExtra")
+library("lme4")
+library("ggplot2")
+library("ggeffects")
+library("sjPlot")
+library("kableExtra")
+library("easystats")
+library("brms")
+library("rstan")
+library("rstanarm")
+library("bayesplot")
+library("easystats")
+library("kableExtra")
+library("broom")
+library("tidybayes")
+library("bmlm")
+# rstan options
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores ())
+theme_set(theme_classic())
+```
+
+```{r data, cache = FALSE, include = FALSE}
+#import data
+df<-read.csv(here::here("data_raw","data_emapaccept_210614.csv"))
+
+# check format
+str(df)
+
+
+# select variables
+library(tidyverse)
+
+
+dat <- df %>%
+  select(
+    CASE,
+    ET06_01_NZEuropean,
+    ET06_02_Maori,
+    ET06_03_Pasifica,
+    ET06_04_Chinese,
+    ET06_05_Indian,
+    ET06_06_African,
+    ET06_07_NA,
+    ET06_08_SA,
+    ET06_09_European,
+    ET06_11_EA,
+    ET06_12_SA,
+    ET06_13_SeA,
+    ET06_14_WA,
+    DE02_Gender_Identify_Most,
+    Age,
+    DE04_Highest_Ed
+  ) %>%
+  mutate(
+    id = as.factor(CASE),
+    nzeuro = as.integer(ET06_01_NZEuropean - 1),
+    maori = as.integer(ET06_02_Maori - 1),
+    pacific = as.integer(ET06_03_Pasifica - 1),
+    chinese  = as.integer(ET06_04_Chinese - 1) ,
+    indian  = as.integer(ET06_05_Indian - 1),
+    african = as.integer(ET06_06_African - 1),
+    missing = as.integer(ET06_07_NA - 1),
+    euro = as.integer(ET06_09_European - 1),
+    ea =  as.integer(ET06_11_EA - 1) ,
+    # check with Hedwig what these mean
+    sa_08 = as.integer(ET06_08_SA - 1),
+    # check with Hedwig what these mean
+    se_12 = as.integer(ET06_12_SA - 1),
+    # check with Hedwig what these mean
+    sea = as.integer(ET06_13_SeA - 1),
+    # check with Hedwig what these mean
+    wa = as.integer(ET06_14_WA - 1),
+    # check with Hedwig what these mean
+    gender_id = as.factor(DE02_Gender_Identify_Most),
+    # male or female?
+    age = as.numeric(Age),
+    edu = DE04_Highest_Ed
+  ) %>%
+  na_if(-9) %>%
+  select(
+    id,
+    gender_id,
+    age,
+    edu,
+    nzeuro,
+    maori,
+    pacific,
+    chinese,
+    indian,
+    african,
+    missing,
+    euro,
+    ea,
+    sa_08,
+    se_12,
+    sea,
+    wa
+  ) 
+glimpse(dat)
+dt <- dat %>% rowwise(id,age,edu, gender_id)
+glimpse(dt)
+
+dt_1 <- dt %>%
+mutate(total = sum(
+    c(nzeuro,
+      maori,
+      pacific,
+      chinese,
+      indian,
+      african,
+      missing,
+      euro,
+      ea,
+      sa_08,
+      se_12,
+      sea,
+      wa
+    )
+  )) %>%
+  mutate(total = sum(
+    c(nzeuro,
+      maori,
+      pacific,
+      chinese,
+      indian,
+      african,
+      missing,
+      euro,
+      ea,
+      sa_08,
+      se_12,
+      sea,
+      wa
+    )
+  ),
+  diverse = 
+  sum(
+    c(nzeuro,
+      maori,
+      pacific,
+      chinese,
+      indian,
+      african,
+      missing,
+      euro,
+      ea,
+      sa_08,
+      se_12,
+      sea,
+      wa
+    ) != 0
+  ))
+
+glimpse(dt_1)
+
+
+wdat <- df %>%
+  dplyr::filter(YearMeasured == 1) %>%
+    dplyr::filter(
+      Wave == 2018
+  ) %>%
+  dplyr::select(
+    Id,
+    Age,
+    Male,
+  #  EthnicCats,
+    Edu,
+    Wave,
+    YearMeasured,
+    SexualPrejudice01r,
+    SDO,
+    BS,
+    HS,
+  ) %>%
+  dplyr::mutate(anti_gay = SexualPrejudice01r,
+                male = as.numeric(Male)-1,
+                benevolent_sexism = BS,
+                hostile_sexism = HS,
+                edu = as.numeric(Edu)) %>%
+ dplyr::select(-c(SexualPrejudice01r, Wave, YearMeasured, BS, HS))
+  
+
+# code for selecting longitudinal data by waves returned
+#%>%
+  # droplevels() %>%
+  # group_by(Id) %>%
+  # filter(n() == 3) %>%
+  # ungroup() %>%
+ # dplyr::mutate(Covid_Timeline = forcats::fct_relevel(Covid_Timeline, ord_dates_class))
+```
+
+> 
+Paul and I have recently started on a project looking at associations of voice pitch related to so-called 'biological codes', i.e. supposed biological links with high and low pitch related to size, sex and how these are used in mammalian communication. The idea of these codes is that these links influence linguistic and paralinguistic meanings of pitch through associations with, e.g. 'dominance'=low pitch and 'submission'=high pitch. We want to test these associations in general, and also the extent to which they are influenced by the attitudes of different listeners, particularly gender attitudes related to normative ideas of gender along the lines of dominant=male, submissive=female.
+ 
+> We've been looking around at different gender surveys to try to measure these, and finding parts of different surveys which we think would work in a NZ context, but not one that seems to fit the bill.
+ 
+>We were wondering about the gender-related questions in the NZAVS - which have the advantage of being well tested in the NZ context. We were hoping for your help as part of the project team, with the following info which doesn't seem to be published (that we've found):
+is it possible to see the variance in the responses to the gender and social dominance related questions in the NZAVS data (e.g. from the latest round)?
+is it possible to see how the responses vary by age and participant gender for each of these questions?
+is it possible to see how correlated the responses are to these questions and participant age/gender?
+We think this would be useful to know better how likely responses to these questions would be to show sufficient spread in gender attitudes for our participants.
+ 
+>If you had any other thoughts on gender surveys in general we'd also be happy to hear 🙂
+ 
+
+## Data summary
+
+
+Descriptive summary for variables relevant to inferring the relationshp between vocal pitch and perceived dominance.  Note we make "male" a numeric indicator to assess the frequency of males in the sample, with not-male encompassing women and others who identify other than male.
+
+
+<!-- ```{r} -->
+<!-- library("table1") -->
+<!-- table1::table1(~ Age + Male + SDO + benevolent_sexism + hostile_sexism + anti_gay, data = dat) -->
+<!-- ``` -->
+
+
+<!-- We can quickly visualise the distribution of the variables using the `skimr` package. -->
+
+```{r}
+dat %>%
+ # dplyr::group_by(Wave) %>%
+  select(Age, male, SDO, Edu,hostile_sexism, benevolent_sexism, anti_gay)  %>%
+  skimr::skim() 
+```
+
+
+## Sample correlations
+
+
+First we prepare the data:
+
+```{r}
+dt <- dat %>%
+  dplyr::mutate(
+   age_z = scale(Age),
+  #  male = as.numeric(Male) - 1,
+    sdo_z = scale(SDO),
+    bs_z = scale(benevolent_sexism),
+    hs_z = scale(hostile_sexism),
+    anti_gay_z = scale(anti_gay)
+  ) %>%
+  select(age_z, sdo_z, bs_z, hs_z, anti_gay_z)
+nrow(dt)
+```
+
+
+Here are the raw correlations
+
+```{r}
+library(correlation)
+dt %>%
+  correlation(partial = FALSE,
+              multilevel = FALSE) %>%
+  summary()
+```
+
+Here are the partial correlations
+
+
+Graph for the (unadjusted) correlations:
+
+```{r}
+library(correlation)
+library(ggraph)
+
+dt %>%
+  correlation(partial = FALSE, multilevel = FALSE ) %>%
+  plot()
+```
+
+
+The indicators here look to be moderately correlated.  Indeed a single component accounts for half the variance in these indicators. 
+
+```{r}
+ ddt <- dt%>%
+  select(bs_z, hs_z, sdo_z, anti_gay_z) 
+
+# see: https://easystats.github.io/parameters/
+parameters::principal_components(ddt)
+```
+
+
+We can estimate the extent to which age, male, and education predict these indictators. 
+
+Begin male and being older predicts greater sdo, benevolent sexism, hostile sexism, and anti-homosexual attitudes.  Education predicts lower prejudice. 
+
+```{r}
+# get data in shape
+dt2 <- dat %>%
+  dplyr::mutate(
+    age_z = scale(Age),
+    #  male = as.numeric(Male) - 1,
+    sdo_z = scale(SDO),
+    bs_z = scale(benevolent_sexism),
+    hs_z = scale(hostile_sexism),
+    anti_gay_z = scale(anti_gay),
+    edu_z = scale(edu),
+    male_f = Male
+  ) %>%
+  select(age_z, sdo_z, bs_z, hs_z, anti_gay_z, edu_z, age_z, male_f)
+
+# prepare model
+bf1 <- bf(sdo_z ~ age_z + edu_z + male_f, family = "gaussian")
+bf2 <- bf(bs_z ~ age_z + edu_z + male_f, family = "gaussian")
+bf3 <- bf(hs_z ~ age_z + edu_z + male_f, family = "gaussian")
+bf4 <- bf(anti_gay_z ~ age_z + edu_z + male_f, family = "gaussian")
+
+# fit model, we do not set the rescor to TRUE because this will take days to run
+fit <- brm(
+  bf1 + bf2 + bf3 + bf4 +  set_rescor(rescor = FALSE),
+  # allow estimation of residual correlations
+  data = dt2,
+  file = here::here("models", "voical-pitch-cor-outcomes")
+)
+mcmc_plot(fit,  type = "areas")
+parameters::model_parameters(fit)
+```
+
+
+
+
+## Appendix 1
+
+Note, there is substantial missingness in the ant-homosexuality indicator.  
+
+We can inspect missingness using the `naniar` package.
+
+```{r}
+library(naniar)
+naniar::vis_miss(dat)
+```
+
+
+If we were to model the relationships betweeen variables, we would want to multiply impute missing responses. 
+
+For now, we press on. 
+
+## Appendix 2 Causal model
+
+It is a good idea to investigate the causal assumptions of a study using a directed acyclical graph (DAG). For causal inference, we must close all backdoor paths between an exposure of interest and the outcome of interest, and we must not introduce any collider confounds. 
+
+Assume the following model for potential causal influences, where the exposure variable of interest is vocal pitch and the outcome variable of interest is perceived dominance. We have theoretical reasons to assume that age, male, benevolent sexism , hostile sexism, and social dominance orientation (SDO) can moderate how pitch affects perceived dominance. 
+
+To make things harder on ourselves, let's assume there is a latent variable, called "nastiness', which gives rise to the correlations we just observed. 
+
+```{r}
+library(ggdag)
+dg <- dagify(
+  dom ~ pitch + age + male + bs + hs + sdo + U,
+  hs ~  age + male + U,
+  bs ~ age + male + U,
+  sdo ~ age  + male + U,
+  pitch ~ age + male + hs + bs + sdo + biology,
+  latent = "U",
+  exposure =  "pitch",
+  outcome =   "dom",
+  labels = c(
+    "dom" = "dominance",
+    "pitch" = "pitch",
+    "age" = "age",
+    "male" = "male",
+    "biology" = "biological endowment",
+    "hs" = "hostile sexism",
+    "bs" = "benevolent sexism",
+    "sdo" = "Soc Dom Orientation",
+    "U" = "Nastiness"
+  )
+) %>%
+  tidy_dagitty() 
+
+dg %>%
+  ggdag(use_labels = "label", text = FALSE) + theme_dag_blank()
+```
+
+
+Note that on this DAG, there are many potential collider confounds
+
+```{r}
+ggdag::ggdag_collider(dg, use_labels = "label", text = FALSE) + theme_dag_blank() +
+ labs(title = "Colliders")
+```
+
+
+It therefore  makes sense to assess which adjustements are needed to obtain an un-baised causal inference:
+
+
+
+```{r}
+ggdag::ggdag_adjustment_set(dg, use_labels = "label", text = FALSE) + theme_dag_blank() +
+  labs(title = "")
+```
+
+On the assumptions of this DAG, you would be correct to condition on age, benevolent sexism, hostile sexism, male gender and social dominance orientation. 
+
+
+## Partial correlations 
+
+```{r}
+dt %>%
+  correlation(partial = TRUE,
+              multilevel = FALSE) %>%
+  summary()
+```
+
+## Notes
+
+
+
+For more information about the NZAVS see [here](https://www.psych.auckland.ac.nz/en/about/new-zealand-attitudes-and-values-study.html) and [here](https://go-bayes.github.io/reports/posts/nzavs/)
+

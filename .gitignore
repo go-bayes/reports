@@ -33,6 +33,7 @@ _posts/**/*.html
 _posts/**/*_files/
 # data
 data/*df
+#data_raw
 *_cache/
 *models/
 *templates/template_review_files/
