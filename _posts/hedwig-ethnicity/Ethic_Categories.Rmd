@@ -57,11 +57,16 @@ library("kableExtra")
 library("broom")
 library("tidybayes")
 library("bmlm")
+library("tidyLPA")
+library("table1")
 # rstan options
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores ())
 theme_set(theme_classic())
 ```
+
+
+Import data
 
 ```{r cache = FALSE, include = FALSE}
 #import data
@@ -69,8 +74,12 @@ df<-read.csv(here::here("data_raw","data_emapaccept_210614.csv"))
 
 # check format
 #str(df)
+```
 
 
+Data wrangling
+
+```{r cache = FALSE, include = FALSE}
 # select variables
 library(tidyverse)
 
@@ -119,7 +128,7 @@ dat <- df %>%
     age = as.numeric(Age),
     edu = DE04_Highest_Ed
   ) %>%
-  na_if(-9) %>%
+  na_if(-9) %>%  # from Hedwig's notes
   select(
     id,
     gender_id,
@@ -210,6 +219,26 @@ dt_1 <- dt %>%
 nrow(dt_1)
 
 
+
+# dtt<- dtt%>% 
+#   mutate(max_eth = ifelse(maori == mak & across(nzeuro:wa) != mak, "maori_max", 
+#                            ifelse(nzeuro == mak &  across(nzeuro:wa) != mak, "nzeuro_max", 
+#                                   ifelse(indian == mak & across(nzeuro:wa) != mak, "indian_max", 
+#                                           ifelse(pacific == mak & across(nzeuro:wa) != mak, "pacific_max", 
+#                                                  ifelse (chinese == mak & across(nzeuro:wa) != mak, "chinese_max", 
+#                                                      ifelse(maori == mak &  nzeuro == mak, "maori_euro_max", 
+#                                                             ifelse(pacific == mak & nzeuro == mak, "pacific_euro_max",
+#                                                                    ifelse(indian == mak & nzeuro == mak, "indian_euro_max", 
+#                                                                           ifelse(chinese == mak & nzeuro == mak, "chinese_euro_max", "others"))))))))))
+#                                                     
+
+
+# looking for maximum identity
+```
+
+Here is the code for calculating max identity group. This could be done differently. Here we look at max identities for the major NZ ethnicities and allow there to be a category for people who are equally maxed out in Maori and NZ euro identity. These decisions are based on the interest of the study for examining ethnic self-identification in New Zealand (in the population from which the current sample is drawn). Note this is sample is not the NZ general population. 
+
+```{r cache = FALSE, include = FALSE}
 nm1<- c("nzeuro",
       "maori",
       "pacific",
@@ -228,19 +257,8 @@ nm1<- c("nzeuro",
 dtt <- dt_1 %>%
   mutate(mak = pmax(!!!rlang::syms(nm1))) 
 
-nrow(dtt)
+#nrow(dtt)
 
-# dtt<- dtt%>% 
-#   mutate(max_eth = ifelse(maori == mak & across(nzeuro:wa) != mak, "maori_max", 
-#                            ifelse(nzeuro == mak &  across(nzeuro:wa) != mak, "nzeuro_max", 
-#                                   ifelse(indian == mak & across(nzeuro:wa) != mak, "indian_max", 
-#                                           ifelse(pacific == mak & across(nzeuro:wa) != mak, "pacific_max", 
-#                                                  ifelse (chinese == mak & across(nzeuro:wa) != mak, "chinese_max", 
-#                                                      ifelse(maori == mak &  nzeuro == mak, "maori_euro_max", 
-#                                                             ifelse(pacific == mak & nzeuro == mak, "pacific_euro_max",
-#                                                                    ifelse(indian == mak & nzeuro == mak, "indian_euro_max", 
-#                                                                           ifelse(chinese == mak & nzeuro == mak, "chinese_euro_max", "others"))))))))))
-#                                                     
 
 dtt<- dtt%>% 
   mutate(max_eth = ifelse(maori == mak & nzeuro != mak, "maori_max", 
@@ -252,13 +270,15 @@ dtt<- dtt%>%
                                                             ifelse(pacific == mak & nzeuro == mak, "pacific_euro_max",
                                                                    ifelse(indian == mak & nzeuro == mak, "indian_euro_max", 
                                                                           ifelse(chinese == mak & nzeuro == mak, "chinese_euro_max", "others"))))))))))
-                                        
-glimpse(dtt)
   
-
-
-
 ```
+
+Table of maximum identities
+```{r}
+table1::table1(~max_eth,data = dtt)
+```
+
+
 
 Total
 
@@ -266,11 +286,20 @@ Total
 hist(dt_1$total, breaks=100)
 ```
 
-Diversity
+Average totals by group
 
-```{r cache = FALSE, include = FALSE}
-hist(dt_1$diversity)
+```{r}
+library(kableExtra)
+dtt %>%
+  group_by( max_eth) %>%
+  summarise(mean_total = mean(total),
+            sd_total = sd(total))%>%
+  kbl(caption = "Totals") %>%
+   kable_classic_2(c("striped", "hover"), full_width = TRUE)%>%
+  collapse_rows()
 ```
+
+
 
 
 Instances of diversity scores (range 1 - 6)
@@ -283,6 +312,21 @@ dt_1 %>%
 ```
 
 
+Average diversity by groups
+
+
+
+```{r}
+library(kableExtra)
+dtt %>%
+  group_by( max_eth) %>%
+  summarise(mean_diversity = mean(diversity),
+            sd_diversity = sd(diversity))%>%
+  kbl(caption = "Descriptive statistics for diversity by groups") %>%
+   kable_classic_2(c("striped", "hover"), full_width = TRUE)%>%
+  collapse_rows()
+```
+
 
 Table of superidentified
 
@@ -290,11 +334,44 @@ Table of superidentified
 table(dt_1$superidentified)
 ```
 
-Table of unidentified
+
+
+Super-identified by group
+
 
 ```{r}
-table(dt_1$underidentified)
+dtt %>%
+  select(max_eth, superidentified) %>%
+  group_by(max_eth) %>%
+  summarise(
+    n = n(),
+    n_super = sum(superidentified == 1),
+    prop_super = n_super / n
+  ) %>%
+  kbl(caption = "Proprotion of superidentified by max ethnic group") %>%
+  kable_classic_2(c("striped", "hover"), full_width = TRUE) %>%
+  collapse_rows()
 ```
+
+
+
+Under-identified by group. Note that maori-euro co-equal max participants are never underidentified. We will need to exclude this group from the analysis of predictors of under-identification because the models would be ... no pun intended -- underidentified. 
+
+
+```{r}
+dtt %>%
+  select(max_eth, underidentified) %>%
+  group_by(max_eth) %>%
+  summarise(
+    n = n(),
+    n_under = sum(underidentified == 1),
+    prop_under = n_under / n
+  ) %>%
+  kbl(caption = "Proportion of unidentified by max ethnic group") %>%
+  kable_classic_2(c("striped", "hover"), full_width = TRUE) %>%
+  collapse_rows()
+```
+
 
 
 Graph of spread of proportions by ethnicity 
@@ -351,7 +428,7 @@ nze + nzm + nzp + nzi + nzc +  plot_annotation("Historgrams of sample Ethnic pro
 ```
 
 
-Create longer data frame for models
+Create longer data frame for identities in multiple groups
 
 ```{r cache = FALSE, include = FALSE}
 
@@ -414,13 +491,16 @@ Table of unique identities
 dt_2%>%
   group_by(eth_id)%>%
   tally(ethnicity_rating !=0) %>%
-  arrange(desc(n))
+  arrange(desc(n))  %>%
+  kbl(caption = "Spread of all ethnic identifications") %>%
+  kable_classic_2(c("striped", "hover"), full_width = TRUE) %>%
+  collapse_rows()
 ```
 
 
 ## Some simple analyses (TBC)
 
-How many people are >= 50% european or nzeuro and at least one other ethnicity?
+How many people are >= 50% NZ or other european and at least one other ethnicity?
 
 ```{r}
 dt_1 %>%
@@ -498,10 +578,6 @@ Next we attempt to formally model total identity and diversity
 
 ## Predictors of total identity
 
-```{r}
-hist(dt_1$total, breaks = 100)
-```
-
 
 ```{r}
 #mix <- mixture(gaussian, gaussian, gaussian)
@@ -531,20 +607,19 @@ fit_t <- brm(bf(ethnicity_rating ~ eth_id - 1  + (1|id)) , # random intercept fo
             data = dt_2,
           # family = mix, # mixture takes *way* too long
            file = here::here("models", "hedwig-total"))
-summary(fit_t)
-
+par_m1 <- parameters::model_parameters(fit_t)
+par_m1
+plot(par_m1)
 
 ```
 
 This just tells us that the expect response for nzeuro is higher.
 
 
-Lets focus on the predictors of superidentification
+Let's focus on the predictors of super-identification
 
 
 ```{r}
-
-
 fit_t2 <-
   brm(bf(superidentified ~ max_eth-1),
     data = dtt,
@@ -553,7 +628,7 @@ fit_t2 <-
   )
 par_m2 <- parameters::model_parameters(fit_t2)
 par_m2
-plot(par_m2)
+see::plot(par_m2)
 ```
 
 
@@ -584,7 +659,7 @@ This result suggests that those who rate themselves as equally maximally europea
 
 
 
-Next lets focus on under identification. Because there are no instances of maximally maori_europeans who were underidentified we remove this group from the model to avoid complete separation. 
+Next lets focus on under-identification. Because there are no instances of maximally maori_europeans who were under-identified we remove this group from the model to avoid complete separation. 
 
 
 ```{r}
