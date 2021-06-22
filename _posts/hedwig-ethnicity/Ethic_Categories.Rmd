@@ -2,6 +2,11 @@
 title: "Ethnicity Analysis"
 description: "Intial work for Hedwig"
 author:
+  - name: Hedwig Eisenbarth
+    url: --here--
+    affiliation: Victoria University of Wellington
+    affiliation_url: https://www.wgtn.ac.nz
+    orcid_id: -- here--
   - name: Joseph Bulbulia
     url: https://josephbulbulia.netlify.app
     affiliation: Victoria University of Wellington
@@ -33,7 +38,6 @@ knitr::opts_chunk$set(
 ```{r libs, include=FALSE}
 library("tidyverse")
 library("here")
-library("equatiomatic")
 library("lubridate")
 library("ggplot2")
 library("ggthemes") #themes
@@ -56,7 +60,6 @@ library("easystats")
 library("kableExtra")
 library("broom")
 library("tidybayes")
-library("bmlm")
 library("tidyLPA")
 library("table1")
 # rstan options
@@ -65,8 +68,43 @@ options(mc.cores = parallel::detectCores ())
 theme_set(theme_classic())
 ```
 
+## Introduction
 
-Import data
+The New Zealand national census asks people to respond to the following question:
+
+> Which ethnic group(s) do you belong to?
+
+A tick box with the following options appears:
+
+- New Zealand European 
+- Māori
+- Samoan
+- Cook Island Māori 
+- Tongan
+- Niuean 
+- Chinese 
+-  Indian
+- Other such as DUTCH, JAPANESE, TOKELAUAN. Please state: [OPEN BOX]
+
+
+In the previous census, the frequency of multiple group identification for Maori was 45% [source](https://www.stats.govt.nz/tools/2018-census-ethnic-group-summaries/m%C4%81ori)
+
+The frequence of multiple group identifidation for Europeans who identify with another ethnic group is 84.1% [source](https://www.stats.govt.nz/tools/2018-census-ethnic-group-summaries/european)
+
+Despite the evidence for substantial multiple ethnic identifications in New Zealand, we are unaware of previous research that has invesetigated differences in the intensity of ethnic identifications. 
+
+Here, we model responses to a population selected for research $\dots$ (details to follow $\dots$ )
+
+
+Suggested readings;:
+
+[here](https://www.stats.govt.nz/consultations/ethnicity-standard-classification-findings-from-public-consultation-november-2019)
+[here](https://www.otago.ac.nz/wellington/otago600094.pdf)
+
+
+## Descriptive Analysis 
+
+### Import data
 
 ```{r cache = FALSE, include = FALSE}
 #import data
@@ -76,8 +114,7 @@ df<-read.csv(here::here("data_raw","data_emapaccept_210614.csv"))
 #str(df)
 ```
 
-
-Data wrangling
+### Data wrangling
 
 ```{r cache = FALSE, include = FALSE}
 # select variables
@@ -152,7 +189,7 @@ glimpse(dat)
 dt <- dat %>% rowwise(id)
 glimpse(dt)
 
-
+# create total response and diversity variables 
 dt_1 <- dt %>%
   mutate(total = sum(
     c(nzeuro,
@@ -212,8 +249,8 @@ dt_1 <- dt %>%
     proportion_indian = as.numeric(indian / total),
     proportion_chinese = as.numeric(chinese / total)
   ) %>%
-  mutate(superidentified = as.integer(ifelse(total >= 120, 1, 0))) %>%
-  mutate(underidentified = as.integer(ifelse(total <=80, 1, 0))) %>%
+  mutate(superidentified = as.integer(ifelse(total >= 120, 1, 0))) %>% # this is arbitrary
+  mutate(underidentified = as.integer(ifelse(total <=80, 1, 0))) %>% # this is arbitrary
   ungroup()
 
 nrow(dt_1)
@@ -236,71 +273,101 @@ nrow(dt_1)
 # looking for maximum identity
 ```
 
-Here is the code for calculating max identity group. This could be done differently. Here we look at max identities for the major NZ ethnicities and allow there to be a category for people who are equally maxed out in Maori and NZ euro identity. These decisions are based on the interest of the study for examining ethnic self-identification in New Zealand (in the population from which the current sample is drawn). Note this is sample is not the NZ general population. 
+Here is the code for calculating max identity group. This could be done differently. Here we look at max identities for the major NZ ethnicities and allow there to be a category for people who are equally maxed out in Maori and NZ euro identity. These decisions are based on the interest of the study for examining ethnic self-identification in New Zealand (in the population from which the current sample is drawn). Note this is sample is not the NZ general population.
 
 ```{r cache = FALSE, include = FALSE}
-nm1<- c("nzeuro",
-      "maori",
-      "pacific",
-      "chinese",
-      "indian",
-      "african",
-      "missing",
-      "euro",
-      "ea",
-      "sa08",
-      "se12",
-      "sea",
-      "wa")
+nm1 <- c(
+  "nzeuro",
+  "maori",
+  "pacific",
+  "chinese",
+  "indian",
+  "african",
+  "missing",
+  "euro",
+  "ea",
+  "sa08",
+  "se12",
+  "sea",
+  "wa"
+)
+
 
 
 dtt <- dt_1 %>%
-  mutate(mak = pmax(!!!rlang::syms(nm1))) 
+  mutate(mak = pmax(!!!rlang::syms(nm1)))
 
 #nrow(dtt)
 
 
-dtt<- dtt%>% 
-  mutate(max_eth = ifelse(maori == mak & nzeuro != mak, "maori_max", 
-                           ifelse(nzeuro == mak &  maori != mak, "nzeuro_max", 
-                                  ifelse(indian == mak & nzeuro != mak, "indian_max", 
-                                          ifelse(pacific == mak & nzeuro != mak, "pacific_max", 
-                                                 ifelse (chinese == mak & nzeuro != mak, "chinese_max", 
-                                                     ifelse(maori == mak &  nzeuro == mak, "maori_euro_max", 
-                                                            ifelse(pacific == mak & nzeuro == mak, "pacific_euro_max",
-                                                                   ifelse(indian == mak & nzeuro == mak, "indian_euro_max", 
-                                                                          ifelse(chinese == mak & nzeuro == mak, "chinese_euro_max", "others"))))))))))
-  
+dtt <- dtt %>%
+  mutate(max_eth = ifelse(
+    maori == mak & nzeuro != mak,
+    "maori_max",
+    ifelse(
+      nzeuro == mak &  maori != mak,
+      "nzeuro_max",
+      ifelse(
+        indian == mak & nzeuro != mak,
+        "indian_max",
+        ifelse(
+          pacific == mak & nzeuro != mak,
+          "pacific_max",
+          ifelse (
+            chinese == mak & nzeuro != mak,
+            "chinese_max",
+            ifelse(
+              maori == mak &  nzeuro == mak,
+              "maori_euro_max",
+              ifelse(
+                pacific == mak & nzeuro == mak,
+                "pacific_euro_max",
+                ifelse(
+                  indian == mak & nzeuro == mak,
+                  "indian_euro_max",
+                  ifelse(chinese == mak &
+                           nzeuro == mak, "chinese_euro_max", "others")
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  ))
+
 ```
 
-Table of maximum identities
+
+### Maximum identification
+
+Table of n's for maximum identities
+
 ```{r}
-table1::table1(~max_eth,data = dtt)
+table1::table1( ~ max_eth, data = dtt)
 ```
 
+### Average totals by group
 
+```{r}
+library(kableExtra)
+dtt %>%
+  group_by(max_eth) %>%
+  summarise(mean_total = mean(total),
+            sd_total = sd(total)) %>%
+  kbl(caption = "Totals") %>%
+  kable_classic_2(c("striped", "hover"), full_width = TRUE) %>%
+  collapse_rows()
+```
 
-Total
+Average totals by max identity group reveals multimembership, with mean sample totals \> 100 in all max identity groups. However, there is also substantial variation, as evident in the histogram.
 
 ```{r cache = FALSE, include = FALSE}
 hist(dt_1$total, breaks=100)
 ```
 
-Average totals by group
 
-```{r}
-library(kableExtra)
-dtt %>%
-  group_by( max_eth) %>%
-  summarise(mean_total = mean(total),
-            sd_total = sd(total))%>%
-  kbl(caption = "Totals") %>%
-   kable_classic_2(c("striped", "hover"), full_width = TRUE)%>%
-  collapse_rows()
-```
-
-
-
+### Diversity (or Ssread) of sample ethnic identifications
 
 Instances of diversity scores (range 1 - 6)
 
@@ -311,33 +378,28 @@ dt_1 %>%
   select(-counts)
 ```
 
-
-Average diversity by groups
-
-
+Average diversity by groups reveals substantial overlapping identities.
 
 ```{r}
 library(kableExtra)
 dtt %>%
-  group_by( max_eth) %>%
+  group_by(max_eth) %>%
   summarise(mean_diversity = mean(diversity),
-            sd_diversity = sd(diversity))%>%
+            sd_diversity = sd(diversity)) %>%
   kbl(caption = "Descriptive statistics for diversity by groups") %>%
-   kable_classic_2(c("striped", "hover"), full_width = TRUE)%>%
+  kable_classic_2(c("striped", "hover"), full_width = TRUE) %>%
   collapse_rows()
 ```
 
+### Super-identification 
 
-Table of superidentified
+Table of superidentified participants
 
 ```{r  cache = FALSE, include = FALSE}
 table(dt_1$superidentified)
 ```
 
-
-
 Super-identified by group
-
 
 ```{r}
 dtt %>%
@@ -353,10 +415,9 @@ dtt %>%
   collapse_rows()
 ```
 
+### Under-identification 
 
-
-Under-identified by group. Note that maori-euro co-equal max participants are never underidentified. We will need to exclude this group from the analysis of predictors of under-identification because the models would be ... no pun intended -- underidentified. 
-
+Under-identified by group. Note that noe of the maori-euro co-equal max participants are under-identified in this sample. We will need to exclude this group from the analysis of predictors of under-identification because the models would be -- so to speak -- under-identified.
 
 ```{r}
 dtt %>%
@@ -372,63 +433,76 @@ dtt %>%
   collapse_rows()
 ```
 
+### Proportional diversity 
 
-
-Graph of spread of proportions by ethnicity 
+Graph of spread of proportions by ethnicity
 
 ```{r  cache = FALSE, include = FALSE}
 
 # NZ Euro identity
-dt_nz <-dt_1%>%
-filter(proportion_nzeuro > .01) 
+dt_nz <- dt_1 %>%
+  filter(proportion_nzeuro > .01)
 
-nze<- qplot(dt_nz$proportion_nzeuro, geom = "histogram",bins =100)+ 
-    ggtitle("Histogram of identity in sample\nwho identify as > 1% NZ European") + xlab("Distributions of NZ European proportions")
+nze <- qplot(dt_nz$proportion_nzeuro, geom = "histogram", bins = 100) +
+  ggtitle("Histogram of identity in sample\nwho identify as > 1% NZ European") + xlab("Distributions of NZ European proportions")
 
 # Māori Identity
 
 dt_maori <- dt_1 %>%
   filter(proportion_maori > .01)
 
-nzm <- qplot(dt_maori$proportion_maori, geom = "histogram", bins = 100) +
+nzm <-
+  qplot(dt_maori$proportion_maori, geom = "histogram", bins = 100) +
   ggtitle("Histogram of identity in sample\nwho identify as > 1% Māori") + xlab("Distributions of Māori proportions")
 
 
 # Pacific Identity
 
-dt_pac <-dt_1%>%
-filter(proportion_pacific > .01) 
 
-nzp <- qplot(dt_pac$proportion_pacific, geom = "histogram",bins =100) + 
+dt_pac <- dt_1 %>%
+  filter(proportion_pacific > .01)
+
+nzp <-
+  qplot(dt_pac$proportion_pacific, geom = "histogram", bins = 100) +
   ggtitle("Histogram of identity in sample\nwho identify as > 1% Pacific") + xlab("Distributions of Pacific idenity proportions")
 
 
 
 # Indian identity
-dt_indian <-dt_1%>%
-filter(proportion_indian > .01) 
+dt_indian <- dt_1 %>%
+  filter(proportion_indian > .01)
 
-nzi <- qplot(dt_indian$proportion_indian, geom = "histogram",bins =100) + 
-  ggtitle( "Histogram of identity in sample\nwho identify as > 1% Indian") + xlab("Distributions of Indian idenity proportions")
+nzi <-
+  qplot(dt_indian$proportion_indian,
+        geom = "histogram",
+        bins = 100) +
+  ggtitle("Histogram of identity in sample\nwho identify as > 1% Indian") + xlab("Distributions of Indian idenity proportions")
 
 
 # Chinese identity
+dt_chinese <- dt_1 %>%
+  filter(proportion_chinese > .01)
 
-dt_chinese <-dt_1%>%
-filter(proportion_chinese > .01) 
-
-nzc<- qplot(dt_chinese$proportion_chinese, geom = "histogram",bins =100) + ggtitle("Histogram of identity in sample\nwho identify as > 1% Chinese") + xlab("Distributions of Chinese idenity proportions")
+nzc <-
+  qplot(dt_chinese$proportion_chinese,
+        geom = "histogram",
+        bins = 100) + ggtitle("Histogram of identity in sample\nwho identify as > 1% Chinese") + xlab("Distributions of Chinese idenity proportions")
 
 
 
 library(patchwork)
 
-nze + nzm + nzp + nzi + nzc +  plot_annotation("Historgrams of sample Ethnic proportions",  subtitle = "Histograms review greater distribution of identities among Māori and Pacific ethnic identities", tag_levels = 'a')
+nze + nzm + nzp + nzi + nzc +  plot_annotation(
+  "Historgrams of sample Ethnic proportions",
+  subtitle = "Histograms review greater distribution of identities among Māori and Pacific ethnic identities",
+  tag_levels = 'a'
+)
 
 ```
 
+### Multiple group identification characteristics
 
-Create longer data frame for identities in multiple groups
+Next we create longer data frame to describe identities in multiple groups.
 
 ```{r cache = FALSE, include = FALSE}
 
@@ -450,190 +524,270 @@ dt_2 <- dt_1 %>%
     values_to = "ethnicity_rating"
   ) %>%
   mutate(eth_id = factor(eth_id))
-# 
-# # not used
-# dt_3<- dt_1%>%
-#   pivot_longer(
-#     !c(
-#       id,
-#       age,
-#       edu,
-#       gender_id,
-#       max_ethnic,
-#       total,
-#       diversity,
-#       superidentified,
-#       underidentified,
-#       nzeuro,
-#       maori,
-#       pacific,
-#       chinese,
-#       indian,
-#       african,
-#       missing,
-#       euro,
-#       ea,
-#       sa08,
-#       se12,
-#       sea,
-#       wa
-#     ),
-#     names_to = "prop_eth",
-#     values_to = "eth_prop"
-#   )
 
 ```
 
-
-Table of unique identities
+Counts of ethnic identities
 
 ```{r cache = FALSE, include = FALSE}
 dt_2%>%
   group_by(eth_id)%>%
   tally(ethnicity_rating !=0) %>%
   arrange(desc(n))  %>%
-  kbl(caption = "Spread of all ethnic identifications") %>%
+  kbl(caption = "Counts of ethnic identifications") %>%
   kable_classic_2(c("striped", "hover"), full_width = TRUE) %>%
   collapse_rows()
 ```
 
+Sample average number of chosen identitis is 2.21.
 
-## Some simple analyses (TBC)
+```{r}
+library(kableExtra)
+dt_2 %>%
+  select(id, ethnicity_rating) %>%
+  summarise(
+    counts_ethnicity_ratings = sum(ethnicity_rating != 0),
+    n_sample = length(unique(id)),
+    average_ids = counts_ethnicity_ratings / n_sample
+  ) %>%
+  kbl(caption = "Average counts of ethnic identifications") %>%
+  kable_classic_2(c("striped", "hover"), full_width = F) %>%
+  collapse_rows()
+```
 
-How many people are >= 50% NZ or other european and at least one other ethnicity?
+### A few observations about multiple-membership
+
+How many people are \>= 50% NZ or other european and at least one other ethnicity?
 
 ```{r}
 dt_1 %>%
-  tally((nzeuro >= 50  | euro >= 50) & c_across(nzeuro:ea)!=0)
+  tally((nzeuro >= 50  | euro >= 50) & c_across(nzeuro:ea) != 0)
 ```
 
-
-How many people are part maori and part european? 
+How many people are part maori and part european?
 
 ```{r}
 dt_1 %>%
-  tally((maori > 1  & nzeuro > 1) )
+  tally((maori > 1  & nzeuro > 1))
 ```
 
+## Statistical models
 
-## Latent profile analysis 
+### Latent profile analysis of ethnic identifications
 
 Here we perform a latent profile analysis to extract ethnic identity types
 
 ```{r, cache = TRUE}
-library(tidyLPA)
-
-# LPA on proportional identity 
-
-out <- dt_1 %>%
-  dplyr::select(
-    proportion_chinese,
-    proportion_indian,
-    proportion_nzeuro,
-    proportion_maori,
-    proportion_nzeuro,
-    proportion_pacific
-  )
-#%>%
- # dplyr::mutate_all(., scale)
-
-out%>%
-  single_imputation() %>%
-  tidyLPA::estimate_profiles(5) %>%
-    plot_profiles(add_line = TRUE)
-```
-
-Arguably a better way to estimate profiles is to use the raw scores. This allows us to adjust for super-identifiers and under-identifiers.
-
-
-
-```{r cache = TRUE}
 ## Try this with counts 
-out2 <- dt_1 %>%
-  dplyr::select(
-    chinese,
-    indian,
-    nzeuro,
-    maori,
-    nzeuro,
-    pacific
-  )
+outt <- dt_1 %>%
+  dplyr::select(chinese,
+                indian,
+                nzeuro,
+                maori,
+                nzeuro,
+                pacific)
 
-out2%>%
+p_outt <- outt %>%
   single_imputation() %>%
-  tidyLPA::estimate_profiles(5) %>%
-    plot_profiles(add_line = TRUE)
+  tidyLPA::estimate_profiles(7)
+p_outt %>%
+  plot_profiles(add_line = TRUE)
 
 ```
 
+Here we find that those who are find that in the Māori category there are some with high overall Maori identification and also high NZeuro identification. We also recover a group of middle-level Maori identifiers who are also middle identified in NZeuro ethnicity. The highly identified Pacific group is expected to express some NZeuro identification.
 
-Here we find that those who are find that the Māori category appears to be superidentified as Maori and NZeuro wheree as the Pacific category appears to be superidentified as Pacific and NZeuro. 
+The following is a table for the proportion of the sample that fits with these profiles. The third class (green/ NZ euros) and the yellow class (not fitting into any of these categories) are the proportionally largest classes with about 50% of the sample fitting into one of these two categories (25% each). The other classifications describe about 10% of the sample each, with the exception of the 5th classification, which tracks the pacific identifiers at just under 5%.
+
+Again, because of the specific sampling approach in this study, we cannot generalise from this sample to features of the general New Zealand population.
+
+See Appendix 2 for fit criteria in LPA model selection
+
+```{r}
+d_out <- tidyLPA::get_data(p_outt) ## 
+
+d_out %>%
+  dplyr::select(Class) %>%
+  dplyr::mutate(class = as.factor(Class)) %>%
+  dplyr::group_by(class) %>%
+  dplyr::summarise(n = n()) %>%
+  dplyr::mutate(freq = n / sum(n)) %>%
+  dplyr::arrange(desc(n)) %>%
+  kbl(caption = "proportion of sample in LPA lasses") %>%
+  kable_classic_2(c("striped", "hover"), full_width = F) %>%
+  collapse_rows()
+```
+
+### Bayesian models for total identification 
+
+Next we attempt to formally model total identity
 
 
 
-##  Formal models
+#### Zero one inflated beta model 
 
-Next we attempt to formally model total identity and diversity 
+Let's try a Zero 1 inflated probability model as described by Matti Vuorre [here](https://mvuorre.github.io/posts/2019-02-18-analyze-analog-scale-ratings-with-zero-one-inflated-beta-models/)
+
+```{r}
+#formula
 
 
-## Predictors of total identity
+# rescale date to 0-1
+dt_2z <- dt_2 %>%
+  mutate(ethnicity_rating100 = (ethnicity_rating / 100))
+
+zoib_model <- bf(ethnicity_rating100 ~ eth_id - 1  + (1 | id),
+                 phi ~ eth_id,
+                 zoi ~ eth_id,
+                 coi ~ eth_id,
+                 family = zero_one_inflated_beta())
+
+# fit
+fit_zoib  <- brm(
+  formula = zoib_model,
+  data = dt_2z,
+  file = here::here("models", "hedwig-brm-zoib")
+)
+#prior_summary(fit_zoib)
+par_z<- parameters::model_parameters(fit_zoib)
+#par_z
+```
+
+
+
+The effective samples are low, and we can see that very small n's in certain ethnicites are casing a problem in the random components of the model.  
+
+```{r}
+plot(par_z)
+```
+
+To see if we are on the right track however, let's consider the expected responses:
+
+```{r}
+plot(
+  conditional_effects(fit_zoib, dpar = "mu"),
+  points = TRUE,
+  point_args = list(alpha = .2,
+    width = .1,
+    size = 3)
+)
+```
+
+
+Apart from the missing cases we get a much nicer fit, and the predictive checks look OK
 
 
 ```{r}
-#mix <- mixture(gaussian, gaussian, gaussian)
-
-# #
-# prior <- c(
-#   prior(normal(0, 2), Intercept, dpar = mu1),
-#   prior(normal(0, 2), Intercept, dpar = mu2),
-#   prior(normal(0, 2), Intercept, dpar = mu3)
-# )
+pp_check(fit_zoib) + scale_x_continuous(limits = c(0, 1)) + ggtitle("Posterior predictive check of Poisson model for ethicity rating")
+```
 
 
-# Filter dominent ids or model will not run
-# dt_3 <- dt_2 %>%
-#   group_by(id) %>%
-#   filter(eth_id == "nzeuro" | eth_id == "maori" |  eth_id == "chinese" | 
-#            eth_id == "indian" | eth_id == "pacific" ) %>% ungroup() %>% droplevels()
+Let's simply the model by merging very low n categories 
 
-# # This captures 180 ids
-# length(unique(dt_3$id))
-# 
-# glimpse(dt_3)
+```{r}
+# recode
+dt_2zz <- dt_2z %>%
+ mutate(eth_id = as.character(eth_id)) %>% 
+  mutate(eth_idM =
+  ifelse(
+    eth_id == "african" |
+      eth_id == "ea" |
+      eth_id == "sea" |
+      eth_id == "wa" |
+      eth_id == "missing" |
+      eth_id == "sa08" |
+      eth_id == "se12"|
+      eth_id == "euro",
+    "others",
+     eth_id)) %>%
+  mutate(eth_idM = factor(eth_idM)) %>%
+  mutate(eth_idM = forcats::fct_relevel(eth_idM,
+     c( "others","nzeuro","maori","pacific","indian","chinese")))
+```
+
+I'm not sure this is a sensible model because we obtain lots of counts for "others", however because this category isn't going to be the focus of our inference perhaps we can set this complication to the side, for now:
+
+```{r}
+table(dt_2zz$eth_idM)
+```
+
+We press on with the model, and remove the random effect (having found that the model with the random effect doesn't perform any better.)
 
 
+```{r}
+zoib_model2 <- bf(ethnicity_rating100 ~ eth_idM + (1|id),
+                 phi ~ eth_id,
+                 zoi ~ eth_id,
+                 coi ~ eth_id,
+                 family = zero_one_inflated_beta())
 
-fit_t <- brm(bf(ethnicity_rating ~ eth_id - 1  + (1|id)) , # random intercept for ids
-            data = dt_2,
-          # family = mix, # mixture takes *way* too long
-           file = here::here("models", "hedwig-total"))
-par_m1 <- parameters::model_parameters(fit_t)
-par_m1
-plot(par_m1)
+fit_zoib2  <- brm(
+  formula = zoib_model2,
+  data = dt_2zz,
+  file = here::here("models", "hedwig-brm-zoib2")
+)
+
+#summary(fit_zoib2)
+#prior_summary(fit_zoib2b)
+par_z2<- parameters::model_parameters(fit_zoib2)
+par_z2
+```
+Again we find very low mixing. The model would need to be run for much longer to obtain a reliable posterior, however we again find a bitter model fit than in the other attempts (Appendix 4).
+
+```{r}
+plot(par_z2)
+```
+
+Here are the expected responses
+
+```{r}
+dev.off()
+plot(
+  conditional_effects(fit_zoib2, dpar = "mu"),
+  points = TRUE,
+  point_args = list(alpha = .2,
+    width = .1,
+    size = 3))
+
+# plot(
+#   conditional_effects(fit_zoib2, dpar = "mu"),
+#   points = TRUE,
+#   point_args = list(alpha = .2,
+#     width = .1,
+#     size = 3),
+#   ask = FALSE
+# )[[2]]
 
 ```
 
-This just tells us that the expect response for nzeuro is higher.
 
+The predictive checks look good.
+
+
+```{r}
+pp_check(fit_zoib) + scale_x_continuous(limits = c(0, 1)) + ggtitle("Posterior predictive check of Poisson model for ethicity rating")
+```
+
+
+
+### Bayesian model for super-identification
 
 Let's focus on the predictors of super-identification
 
-
 ```{r}
 fit_t2 <-
-  brm(bf(superidentified ~ max_eth-1),
+  brm(
+    bf(superidentified ~ max_eth - 1),
     data = dtt,
     family =  "bernoulli",
     file = here::here("models", "hedwig-total_2")
   )
 par_m2 <- parameters::model_parameters(fit_t2)
 par_m2
-see::plot(par_m2)
+plot(par_m2)
 ```
 
-
-We can graph the predicted probabilities for classification as superidentified on the probability scale, and we see it is the Maori / NZeuropean joint identifiers that are maximally identified. 
-
+We can graph the predicted probabilities for classification as super-identified on the probability scale, and we see it is the Maori / NZeuropean joint identifiers that are maximally identified.
 
 ```{r}
 plot(
@@ -642,36 +796,35 @@ plot(
     categorical = FALSE,
     prob = 0.89,
     re_formula = NA,
-  ),   # WE cannot graph points when the points arg = TRUE
+  ),
+  # WE cannot graph points when the points arg = TRUE
   points = TRUE,
   point_args = list(
     alpha = 1,
     width = .1,
     size = .2
   )
-) 
+)
 
 ```
 
-
-
 This result suggests that those who rate themselves as equally maximally european and maori are more likely to be superidentified.
 
+### Bayesian model for under-identification
 
-
-Next lets focus on under-identification. Because there are no instances of maximally maori_europeans who were under-identified we remove this group from the model to avoid complete separation. 
-
+Next lets focus on under-identification. Because there are no instances of maximally maori_europeans who were under-identified we remove this group from the model to avoid complete separation.
 
 ```{r}
 dtt_removed <- dtt %>%
-  filter(max_eth!= "maori_euro_max")
+  filter(max_eth != "maori_euro_max")
 
 table(dtt$max_eth)
 # 173 cases
 #nrow(dtt_removed)
 
 fit_t3 <-
-  brm(bf(underidentified ~ max_eth-1),
+  brm(
+    bf(underidentified ~ max_eth - 1),
     data = dtt_removed,
     family =  "bernoulli",
     file = here::here("models", "hedwig-total_3")
@@ -683,8 +836,7 @@ par_m3
 plot(par_m3)
 ```
 
-
-Again we plot our results, and find that the expected classification for all groups as underidentified is low, with maori_max the lowest overall in underidentification (although with broad uncertainty). 
+Again we plot our results, and find that the expected classification for all groups as underidentified is low, with maori_max the lowest overall in underidentification (although with broad uncertainty).
 
 ```{r}
 plot(
@@ -693,7 +845,8 @@ plot(
     categorical = FALSE,
     prob = 0.89,
     re_formula = NA,
-  ),   # WE cannot graph points when the points arg = TRUE
+  ),
+  # WE cannot graph points when the points arg = TRUE
   points = TRUE,
   point_args = list(
     alpha = 0.1,
@@ -704,26 +857,27 @@ plot(
 
 ```
 
+### Bayesian model for Diversity 
 
-
-Finally we estimate diversity using an ordinal model
-
+Finally, we estimate diversity using an ordinal regression model model
 
 ```{r}
-fit_4 <- brm(bf(diversity ~ max_eth),  # random intercept for repeated measures
-            data = dtt,
-           family = cumulative(link = "logit"), 
-           file = here::here("models", "hedwig-diversity"))
+fit_4 <-
+  brm(
+    bf(diversity ~ max_eth),
+    data = dtt,
+    family = cumulative(link = "logit"),
+    file = here::here("models", "hedwig-diversity")
+  )
 
 par_m4 <- parameters::model_parameters(fit_4)
 par_m4
 plot(par_m4)
 ```
 
+We can plot the conditional expectations. Here we find that those who are maximally indian and maximally european exhibit separation in the expected probabilities for one or at most two identities.
 
-We can plot the conditional expectations. Here we find that those who are maximally indian and maximally european reveal separation in the expected probabilities for one or at most two identities. 
-
-In all other groups however, we substantial overlap with three or more expected numbers of identities.  
+In all other groups however, we find substantial overlap, and three or more expected numbers of identities.
 
 ```{r}
 plot(
@@ -732,7 +886,7 @@ plot(
     categorical = TRUE,
     prob = 0.89,
     re_formula = NA,
-  ),   # WE cannot graph points when the points arg = TRUE
+  ),
   points = TRUE,
   point_args = list(
     alpha = 0.1,
@@ -743,74 +897,148 @@ plot(
 
 ```
 
+## Conclusions
 
-We caution that the sample used here is not representative of the New Zealand population.  We do no extrapolate to features of this society. 
+We caution that the sample used here is not representative of the New Zealand population. We do no extrapolate to features of this society.
 
-However, these results are nevertheless important because as a proof of concept that within people may exhibit multiple ethnic identities. 
+These results are nevertheless important as a proof of concept that within people may exhibit multiple ethnic identities.
 
-Moreover, we find that people with join Maori and NZ european identities are abundant, and that among this group there is a greater tendency to super-identification. 
+Moreover, we find that people with joint Maori and NZ european maximum identities are relatively commonplace, and that among this group there is a greater tendency to super-identification. This challenges simplistic concepts of bi-culturalism as an either/or phenomenon. 
 
-Finally those who are maximally Maori are in absolute terms the least likely group to present under-identification, wherease those who identify as maximally indian and those who idnetify as maximally chinese have a greater probability of expressing underidentification. NZ europeans sit somwehere between maori and indians/chinese population from which our sample is drawn. There is two much varaibility in the Pacific response to estimate a reliable difference. 
+Finally, those who are maximally Maori are in absolute terms the least likely group to present under-identification, wherease those who identify as maximally indian and those who identify as maximally chinese have a greater probability of expressing under-identification. NZ europeans sit somwehere between the Maori and the Indians or the Chinese max-identified populationsfrom which our sample is drawn. There is too much varaibility in the Pacific sample to estimate a reliable difference for the Pacific population from which this sample is drawn.
 
+Future research should investigate whehter the tendencies to multiple ethnic identification that we observed here generalise across the wider New Zealand population. 
 
+## Appendix 1: estimating causal effects.
 
+Which variables do we need to include as covariates to estimate causal effects? That depends on our theory of the causal underpinnings of maximum-group identification on total identification, and dispersion counts.
 
+We can explore different theories using Directed Acyclical Graphs.
 
-## Appendix: estimating causal effects.
-
+Here is one possible model. We assume that our indicators might affect both diversity and total ethnic counds, and also that an unmeasured latent influence can affect max ethnic identification.
 
 ```{r cache = FALSE}
 ###   Causal graph. What might affect identifcation? 
-```{r}
 library(ggdag)
 dg <- dagify(
-  total ~ age + norm + gender + diversity + edu,
-  diversity ~ age + gender + edu,
- # latent = "U",
-  exposure =  "norm",
-  outcome =   "diversity" #,
-  # labels = c(
-  #   "dom" = "dominance",
-  #   "pitch" = "pitch",
-  #   "age" = "age",
-  #   "male" = "male",
-  #   "biology" = "biological endowment",
-  #   "hs" = "hostile sexism",
-  #   "bs" = "benevolent sexism",
-  #   "sdo" = "Soc Dom Orientation",
-  #   "U" = "Nastiness"
-  # )
+  total ~ age + max_eth + gender + diversity + edu,
+  diversity ~ age + max_eth + gender + diversity + edu,
+  max_eth ~ U,
+  latent = "U",
+  exposure =  "max_eth",
+  outcome =   "diversity" ,
+  labels = c(
+    "total" = "total",
+    "age" = "age",
+    "max_eth" = "max ethnic\ncategory",
+    "gender" = "gender",
+    "diversity" = "diversity",
+    "edu" = "education",
+    "U" = "Unmeasured"
+  )
 ) %>%
   tidy_dagitty() 
 
 dg %>%
-  ggdag(#use_labels = "label", 
-        text = TRUE) + theme_dag_blank()
+  ggdag(use_labels = "label",
+        text = FALSE) + theme_dag_blank()
 ```
 
-
-Note that on this DAG, there are many potential collider confounds
+Note that on this DAG, `diversity` and `total` are potential collider-confounds:
 
 ```{r}
-ggdag::ggdag_collider(dg, 
-                    #  use_labels = "label", 
-                      text = TRUE) + theme_dag_blank() +
- labs(title = "Colliders")
+ggdag::ggdag_collider(dg,
+                      use_labels = "label",
+                      text = FALSE) + theme_dag_blank() +
+  labs(title = "Colliders")
 ```
 
-
+What is our adjustment set?
 
 ```{r}
-ggdag::ggdag_adjustment_set(dg, 
-                            #use_labels = "label", t
-                            text = TRUE) + theme_dag_blank() +
-  labs(title = "")
+ggdag::ggdag_adjustment_set(
+  dg,
+  exposure  = "max_eth",
+  outcome  = "diversity",
+  use_labels = "label",
+  text = F
+) + theme_dag_blank() +
+  labs(title = "Diversity adjustment set")
 ```
 
-On the assumptions of this DAG, you would be correct to condition on age, benevolent sexism, hostile sexism, male gender and social dominance orientation. 
+Also the assumptions of this DAG, we can estimate the effect of max_ethnic identity on Totals
 
+```{r}
+ggdag::ggdag_adjustment_set(
+  dg,
+  exposure  = "max_eth",
+  outcome  = "total",
+  use_labels = "label",
+  text = F
+) + theme_dag_blank() +
+  labs(title = "Diversity adjustment set")
+```
 
-## Partial correlations 
+## Appendix 2. LPA model evaluation
+
+Code here for evaluating an LPA model
+
+```{r  cache = TRUE, code_folding = TRUE}
+library("tidyLPA")
+p <- 8 # max number of classes
+
+outt <- dt_1 %>%
+  dplyr::select(chinese,
+                indian,
+                nzeuro,
+                maori,
+                nzeuro,
+                pacific)
+
+# Plot classes
+p_outt_8 <- outt %>%
+  single_imputation() %>%
+  tidyLPA::estimate_profiles(5:p)
+p_outt_8 %>%
+  plot_profiles(add_line = TRUE)
+```
+
+### Results
+
+A 7-class solution maximises entropy, and the solution is interpretable.
+
+```{r  cache = TRUE}
+tidyLPA::get_fit( p_outt_8 )
+```
+
+### Fit with 7 classes
+
+```{r cache = TRUE, layout="l-body-outset",  fig.height=8, fig.width=12}
+tidyLPA::plot_profiles( p_outt_8 [[3]] , add_line = TRUE) ## note we are counting up from 5, hence `[[3]]`
+```
+
+We can obtain proportions of the sample that fit into the 7 classes:
+
+```{r}
+lpa_d <- tidyLPA::get_data(p_outt_8[[3]]) ## note we are counting up from three, hence `[[2]]`
+```
+
+```{r}
+lpa_d %>%
+  dplyr::select(Class) %>%
+  dplyr::mutate(class = as.factor(Class)) %>%
+  dplyr::group_by(class) %>%
+  dplyr::summarise(n = n()) %>%
+  dplyr::mutate(freq = n / sum(n)) %>%
+  dplyr::arrange(desc(n)) %>%
+  kbl(caption = "Proportion of sample in LPA lasses") %>%
+  kable_classic_2() %>% # differret styling 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% # different sytle
+  collapse_rows()
+
+```
+
+## Appendix 3. Partial correlations (for no good reason)
 
 ```{r}
 dt %>%
@@ -819,9 +1047,223 @@ dt %>%
   summary()
 ```
 
-## Notes
+
+
+## Appendix 4. Bayesian model of total identification under different assumptions
+
+
+#### Gaussian model 
+
+First we try a gaussian model
+
+```{r}
+fit_t <- brm(bf(ethnicity_rating ~ eth_id - 1  + (1|id)) , # random intercept for ids
+            data = dt_2,
+           file = here::here("models", "hedwig-total"))
+par_m1 <- parameters::model_parameters(fit_t)
+par_m1
+plot(par_m1)
+```
+
+Graphing the expected outcomes for ethnicity selection we find that expected identification as NZeuro is highest in the population from which the sample is drawn.
+
+(Note to Hedig, we'll need to get meaninful labels for "sa08", "se12" , "wa"$\dots$)
+
+```{r}
+plot(
+  conditional_effects(
+    fit_t,
+    categorical = FALSE,
+    prob = 0.89,
+    re_formula = NA,
+  ),
+  # WE cannot graph points when the points arg = TRUE
+  points = TRUE,
+  point_args = list(
+    alpha = .3,
+    width = .1,
+    size = .2
+  )
+) 
+```
+
+However we can see the the posterior predictive fit is not very good:
+
+```{r}
+pp_check(fit_t) + scale_x_continuous(limits = c(0, 200)) + ggtitle("Posterior predictive check of gaussain model for ethnicity ratings")
+```
+
+#### Poisson model 
+
+We might be better off with a poisson model:
+
+```{r}
+fit_tp <-
+  brm(
+    bf(ethnicity_rating ~ eth_id - 1  + (1 | id)) ,
+    # random intercept for ids
+    data = dt_2,
+    family = "poisson",
+    # mixture takes *way* too long
+    file = here::here("models", "hedwig-total-p")
+  )
+par_m_p <- parameters::model_parameters(fit_tp)
+par_m_p
+plot(par_m_p)
+```
+
+Here are the expectation graphs, the model is more reasonabl but ignores the bump at 100
+
+```{r}
+plot(
+  conditional_effects(
+    fit_tp,
+    categorical = FALSE,
+    prob = 0.89,
+    re_formula = NA,
+  ),
+  # WE cannot graph points when the points arg = TRUE
+  points = TRUE,
+  point_args = list(
+    alpha = .3,
+    width = .1,
+    size = .2
+  )
+) 
+```
+
+Posterior checks look better, however we, again we miss the bump at 100.
+
+```{r}
+pp_check(fit_tp) + scale_x_continuous(limits = c(0, 100)) + ggtitle("Posterior predictive check of Poisson model for ethicity rating")
+```
+
+
+#### Negative binomial model 
+
+We might be better off still with a negative binomial model
+
+```{r}
+fit_tnb <-
+  brm(
+    bf(ethnicity_rating ~ eth_id - 1  + (1 | id)) ,
+    # random intercept for ids
+    data = dt_2,
+    family = "negbinomial",
+    # mixture takes *way* too long
+    file = here::here("models", "hedwig-total-nb")
+  )
+par_m_nb <- parameters::model_parameters(fit_tnb)
+par_m_nb
+plot(par_m_nb)
+```
+
+Posterior checks look a little better
+
+```{r}
+pp_check(fit_tnb) + scale_x_continuous(limits = c(0, 100)) + ggtitle("Posterior predictive check of negative binomial model for ethicity rating")
+```
+
+#### Negative binomial with a stronger prior
+
+However we need a stronger prior. Uncertainty in the NZeuro rating takes us out of the range of possiblity, with 100 being a maximum response value for each ethnicity.
+
+```{r}
+plot(
+  conditional_effects(
+    fit_tnb,
+    categorical = FALSE,
+    prob = 0.89,
+    re_formula = NA,
+  ),
+  # WE cannot graph points when the points arg = TRUE
+  points = TRUE,
+  point_args = list(
+    alpha = .3,
+    width = .1,
+    size = .2
+  )
+) 
+```
+
+Finally lets constrain our negative binomial model
+
+First, how to consider the shape parameter for the overdispersion?
+
+
+This is the default BRMS prior that we used above ([see Kurz book](https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/monsters-and-mixtures.html#over-dispersed-outcomes) )
+
+```{r}
+library(ggthemes)
+library(tidyverse)
+ggplot(data = tibble(x = seq(from = 0, to = 60, by = .1)),
+       aes(x = x)) +
+  geom_ribbon(aes(ymin = 0, 
+                  ymax = dgamma(x, 0.01, 0.01)),
+              color = "transparent", 
+              fill = canva_pal("Green fields")(4)[2])+
+  scale_x_continuous(NULL) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  ggtitle(expression(paste("Our brms default ", gamma, "(0.01, 0.01) prior"))) +
+  theme_hc() +
+  theme(plot.background = element_rect(fill = "grey92"))
+```
+
+How would it look if we changed it? We allow less disbursion with `dgamma(x, 0.2, 0.02)`
+
+```{r}
+library(ggthemes)
+library(tidyverse)
+ggplot(data = tibble(x = seq(from = 0, to = 500, by = .1)),
+       aes(x = x)) +
+  geom_ribbon(aes(ymin = 0, 
+                  ymax = dgamma(x, 0.2, 0.02)),
+              color = "transparent", 
+              fill = canva_pal("Green fields")(4)[2])+
+  scale_x_continuous(NULL) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  ggtitle(expression(paste("Our brms default ", gamma, "(0.01, 0.01) prior"))) +
+  theme_hc() +
+  theme(plot.background = element_rect(fill = "grey92"))
+```
+
+
+Lets refit, and also keep the intercept
+
+```{r}
+fit_tnb2 <-
+  brm(
+    bf(ethnicity_rating ~ eth_id -  + (1 | id)) ,
+    # random intercept for ids
+    data = dt_2,
+    prior = c( prior(gamma(0.2, 0.02), class = shape)),
+    family = "negbinomial",
+    file = here::here("models", "hedwig-total-nb-b")
+  )
+
+prior_summary(fit_tnb2)
+par_m_nb2 <- parameters::model_parameters(fit_tnb2)
+par_m_nb2
+plot(par_m_nb)
+
+```
+
+Graph the posterior predictive checks
+```{r}
+pp_check(fit_tnb2) + 
+  scale_x_continuous(limits = c(0,100)) + 
+  ggtitle("Posterior predictive checks for model with stronger priors on the gamma")
+```
 
 
 
-For more information about the NZAVS see [here](https://www.psych.auckland.ac.nz/en/about/new-zealand-attitudes-and-values-study.html) and [here](https://go-bayes.github.io/reports/posts/nzavs/)
+Plot results
+
+```{r}
+plot(
+  conditional_effects(fit_tnb2, dpar = "mu"),
+  points = TRUE,
+  point_args = list(width = .05, shape = 1)
+)
+```
 
