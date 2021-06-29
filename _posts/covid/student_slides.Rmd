@@ -736,18 +736,6 @@ plot(ggeffects::ggpredict(NZ.Economic.Situation , terms = "Covid_Timeline"))
 
 ## Kessler-items
 
-during the past 30 days, how often did... 
-
-(a)$\dots$you feel hopeless;
-(b)$\dots$you feel so depressed that nothing could cheer you up; 
-(c)$\dots$you feel restless or fidgety; 
-(d)$\dots$you feel that everything
-was an effort; 
-(e)$\dots$you feel worthless; 
-(f)$\dots$ you feel nervous? 
-
-Answers: None of the time; A little of the time; Some of the time;
-Most of the time; All of the time."
 
 ## Pandemic distress
 
