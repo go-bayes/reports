@@ -46,7 +46,6 @@ library("purrr")
 library("lme4")
 library("ggeffects")
 library("tidybayes")
-library("glmmTMB")
 #library("cmdstanr")  #multithreading bayesian models
 # rstan options
 rstan_options(auto_write=TRUE)
@@ -73,6 +72,7 @@ knitr::opts_chunk$set(
 ```{r cache=TRUE, echo = FALSE}
 # import data
 df <- readRDS(here::here("data", "df"))
+
 ```
 
 ```{r cache = TRUE, echo = FALSE}
@@ -94,11 +94,12 @@ ord_dates_class <- c(
 
 
 ```{r cache = TRUE, echo = FALSE}
+
 cv <- df %>%
   dplyr::filter(YearMeasured == 1) %>%
   dplyr::filter(Wave == 2018 | Wave == 2019) %>%
   dplyr::group_by(Id) %>% 
-  filter(n() > 1) %>%
+  dplyr::filter(n() > 1) %>%
   dplyr::filter(n() != 0) %>%
   dplyr::ungroup(Id) %>%
   dplyr::mutate(Covid_Timeline =
@@ -219,7 +220,7 @@ cv <- df %>%
     Your_Health = (SWB.SatPWI02),
     Your_Future_Security = Your.Future.Security,
     Covid_Timeline = as.factor(Covid_Timeline)
-  ) %>%
+  )%>%
   dplyr::mutate(
     WSCORE = as.factor(WSCORE),
     #EduC = scale(as.numeric(Edu), scale = F, center = TRUE),
@@ -231,6 +232,7 @@ cv <- df %>%
     Fatigue = as.integer(HLTH.Fatigue),
     K6sum = as.integer(KESSLER6 * 6),
     LIFEMEANING_S = scale(LIFEMEANING),
+    KESSLER6SUM_S = scale(KESSLER6sum),
     NZdepS = scale(NZdep),
     PolOrientS = scale(Pol.Orient, scale = T, center = T),
     Conservative = Pol.Orient,
@@ -698,6 +700,9 @@ plot(ggeffects::ggpredict(Emp.JobSecure,
 <!--                           terms =  "Covid_Timeline")) -->
 <!-- ``` -->
 
+
+
+
 ## Partner conflict - steady
 
 ```{r cache=TRUE}
@@ -756,13 +761,7 @@ Most of the time; All of the time."
 
 
 
-## Distress by timeline
 
-```{r cache=TRUE}
-k6_cv <- glmer(KESSLER6sum ~ Covid_Timeline + (1|Id), cv, family = "poisson")
-plot(ggeffects::ggpredict(k6_cv, terms = 
-                            c("Covid_Timeline"), ci = .89)) + theme_classic()
-```
 
 <!-- <!-- ## Estimated means --> -->
 
@@ -984,6 +983,181 @@ mlm_path_plot(xlab = "Condition\n(X)",
 <!--   file = here("models/mediation-k6-covid-fatigue_students") -->
 <!-- ) -->
 <!-- ``` -->
+
+
+
+
+
+## Conditional independence
+
+
+
+
+## Distress by timeline
+
+```{r cache=TRUE}
+k6_cv <- glmer(KESSLER6sum ~ Covid_Timeline + (1|Id), cv, family = "poisson")
+plot(ggeffects::ggpredict(k6_cv, terms = 
+                            c("Covid_Timeline"), ci = .89)) + theme_classic()
+```
+
+
+
+## Life meaning by timeline
+
+```{r cache=TRUE}
+klm <- lmer(LIFEMEANING ~ Covid_Timeline + (1|Id), cv)
+plot(ggeffects::ggpredict(klm, terms = 
+                            c("Covid_Timeline"), ci = .89)) + theme_classic()
+```
+
+
+## Life meaning stratifying on K6
+
+```{r cache=TRUE}
+
+klm <- lmer(LIFEMEANING ~ Covid_Timeline + KESSLER6SUM_S  +  (1|Id), cv)
+plot(ggeffects::ggpredict(klm, terms = 
+                            c("Covid_Timeline"), ci = .89)) + theme_classic()
+```
+
+
+
+## KESSLER6 stratifying on Lifemeaning
+
+```{r cache=TRUE}
+
+k6m <- glmer(KESSLER6sum ~ Covid_Timeline + LIFEMEANING_S  +  (1|Id), family = "poisson", data = cv)
+plot(ggeffects::ggpredict(k6m, terms = 
+                            c("Covid_Timeline"), ci = .89)) + theme_classic()
+```
+
+
+
+## Mediation
+
+## LIFEMEANING: DAG
+
+```{r}
+library(ggdag)
+dg <- dagify(lm  ~ covid + k6,
+             k6 ~  sleep  + covid + work + health,
+             sleep ~ work,
+             work ~ covid,
+             health ~ covid,
+             exposure =  "k6",
+             outcome =   "lm")
+#ggdag::ggdag_collider(dg) +   theme_dag_blank()
+
+ggdag::ggdag_adjustment_set(dg, node_size = 14) +
+  theme(legend.position = "bottom") + theme_dag_blank()
+```
+
+# Mediation: Fatigue
+
+```{r echo = FALSE}
+x <-cv$Covid_Timeline
+mk <-cv$KESSLER6SUM_S
+y <- cv$LIFEMEANING
+id <-cv$Id
+datF <-data.frame(x,mk,y,id)
+```
+
+```{r echo = FALSE}
+# note include work!
+path_m <- bf(
+  mk ~ x + (1 | id)
+  )
+path_y <- bf(
+  y ~ x + mk +
+               (1 | id)
+  )
+f1a <- brm(
+  path_m + path_y + set_rescor(FALSE),
+  data = datF,
+  file = here("models/mediation-k6-covid-life-meaning-outcome-by-covid")
+)
+summary(f1a)
+```
+
+## Results: life meaning  - March
+
+```{r echo=FALSE, cache = FALSE}
+post1F <- brms::posterior_samples(f1a)
+post_marF <- post1F %>% 
+  transmute(
+    a = b_mk_xEarlyMarch,
+    b = b_y_mk,
+    cp = b_y_xEarlyMarch,
+    me = a * b,
+    c = cp + me#,
+   # pme = me / c
+  )
+# posterior_summary(post_marF)
+```
+```{r}
+p1 <-mcmc_intervals(post_marF) + ggtitle("During March, COVID increased Distress, and this Decreased Meaning of Life")
+
+
+p2<- ggdag_mediation_triangle(
+  x = "Covid Pre-Lockdown",
+  y = "Meaning",
+  m = "Distress", 
+  text = TRUE, 
+  x_y_associated = TRUE,
+  text_col = "dodgerblue",
+  use_labels = "label") + theme_dag_blank()
+
+p1 + p2
+```
+
+
+
+## Results: lifemeaning - Lockdown
+
+```{r echo=FALSE, cache = TRUE}
+library(ggdag)
+## Results: K6 Mediation on LifeMeaning in Lockodown
+post_lF <- post1F %>% 
+  transmute(
+    a = b_mk_xLockdown,
+    b = b_y_mk,
+    cp = b_y_xLockdown,
+    me = a * b,#+ covab,
+    c = cp + me
+  )
+
+
+
+
+# posterior_summary(post_lF)
+```
+```{r echo=FALSE, cache = TRUE, layout = "l-body-outset"}
+
+p1 <- mcmc_intervals(post_lF) +  ggtitle("During Lockdown, COVID was less distressing, Life Satisification increased")
+
+
+p2<- ggdag_mediation_triangle(
+  x = "Covid Lockdown",
+  y = "Meaning",
+  m = "Distress", 
+  text = TRUE, 
+  x_y_associated = TRUE,
+  text_col = "dodgerblue",
+  use_labels = "label") + theme_dag_blank()
+
+p1 + p2
+
+
+```
+
+
+
+
+# ELSE
+
+
+
 
 
 ## Fatigue: DAG
