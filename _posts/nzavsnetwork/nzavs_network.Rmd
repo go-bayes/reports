@@ -38,7 +38,16 @@ knitr::opts_chunk$set(
 library("tidyverse")
 library("here")
 library("ggalluvial")
+library("ggplot2")
 library("table1")
+library("rstan")
+library("broom")
+library("tidybayes")
+#library("networkD3")
+#library("pmdplyr")
+# rstan options
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores ())
 ```
 
 
@@ -86,8 +95,17 @@ dat <- df %>%
 datt <- dat %>%
   group_by(Id) %>%
   fill(GenCohort, Male, EthnicCats)
+```
 
+Let's quickly inspect the data frame
+
+```{r}
 head(datt)
+```
+
+
+```{r}
+glimpse(datt)
 ```
 
 
@@ -112,7 +130,7 @@ dats <- datt %>%
   summarise(n = n())
 
 # check if data is OK for ggalluvial
-# is_alluvia_form(as.data.frame(dats), axes = 1:2, silent = TRUE)
+is_alluvia_form(as.data.frame(dats), axes = 1:2, silent = TRUE)
 ```
 
 
@@ -215,7 +233,7 @@ ggplot(as.data.frame(dats3),
   geom_alluvium(aes(fill = state)) +
   geom_stratum() +
   geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
-  scale_x_discrete(limits = c("Male", "EthnicCats", "State"),
+  scale_x_discrete(limits = c("Male", "EthnicCats", "state"),
                    expand = c(.2, .05)) +
   theme(
     axis.text.x = element_blank(),
@@ -229,13 +247,46 @@ ggplot(as.data.frame(dats3),
 # warning indicateds category transition (some people changed gender I think??)
 ```
 
-##  Subject-level graph by waves
+### Graph of survival of gender (only)
+
+```{r}
+# prepare data
+dats4 <- datt %>%
+  group_by(Male) %>%
+  count(state)
+
+# dats4
+
+#graph
+ggplot(as.data.frame(dats4),
+       aes(
+         y = n,
+         axis1 = Male,
+         axis2 = state
+       )) +
+  geom_alluvium(aes(fill = state)) +
+  geom_stratum() +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  scale_x_discrete(limits = c("Male","state"),
+                   expand = c(.2, .05)) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  ylab("") +
+  scale_fill_brewer(type = "qual", palette = "Set1") +
+  ggtitle("NZAVS alluvial graph: male (only")
+
+```
+
+###  Subject-level graph by waves
 
 This graphs take a long time to plot
 
 ```{r}
 # graph takes time to plot
-ggplot(datt,
+ggplot(dat,
        aes(
          x = Wave,
          stratum = state,
@@ -251,5 +302,7 @@ ggplot(datt,
   theme(legend.position = "bottom") +
   ggtitle("NZAVS alluvial graph, subject-level: measured, lost, withdrawn")
 ```
+
+
 
 
