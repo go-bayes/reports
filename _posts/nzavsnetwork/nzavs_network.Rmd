@@ -50,6 +50,7 @@ library("bayesplot")
 library("broom")
 library("tidybayes")
 library("networkD3")
+library("pmdplyr")
 # rstan options
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores ())
@@ -57,44 +58,136 @@ theme_set(theme_classic())
 ```
 
 
-First we importa the data, and select,  waves, id, and the YearMeasured indicator
+First we importa the data, and create a "first_measured" and a "retained" indicator. The years indicator is constructed from the TSCORE variable, which measures when a participant responded. 
+
+We're not using the "sampling frame" variable because there are 17 of these. 
 
 ```{r}
 df<-readRDS(here::here("data","df"))
 
-# yearmeasured codes, 1 = measured, 0 = not measured, -1 = withdrawn or desceased 
+
+# yearmeasured codes, 1 = measured, 0 = not measured, -1 = withdrawn or desceased
 dat <- df %>%
-  select(YearMeasured,Wave,Id) %>%
-  mutate(Wave = as.numeric(as.character(Wave)))%>%
+  select(YearMeasured, Wave, Id) %>%
+  mutate(Wave = as.numeric(as.character(Wave))) %>%
   group_by(Id) %>%
-  dplyr::mutate(
-        first_measured = dplyr::first(Wave)) %>%
-   mutate(retained  = ifelse(YearMeasured == -1, "withdrawn", 
-                              ifelse(YearMeasured == 0 & Wave > first_measured, "lost", "measured"))) %>%
-  ungroup(Id) %>%
-    arrange(Wave,retained)
+  mutate(first = {
+    YearMeasured == 1
+  } %>% {
+    . * !duplicated(.)
+  }) %>%
+  mutate(
+    value_tmp = if_else(first == 1, Wave, NA_real_),
+    firstwave  = mean(value_tmp, na.rm = TRUE)
+  ) %>%
+  mutate(state  = ifelse(
+    YearMeasured == -1,
+    "withdrawn",
+    ifelse(
+      YearMeasured == 0 & Wave < firstwave,
+      "notyetmeasured",
+      ifelse(YearMeasured == 0 &
+               Wave > firstwave, "lost",
+             "measured")
+    )
+  )) %>%
+  dplyr::mutate(Wave = as.factor(Wave)) %>% # return Wave to a factor
+  dplyr::filter(state != "notyetmeasured") %>%
+  droplevels() %>%
+  ungroup() %>%
+  dplyr::select(Wave,Id,state) 
+
+
+
+table1::table1(~ state|as.factor(Wave), data = dat)
 
 head(dat)
+```
 
-table(dat$retained)
-# rowwise by Id
-datid <-dat %>% nest_by(Id,Wave)
-head(datid)
-datid %>%
-count(YearMeasured == 0)
-
-table(dat$withdrawn)
+Get data into shape for sankey
 
 
+```{r}
+dats <- dat %>%
+  group_by(Wave, state) %>%
+  summarise(n =n())
+dats
+#nodes <-sjlabelled::get_labels(dats$Wave)
 
-ggplot(data = dat) + 
-  geom_point( mapping = aes(x = Wave, y = Sample.Frame ) )
+library("ggalluvial")
+is_alluvia_form(as.data.frame(dats), axes = 1:2, silent = TRUE)
 
-
+ggplot(as.data.frame(dats),
+       aes(y = n, axis1 = Wave, axis2 = state)) +
+  geom_alluvium(aes(fill = state), width = 1/12) +
+  geom_stratum(width = 1/12, fill = "black", color = "grey") +
+  geom_label(stat = "stratum", aes(label = after_stat(stratum))) +
+  scale_x_discrete(limits = c("Wave", "State"), expand = c(.05, .05)) +
+  theme(
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank(),
+  axis.ticks = element_blank()) +
+  ylab("") +
+  scale_fill_brewer(type = "qual", palette = "Set1") +
+  ggtitle("NZAVS alluvial graph: measured, lost, withdrawn")
 ```
 
 
 
+Simple plot
+
+```{r}
+ggplot(data = dats,
+       aes(x = Wave, y = n, alluvium = state)) +
+  geom_alluvium(aes(fill = state, colour = state),
+                alpha = .75, decreasing = FALSE) +
+  theme_bw() +
+  scale_fill_brewer(type = "qual", palette = "Set3") +
+  scale_color_brewer(type = "qual", palette = "Set3") +
+  ggtitle("") + theme_classic()
+```
+
+
+States
+
+```{r}
+head(dat)
+ggplot(dat,
+       aes(x = Wave, stratum = state, alluvium = Id,
+           fill = state, label = state)) +
+  scale_fill_brewer(type = "qual", palette = "Set2") +
+  geom_flow(stat = "alluvium", lode.guidance = "frontback",
+            color = "darkgray") +
+  geom_stratum() +
+  theme(legend.position = "bottom") +
+  ggtitle("")
+```
+
+
+
+
+```{r}
+dats2 <- dat %>%
+  group_by(Wave, state, Id) %>%
+  summarise(n =n())
+dats2
+
+
+ggplot(dats2,
+       aes(x = Wave, stratum = state, alluvium = Id,
+           y = n,
+           fill = state, label = state)) +
+  scale_x_discrete(expand = c(.1, .1)) +
+  geom_flow() +
+  geom_stratum(alpha = .5) +
+  geom_text(stat = "stratum", size = 3) +
+  theme(legend.position = "none") +
+  ggtitle("")
+
+```
+
+
+What we want next is to show a sk
 
 ## network graph ####
 tib1<-bbt1S%>%
