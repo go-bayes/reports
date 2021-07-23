@@ -2,6 +2,9 @@
 title: "NZAVS Sankey Network for Retention "
 description: ""
 author:
+  - name          : Chris G. Sibley
+    affiliation   : School of Psychology, University of Auckland
+    orcid_id: 0000-0002-4064-8800
   - name: Joseph Bulbulia
     url: https://josephbulbulia.netlify.app
     affiliation: Victoria University of Wellington
@@ -31,44 +34,25 @@ knitr::opts_chunk$set(
 ```
 
 ```{r libs, include=FALSE}
+#packages
 library("tidyverse")
 library("here")
-library("lubridate")
-library("ggthemes") #themes
-library("ggpubr")
-library("viridis")
-library("patchwork")
-library("ggforce")
-library("lme4")
-library("ggeffects")
-library("sjPlot")
-library("kableExtra")
-library("brms")
-library("rstan")
-library("rstanarm")
-library("bayesplot")
-library("broom")
-library("tidybayes")
-library("networkD3")
-library("pmdplyr")
-# rstan options
-rstan_options(auto_write = TRUE)
-options(mc.cores = parallel::detectCores ())
-theme_set(theme_classic())
+library("ggalluvial")
+library("table1")
 ```
 
 
-First we importa the data, and create a "first_measured" and a "retained" indicator. The years indicator is constructed from the TSCORE variable, which measures when a participant responded. 
+First we import the data, and create an indicator for measured/lost/withdrawn. 
 
-We're not using the "sampling frame" variable because there are 17 of these. 
+
 
 ```{r}
-df<-readRDS(here::here("data","df"))
+# read data
+df <- readRDS(here::here("data", "df"))
 
-
-# yearmeasured codes, 1 = measured, 0 = not measured, -1 = withdrawn or desceased
+# year measured codes, 1 = measured, 0 = not measured, -1 = withdrawn or died
 dat <- df %>%
-  select(YearMeasured, Wave, Id) %>%
+  select(YearMeasured, Wave, Id, EthnicCats, GenCohort, Male) %>%
   mutate(Wave = as.numeric(as.character(Wave))) %>%
   group_by(Id) %>%
   mutate(first = {
@@ -78,7 +62,7 @@ dat <- df %>%
   }) %>%
   mutate(
     value_tmp = if_else(first == 1, Wave, NA_real_),
-    firstwave  = mean(value_tmp, na.rm = TRUE)
+    firstwave  = mean(value_tmp, na.rm = TRUE) # this is a  hack (but works)
   ) %>%
   mutate(state  = ifelse(
     YearMeasured == -1,
@@ -91,596 +75,181 @@ dat <- df %>%
              "measured")
     )
   )) %>%
-  dplyr::mutate(Wave = as.factor(Wave)) %>% # return Wave to a factor
-  dplyr::filter(state != "notyetmeasured") %>%
-  droplevels() %>%
   ungroup() %>%
-  dplyr::select(Wave,Id,state) 
+  dplyr::mutate(Wave = as.factor(Wave)) %>% # return Wave to a factor
+  dplyr::select(Wave, Id, state, GenCohort, Male, EthnicCats) %>%
+  dplyr::filter(state != "notyetmeasured") %>%
+  droplevels()
 
+# fill missing values in dataset
 
+datt <- dat %>%
+  group_by(Id) %>%
+  fill(GenCohort, Male, EthnicCats)
 
-table1::table1(~ state|as.factor(Wave), data = dat)
-
-head(dat)
+head(datt)
 ```
 
-Get data into shape for sankey
+
+Next, we create a table to indicate the measurement states by waves. The "Overall" column sums over measurements within subjects, not measured subjects. 
 
 
 ```{r}
-dats <- dat %>%
-  group_by(Wave, state) %>%
-  summarise(n =n())
-dats
-#nodes <-sjlabelled::get_labels(dats$Wave)
-
-library("ggalluvial")
-is_alluvia_form(as.data.frame(dats), axes = 1:2, silent = TRUE)
-
-ggplot(as.data.frame(dats),
-       aes(y = n, axis1 = Wave, axis2 = state)) +
-  geom_alluvium(aes(fill = state), width = 1/12) +
-  geom_stratum(width = 1/12, fill = "black", color = "grey") +
-  geom_label(stat = "stratum", aes(label = after_stat(stratum))) +
-  scale_x_discrete(limits = c("Wave", "State"), expand = c(.05, .05)) +
-  theme(
-  axis.text.x = element_blank(),
-  axis.text.y = element_blank(),
-  axis.ticks = element_blank()) +
-  ylab("") +
-  scale_fill_brewer(type = "qual", palette = "Set1") +
-  ggtitle("NZAVS alluvial graph: measured, lost, withdrawn")
+table1::table1(~ state + Male + EthnicCats + GenCohort|as.factor(Wave), data = datt)
 ```
 
 
+## Alluvial Graphs
 
-Simple plot
+Next we get the data in to shape for our graphs. 
+
+
+
+```{r}
+# summarise measurement states by waves
+dats <- datt %>%
+  group_by(Wave, state) %>%
+  summarise(n = n())
+
+# check if data is OK for ggalluvial
+# is_alluvia_form(as.data.frame(dats), axes = 1:2, silent = TRUE)
+```
+
+
+### Overall graph of measured and retained
 
 ```{r}
 ggplot(data = dats,
        aes(x = Wave, y = n, alluvium = state)) +
   geom_alluvium(aes(fill = state, colour = state),
-                alpha = .75, decreasing = FALSE) +
+                alpha = .75,
+                decreasing = FALSE) +
   theme_bw() +
   scale_fill_brewer(type = "qual", palette = "Set3") +
   scale_color_brewer(type = "qual", palette = "Set3") +
   ggtitle("") + theme_classic()
 ```
 
-
-States
+### Graph of survival aggregated by waves
 
 ```{r}
-head(dat)
-ggplot(dat,
-       aes(x = Wave, stratum = state, alluvium = Id,
-           fill = state, label = state)) +
+ggplot(as.data.frame(dats),
+       aes(y = n, axis1 = Wave, axis2 = state)) +
+  geom_alluvium(aes(fill = state), width = 1 / 12) +
+  geom_stratum(width = 1 / 12,
+               fill = "black",
+               color = "grey") +
+  geom_label(stat = "stratum", aes(label = after_stat(stratum))) +
+  scale_x_discrete(limits = c("Wave", "State"),
+                   expand = c(.05, .05)) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  ylab("") +
+  scale_fill_brewer(type = "qual", palette = "Set1") +
+  ggtitle("NZAVS alluvial graph. wave-level: measured, lost, withdrawn")
+```
+
+
+### Graph of survival aggregated by ethnicity and wave
+
+
+I think we probably want to remove the "Wave" column. This seems cluttered
+
+```{r}
+
+# prepare data
+dats2 <- datt %>%
+  group_by(Wave) %>%
+  count(EthnicCats, state)
+
+# graph
+ggplot(as.data.frame(dats2),
+       aes(
+         y = n,
+         axis1 = Wave,
+         axis2 = EthnicCats,
+         axis3 = state
+       )) +
+  geom_alluvium(aes(fill = state)) +
+  geom_stratum() +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  scale_x_discrete(limits = c("Wave", "EthnicCats", "State"),
+                   expand = c(.2, .05)) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  ylab("") +
+  scale_fill_brewer(type = "qual", palette = "Set1") +
+  ggtitle("NZAVS alluvial graph: ethnicity")
+
+```
+
+
+### Graph of survival aggregated by gender and ethnicity
+
+
+Note that gender identification changes within some people (the code throws a warning)
+
+```{r}
+# prepare data
+dats3 <- datt %>%
+  group_by(Male) %>%
+  count(state, EthnicCats)
+
+# is_alluvia_form(as.data.frame(dats3), axes = 1:2, silent = TRUE)
+# dats3
+
+#graph
+ggplot(as.data.frame(dats3),
+       aes(
+         y = n,
+         axis1 = Male,
+         axis2 = EthnicCats,
+         axis3 = state
+       )) +
+  geom_alluvium(aes(fill = state)) +
+  geom_stratum() +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  scale_x_discrete(limits = c("Male", "EthnicCats", "State"),
+                   expand = c(.2, .05)) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  ylab("") +
+  scale_fill_brewer(type = "qual", palette = "Set1") +
+  ggtitle("NZAVS alluvial graph: male x ethnicity")
+
+# warning indicateds category transition (some people changed gender I think??)
+```
+
+##  Subject-level graph by waves
+
+This graphs take a long time to plot
+
+```{r}
+# graph takes time to plot
+ggplot(datt,
+       aes(
+         x = Wave,
+         stratum = state,
+         alluvium = Id,
+         fill = state,
+         label = state
+       )) +
   scale_fill_brewer(type = "qual", palette = "Set2") +
-  geom_flow(stat = "alluvium", lode.guidance = "frontback",
+  geom_flow(stat = "alluvium",
+            lode.guidance = "frontback",
             color = "darkgray") +
   geom_stratum() +
   theme(legend.position = "bottom") +
-  ggtitle("")
+  ggtitle("NZAVS alluvial graph, subject-level: measured, lost, withdrawn")
 ```
 
 
-
-
-```{r}
-dats2 <- dat %>%
-  group_by(Wave, state, Id) %>%
-  summarise(n =n())
-dats2
-
-
-ggplot(dats2,
-       aes(x = Wave, stratum = state, alluvium = Id,
-           y = n,
-           fill = state, label = state)) +
-  scale_x_discrete(expand = c(.1, .1)) +
-  geom_flow() +
-  geom_stratum(alpha = .5) +
-  geom_text(stat = "stratum", size = 3) +
-  theme(legend.position = "none") +
-  ggtitle("")
-
-```
-
-
-What we want next is to show a sk
-
-## network graph ####
-tib1<-bbt1S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("SatisfiedBuisness",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate")%>%
-  slice(1:4)
-tib1
-str(tib1S)
-tib2<-bbt2S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("SatisfiedRelationships",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate")%>%
-  slice(1:4)
-tib2
-bbt3
-tib3<-bbt3S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("SatisfiedHealth",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate")%>%
-  slice(1:4)
-tib3
-bbt4
-tib4<-bbt4S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("SatisfiedGovernment",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate")%>%
-  slice(1:4)
-bbt5
-tib5<-bbt5S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("Sense of Community",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate")%>%
-  slice(1:4)
-bbt6
-tib6<-bbt6S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("SatisfiedStandardOfLiving",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate")%>%
-  slice(1:4)
-bbt7
-tib7<-bbt7S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("SocialSupport",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate")%>%
-  slice(1:4)
-bbt8
-tib8<-bbt8S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("ShortHealth",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate")%>%
-  slice(1:4)
-bbt9
-tib9<-bbt9S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("SatisfiedFutureSecurity",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate")%>%
-  slice(1:4)
-bbt10
-tib10<-bbt10S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("SocialBelonging",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate")%>%
-  slice(1:4)
-# 11 na
-
-bbt12
-tib12<-bbt12S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("SatisfiedEconomy",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate")%>%
-  slice(1:4)
-tib12
-bbt13
-tib13<-bbt13S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("Rumination",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate")%>%
-  slice(1:4)
-tib13
-bbt14
-tib14<-bbt14S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("Fatigue",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate")%>%
-  slice(1:4)
-tib14
-bbt15
-tib15<-bbt15S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("SatisfiedSocialConditions",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate")%>%
-  slice(1:4)
-bbt16
-tib16<-bbt16S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("Patriotism",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate")%>%
-  slice(1:4)
-bbt17
-tib17<-bbt17S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("NationalIdentity",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate")%>%
-  slice(1:4)
-bbt18
-tib18<-bbt18S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("PoliceEngage",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate")%>%
-  slice(1:4)
-bbt19
-tib19<-bbt19S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("PoliceTrust",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate")%>%
-  slice(1:4)
-bbt20
-tib20<-bbt20S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("PoliticianTrust",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate")%>%
-  slice(1:4)
-
-
-
-
-
-# Only reliable indirect effects
-fj<-full_join(tib1,tib2, by = c("Indirect", "Effect", "Estimate"))%>%
-  full_join(tib5, by = c("Indirect", "Effect", "Estimate"))%>%
-  full_join(tib14, by = c("Indirect", "Effect", "Estimate"))%>%
-  full_join(tib15, by = c("Indirect", "Effect", "Estimate"))%>%
-  full_join(tib16, by = c("Indirect", "Effect", "Estimate"))%>%
-  full_join(tib17, by = c("Indirect", "Effect", "Estimate"))%>%
-  full_join(tib18, by = c("Indirect", "Effect", "Estimate"))%>%
-  full_join(tib19, by = c("Indirect", "Effect", "Estimate"))%>%
-  full_join(tib20, by = c("Indirect", "Effect", "Estimate"))
-
-
-fj1<-fj%>%
-  filter(Effect!="Mediator Effect")
-fj1
-
-fj1<-fj1%>% # 
-  mutate(Start =  factor(ifelse(Effect == "Direct Effect (ADE)"|Effect == "Total Effect", "LOCKDOWN", Indirect)))%>%
-  mutate(End =  factor(ifelse(Effect == "Indirect Effect (ACME)"|Effect == "Total Effect" ,"KESSLER-6 DISTRESS",Indirect)))
-
-
-fj1
-# create source list
-sources <- fj1 %>%
-  distinct(Start) %>%
-  rename(label = Start)
-sources
-
-destinations <- fj1 %>%
-  distinct(End) %>%
-  rename(label = End)
-destinations
-
-nodes<-full_join(sources, destinations,by="label")
-nodes
-nodes <- nodes %>% rowid_to_column("id")
-nodes
-
-
-# edgelist
-per_route <- dplyr::select(fj1, Start, End, Estimate,Indirect,Effect)
-per_route
-edges <- per_route %>% 
-  left_join(nodes, by = c("Start" = "label")) %>% 
-  rename(from = id)%>%
-  rename(weight = Estimate)
-
-edges
-edges <- edges %>%
-  left_join(nodes, by = c("End" = "label")) %>%
-  rename(to = id)
-edges
-edges <-dplyr::select(edges, from, to, weight,Indirect,Effect,End)
-
-edges
-edgesS<-edges%>%
-  filter(Effect !="Total Effect")%>%
-  mutate(label= round(weight,3),
-         arrows = "End")
-nodes
-nodesS<-nodes%>%
-  mutate(group = factor(ifelse(label !="WaveL4"|label !="K6", "mediator","node")))
-
-
-library(igraph)
-routes_igraph <- graph_from_data_frame(d = edgesS, vertices = nodesS, directed = TRUE)
-routes_igraph2 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
-routes_igraph
-
-library(ggraph)
-library(tidygraph)
-library(seriation)
-routes_igraph_tidy <- as_tbl_graph(routes_igraph)
-routes_tidy <- tbl_graph(nodes = nodesS, edges = edgesS, directed = TRUE)
-routes_tidy
-routes_tidy %>% 
-  activate(edges) %>% 
-  arrange(desc(weight))
-#ggraph(routes_tidy) + geom_edge_link() + geom_node_point() + theme_graph()
-routes_tidy <- tbl_graph(nodes = nodes, edges = edges, directed = TRUE)
-routes_igraph_tidy <- as_tbl_graph(routes_igraph)
-
-routes_tidy %>%
-  activate(edgesS) %>%
-  arrange(desc(weight))
-#ggraph(routes_tidy) + geom_edge_link() + geom_node_point() + theme_graph()
-
-# routes_tidy
-# ggraph(routes_tidy, layout = "graphopt") + 
-#   geom_node_point() +
-#   geom_edge_link(aes(width = weight), alpha = 0.5) + 
-#   scale_edge_width(range = c(0.2, 4)) +
-#   geom_node_text(aes(label = label), repel = TRUE) +
-#   labs(edge_width = "Coefficients") +
-#   theme_graph()
-
-
-## USE THIS 12x 18000
-ggraph(routes_igraph2, layout = "fr") + 
-  geom_edge_arc2(aes(width = weight,colour = Effect), alpha = .7)+ 
-  scale_edge_alpha('Magnitude', guide = 'edge_direction') + 
-  scale_edge_size('weight') + 
-  scale_edge_width(range = c(0.2, 4)) +
-  geom_edge_link(alpha = 1) +geom_node_text(aes(label = label), repel = T) +labs(edge_width = "Coefficients") +
-  theme_graph()
-newtworkuse#12X800
-scaleNetworkgraph0 ## 1000 x 1000
-dev.off()
-ggraph(routes_igraph2, layout = 'fr') + 
-  geom_edge_arc(aes(colour = Effect,alpha = stat(index))) + 
-  scale_edge_alpha('Magnitude', guide = 'edge_direction') + 
-  scale_edge_size('weight') + 
-  scale_edge_width(range = c(0.2, 4)) +
-  geom_node_text(aes(label = label), repel = TRUE) +
-  geom_edge_link(alpha = 1)+
-  theme_graph()
-scaleNetworkgraph # 1 x 1
-scaleNetworkgraph2
-
-# ggraph(routes_igraph2, layout = 'linear') + 
-#   geom_edge_arc2(aes(colour = Effect,alpha = stat(index))) + 
-#   scale_edge_alpha('Magnitude', guide = 'edge_direction') + 
-#   scale_edge_size('weight') + 
-#   scale_edge_width(range = c(0.2, 4)) +
-#   geom_node_text(aes(label = label), repel = TRUE) +
-#   geom_edge_link(alpha = 0.5)
-# scaleNetworkgraph # 1 x 1
-# scaleNetworkgraph2
-
-
-library(visNetwork)
-library(networkD3)
-
-visNetwork(nodes, edges)
-
-visNetwork(nodes, edges) %>% 
-  visIgraphLayout(layout = "layout_with_fr") %>% 
-  visEdges(arrows = "middle")%>%
-  visEdges(arrows ="to")%>%
-  visOptions(selectedBy = "Indirect")
-
-
-
-visNetwork(nodesS, edgesS) %>% 
-  visIgraphLayout(layout = "layout_with_fr") %>% 
-  visEdges(arrows = "middle")%>%
-  visLegend(useGroups = T, addNodes = data.frame(label = "Nodes", shape = "circle"))  
-
-
-visNetwork(nodes, edges, width = "100%") %>% 
-  visEdges(arrows = 'from')
-
-
-m2
-nodes_d3 <- mutate(nodesS, id = id - 1)
-edges_d3 <- mutate(edgesS, from = from - 1, to = to - 1)
-edges_d3
-
-visNetwork(nodesS, edgesS, width = "100%") %>% 
-visOptions(highlightNearest = TRUE, nodesIdSelection = TRUE)
-
-visNetwork(nodeS, edgeS, width = "100%") %>% 
-visOptions(selectedBy = "group")
-
-visNetwork(nodesS, edgesS, width = "100%") %>% 
-  visIgraphLayout(layout = "layout_with_fr") %>% 
-  visEdges(arrows = "to") %>% 
-   visHierarchicalLayout() 
-%>%
-  visOptions(highlightNearest = F, nodesIdSelection = R)
-%>%
-  visSave(file = "network.html")
-
-
-edges_d3
-nodes_d3
-
-forceNetwork(Links = edges_d3, Nodes = nodes_d3, Source = "from", Target = "to", 
-             NodeID = "label", 
-             Group = "label", 
-             Value = "weight", 
-             opacity = .8, 
-             fontSize = 16, zoom = T)
-edgesS
-op<-sankeyNetwork(Links = edges_d3, 
-              Nodes = nodes_d3, 
-              Source = "from", 
-              Target = "to", 
-              LinkGroup = "Effect",
-              NodeID = "label", 
-              Value = "weight", 
-              fontSize = 16,
-             # iterations = 100, 
-              sinksRight = T)
-op
-
-saveNetwork(op, file="sankey.html", selfcontained = T)
-nodes_d3
-op<-sankeyNetwork(Links = edges_d3, 
-              Nodes = nodes_d3, 
-              Source = "from", 
-              Target = "to", 
-              NodeID = "label",
-              Value = "weight",
-              units='weight',
-              NodeGroup = "group",
-              LinkGroup = "Effect",
-             # nodePadding = 10, 
-              iterations = 1000, 
-              sinksRight = T)
-op 
-sankeyNetworkOutput(op, op,width = "100%", height = "500px")
-bbt1$CI_high
-
-### MEDIATOR GRAPH ####
-tib1m<-bbt1S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("SatisfiedBuisness",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate","CI_low","CI_high")%>%
-  slice(3)
-tib1m
-
-tib2m<-bbt2S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("SatisfiedRelationships",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate","CI_low","CI_high")%>%
-  slice(3)
-
-tib3m<-bbt3S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("SatisfiedHealth",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate","CI_low","CI_high")%>%
-  slice(3)
-
-tib4m<-bbt4S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("SatisfiedGovernment",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate","CI_low","CI_high")%>%
-  slice(3)
-
-tib5m<-bbt5S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("Sense of Community",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate","CI_low","CI_high")%>%
-  slice(3)
-
-tib6m<-bbt6S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("SatisfiedStandardOfLiving",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate","CI_low","CI_high")%>%
-  slice(3)
-
-tib7m<-bbt7S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("SocialSupport",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate","CI_low","CI_high")%>%
-  slice(3)
-tib8m<-bbt8S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("ShortHealth",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate","CI_low","CI_high")%>%
-  slice(3)
-
-tib9m<-bbt9S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("SatisfiedFutureSecurity",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate","CI_low","CI_high")%>%
-  slice(3)
-
-tib10m<-bbt10S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("SocialBelonging",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate","CI_low","CI_high")%>%
-  slice(3)
-# 11 na
-
-tib12m<-bbt12S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("SatisfiedEconomy",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate","CI_low","CI_high")%>%
-  slice(3)
-tib13m<-bbt13S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("Rumination",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate","CI_low","CI_high")%>%
-  slice(3)
-
-tib14m<-bbt14S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("Fatigue",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate","CI_low","CI_high")%>%
-  slice(3)
-
-tib15m<-bbt15S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("SatisfiedSocialConditions",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate","CI_low","CI_high")%>%
-  slice(3)
-
-tib16m<-bbt16S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("Patriotism",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate","CI_low","CI_high")%>%
-  slice(3)
-
-tib17m<-bbt17S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("NationalIdentity",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate","CI_low","CI_high")%>%
-  slice(3)
-
-tib18m<-bbt18S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("PoliceEngage",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate","CI_low","CI_high")%>%
-  slice(3)
-
-tib19m<-bbt19S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("PoliceTrust",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate","CI_low","CI_high")%>%
-  slice(3)
-
-tib20m<-bbt20S%>%
-  as_tibble()%>%
-  mutate(Indirect = rep("PoliticianTrust",n()))%>%
-  dplyr::select("Indirect","Effect","Estimate","CI_low","CI_high")%>%
-  slice(3)
-tib20m
-
-mj
-## Mediator 
-mj<-full_join(tib1m,tib2m, by = c("Indirect","Effect","Estimate","CI_low","CI_high"))%>%
-  full_join(tib3m,by = c("Indirect","Effect","Estimate","CI_low","CI_high"))%>%
-  full_join(tib4m,by = c("Indirect","Effect","Estimate","CI_low","CI_high"))%>%
-  full_join(tib5m, by = c("Indirect", "Effect", "Estimate","CI_low","CI_high"))%>%
-  full_join(tib6m, by = c("Indirect", "Effect", "Estimate","CI_low","CI_high"))%>%
-  full_join(tib7m, by = c("Indirect", "Effect", "Estimate","CI_low","CI_high"))%>%
-  full_join(tib8m, by = c("Indirect", "Effect", "Estimate","CI_low","CI_high"))%>%
-  full_join(tib9m, by = c("Indirect", "Effect", "Estimate","CI_low","CI_high"))%>%
-  full_join(tib10m, by = c("Indirect", "Effect", "Estimate","CI_low","CI_high"))%>%
-  full_join(tib12m, by = c("Indirect", "Effect", "Estimate","CI_low","CI_high"))%>%
-  full_join(tib13m, by = c("Indirect", "Effect", "Estimate","CI_low","CI_high"))%>%
-  full_join(tib14m, by = c("Indirect", "Effect", "Estimate","CI_low","CI_high"))%>%
-  full_join(tib15m, by = c("Indirect", "Effect", "Estimate","CI_low","CI_high"))%>%
-  full_join(tib16m, by = c("Indirect", "Effect", "Estimate","CI_low","CI_high"))%>%
-  full_join(tib17m, by = c("Indirect", "Effect", "Estimate","CI_low","CI_high"))%>%
-  full_join(tib18m, by = c("Indirect", "Effect", "Estimate","CI_low","CI_high"))%>%
-  full_join(tib19m, by = c("Indirect", "Effect", "Estimate","CI_low","CI_high"))%>%
-  full_join(tib20m, by = c("Indirect", "Effect", "Estimate","CI_low","CI_high"))%>%
-  dplyr::mutate(Dimension = factor(ifelse(Indirect =="Fatigue"|Indirect =="Rumination"|Indirect =="ShortHealth"|Indirect =="SatisfiedHealth", "Health", ifelse(Indirect =="SatisfiedEconomy"|Indirect =="SatisfiedBuisness"|Indirect =="SatisfiedStandardOfLiving"|Indirect =="SatisfiedFutureSecurity", "Economy",ifelse(Indirect =="SatisfiedGovernment"|Indirect =="PoliceEngage"|Indirect =="PoliceTrust"|Indirect =="PoliticianTrust", "Institutional Trust",ifelse(Indirect =="Sense of Community"|Indirect =="SatisfiedSocialConditions"|Indirect =="Patriotism"|Indirect =="NationalIdentity", "Civic Community",ifelse(Indirect =="SocialSupport"|Indirect =="SatisfiedRelationships"|Indirect =="SocialBelonging", "Relationships","Other")))))))%>%
-  dplyr::mutate(AffectedDistress = factor(ifelse(Indirect =="Fatigue"|Indirect =="SatisfiedBuisness"|Indirect =="SatisfiedRelationships"|Indirect =="PoliceEngage"|Indirect =="PoliticianTrust"|Indirect =="PoliceTrust"|Indirect =="Sense of Community"|Indirect =="SatisfiedSocialConditions"|Indirect =="Patriotism"|Indirect =="NationalIdentity", "Affected Distress","Not Affected Distress")))
-
-
-
-mj$Dimensions=  factor(mj$Dimension, levels=c('Health',"Economy","Relationships","Institutional Trust",'Civic Community',"Other"))
-
-library(gghighlight)
-medplot<-ggplot(aes(x=Indirect, y=Estimate, ymin=CI_low, ymax=CI_high), data=mj, group=Changed)+
-  geom_point(alpha=1, aes(colour=AffectedDistress)) +   geom_linerange(alpha=1, aes(colour=AffectedDistress)) + facet_wrap(~Dimensions,scales="free_x") +labs(x="", y="Effects on Distress of 1 SD increase") + theme_bw()  + theme(axis.text.x = element_text(angle = 45,hjust=1)) + ggtitle("Estimated Effects of +1 Standard Devition Increase in Mediators on (log) Kessler-6 Psychological Distress")  
-
-medplot
-
-
-# medplot<-ggplot(aes(x=Indirect, y=Estimate, ymin=CI_low, ymax=CI_high), data=mj)+
-#   geom_point(alpha=1, aes(colour=Dimensions)) +   geom_linerange(alpha=1, aes(colour=Dimensions)) + facet_wrap(~Dimension_f,scales="free_x") +labs(x="", y="Mediation Effects on Distress for 1 SD increase") + theme_bw()  + theme(axis.text.x = element_text(angle = 45,hjust=1)) + ggtitle("Estimated Effects of +1 Standard Devition Increase in Mediators on (log) Kessler-6 Psychological Distress")
-# medplot
-# 
