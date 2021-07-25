@@ -47,6 +47,38 @@ First we import the data, and create an indicator for measured/lost/withdrawn. B
 
 
 
+
+```{r, eval=FALSE}
+Labels:
+ value                                        label
+   1.1     T01 - Original Random Electoral (40,500)
+   1.9                                 T01 - Opt-in
+   2.9                                 T02 - Opt-in
+   3.1 T03 - Booster Sample - SST Additions (3,208)
+   3.2 T03.5 - Pacific Booster (Snowball N Unknown)
+   3.8                               T03.5 - Opt-in
+   3.9                                 T03 - Opt-in
+   4.1   T04 - Weighted Deprivation Booster (9,000)
+   4.2      T04 - Random Electoral Booster (20,000)
+   4.3    T04 - Auckland Electoral Booster (10,000)
+   4.4        T04 - Maori Electoral Booster (9,000)
+   4.5 T04 - Christchurch Electoral Booster (2,500)
+   4.9                                 T04 - Opt-in
+   5.1      T05 - Random Electoral Booster (70,000)
+   5.2        T05 - Maori Electoral Booster (1,400)
+   5.9                                 T05 - Opt-in
+   6.9                                 T06 - Opt-in
+   7.9                                 T07 - Opt-in
+   8.1      T08 - Random Electoral Booster (80,000)
+   8.9                           T08 - Opt-in (T08)
+   9.9                                 T09 - Opt-in
+  10.1     T10 - Random Electoral Booster (325,000)
+  10.9                                 T10 - Opt-in
+  11.8      T11 - Opt-in via Facebook Advertisement
+  11.9                                 T11 - Opt-in
+```
+
+
 ```{r}
 # read data
 df <- readRDS(here::here("data", "df"))
@@ -99,8 +131,7 @@ str(datt$Sample.Frame)
 
 datt%>%
   select(Id,Sample.Frame) %>%
-  filter(is.na(Sample.Frame))
-```
+  filter(is.na(Sample.Frame))```
 
 
 Let's quickly inspect the data frame:
