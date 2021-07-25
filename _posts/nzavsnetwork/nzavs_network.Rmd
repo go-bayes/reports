@@ -25,7 +25,7 @@ knitr::opts_chunk$set(
   warning = FALSE,
   message = FALSE,
   layout = "l-body-outset",
-  fig.width = 12,
+  fig.width = 15,
   fig.height = 15,
   collapse = TRUE,
   R.options = list(width = 60
@@ -40,18 +40,10 @@ library("here")
 library("ggalluvial")
 library("ggplot2")
 library("table1")
-library("rstan")
-library("broom")
-library("tidybayes")
-#library("networkD3")
-#library("pmdplyr")
-# rstan options
-rstan_options(auto_write = TRUE)
-options(mc.cores = parallel::detectCores ())
 ```
 
 
-First we import the data, and create an indicator for measured/lost/withdrawn. 
+First we import the data, and create an indicator for measured/lost/withdrawn. Below is some data wrangling.
 
 
 
@@ -59,9 +51,16 @@ First we import the data, and create an indicator for measured/lost/withdrawn.
 # read data
 df <- readRDS(here::here("data", "df"))
 
+
+
+
+
+# make sample frame a factor
+df$Sample.Frame <- as.factor(df$Sample.Frame)
+
 # year measured codes, 1 = measured, 0 = not measured, -1 = withdrawn or died
 dat <- df %>%
-  select(YearMeasured, Wave, Id, EthnicCats, GenCohort, Male) %>%
+  select(YearMeasured, Wave, Id, EthnicCats, GenCohort, Male, Sample.Frame) %>%
   mutate(Wave = as.numeric(as.character(Wave))) %>%
   group_by(Id) %>%
   mutate(first = {
@@ -86,35 +85,51 @@ dat <- df %>%
   )) %>%
   ungroup() %>%
   dplyr::mutate(Wave = as.factor(Wave)) %>% # return Wave to a factor
-  dplyr::select(Wave, Id, state, GenCohort, Male, EthnicCats) %>%
+  dplyr::select(Wave, Id, state, GenCohort, Male, EthnicCats, Sample.Frame) %>%
   dplyr::filter(state != "notyetmeasured") %>%
   droplevels()
 
-# fill missing values in dataset
+# fill missing values in dataset (when people are not measured all other indicators are "NA")
 
 datt <- dat %>%
   group_by(Id) %>%
-  fill(GenCohort, Male, EthnicCats)
+  fill(GenCohort, Male, EthnicCats, Sample.Frame) # fill is a useful function. 
+
+str(datt$Sample.Frame)
+
+datt%>%
+  select(Id,Sample.Frame) %>%
+  filter(is.na(Sample.Frame))
 ```
 
-Let's quickly inspect the data frame
+
+Let's quickly inspect the data frame:
+
+```{r}
+glimpse(datt)
+# looks good
+```
+
+And let's make sure that we've ordered the id variables correctly for the repeated measures:
+
 
 ```{r}
 head(datt)
 ```
 
-
-```{r}
-glimpse(datt)
-```
-
-
-Next, we create a table to indicate the measurement states by waves. The "Overall" column sums over measurements within subjects, not measured subjects. 
-
+Next, we create a table to indicate the measurement states by waves. Note that the "Overall" column sums over measurements within subjects, not measured subjects.  
 
 ```{r}
 table1::table1(~ state + Male + EthnicCats + GenCohort|as.factor(Wave), data = datt)
 ```
+
+How many participants were measured? 
+
+```{r}
+length( unique( datt$Id ) )
+```
+
+
 
 
 ## Alluvial Graphs
@@ -122,6 +137,7 @@ table1::table1(~ state + Male + EthnicCats + GenCohort|as.factor(Wave), data = d
 Next we get the data in to shape for our graphs. 
 
 
+This is just some data wrangling 
 
 ```{r}
 # summarise measurement states by waves
@@ -242,7 +258,7 @@ ggplot(as.data.frame(dats3),
   ) +
   ylab("") +
   scale_fill_brewer(type = "qual", palette = "Set1") +
-  ggtitle("NZAVS alluvial graph: male x ethnicity")
+  ggtitle("NZAVS alluvial graph: gender x ethnicity")
 
 # warning indicateds category transition (some people changed gender I think??)
 ```
@@ -276,33 +292,303 @@ ggplot(as.data.frame(dats4),
   ) +
   ylab("") +
   scale_fill_brewer(type = "qual", palette = "Set1") +
-  ggtitle("NZAVS alluvial graph: male (only")
+  ggtitle("NZAVS alluvial graph: gender")
 
 ```
 
-###  Subject-level graph by waves
 
-This graphs take a long time to plot
+### Graph of survival of Cohort and Wave
+
+The illustrates another approach, in which we colour code by the predictor not by the state.
+
 
 ```{r}
-# graph takes time to plot
-ggplot(dat,
+# prepare data
+dats5 <- datt %>%
+  group_by(Wave,GenCohort) %>%
+  count(state)
+
+# dats4
+
+#graph
+ggplot(as.data.frame(dats5),
+       aes(
+         y = n,
+         axis1 = Wave,
+         axis2 = GenCohort,
+         axis3 = state
+       )) +
+  geom_alluvium(aes(fill = GenCohort)) +
+  geom_stratum() +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  scale_x_discrete(limits = c("Wave", "GenCohort","state"),
+                   expand = c(.2, .05)) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  ylab("") +
+  scale_fill_brewer(type = "qual", palette = "Set1") +
+  ggtitle("NZAVS alluvial graph: Cohort x Wave") + theme_classic()
+
+```
+
+
+Here we can focus on ethnicity by wave
+
+
+```{r}
+#graph
+dats2 <- datt %>%
+  group_by(Wave,EthnicCats) %>%
+  count(state)
+
+
+ggplot(as.data.frame(dats2),
+       aes(
+         y = n,
+         axis1 = Wave,
+         axis2 = EthnicCats,
+         axis3 = state
+       )) +
+  geom_alluvium(aes(fill = EthnicCats)) +
+  geom_stratum() +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  scale_x_discrete(limits = c("Wave", "EthnicCats","state"),
+                   expand = c(.2, .05)) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  ylab("") +
+  scale_fill_brewer(type = "qual", palette = "Set1") +
+  ggtitle("NZAVS alluvial graph: Ethnic Categories X Wave") + theme_classic()
+
+```
+
+
+
+Because the ethnic proportions do not change much by time, we can simplify the graph
+
+```{r}
+dats2s <- datt %>%
+  group_by(EthnicCats) %>%
+  count(state)
+
+
+ggplot(as.data.frame(dats2s),
+       aes(
+         y = n,
+         axis1 = EthnicCats,
+         axis2 = state
+       )) +
+  geom_alluvium(aes(fill = EthnicCats)) +
+  geom_stratum() +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  scale_x_discrete(limits = c("EthnicCats","state"),
+                   expand = c(.2, .05)) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  ylab("") +
+  scale_fill_brewer(type = "qual", palette = "Set1") +
+  ggtitle("NZAVS alluvial graph: Ethnic Categories") + theme_classic()
+
+```
+
+
+
+
+
+###  Graph of survival: subject-level by waves
+
+With an individual level graph, I don't think we have have more another variable (aside from wave).
+
+```{r}
+# prepare data
+datsSS <- dat %>%
+  group_by(Wave, state, Id) %>%
+  summarise(n = n())
+
+ggplot(datsSS,
        aes(
          x = Wave,
          stratum = state,
          alluvium = Id,
+         y = n,
          fill = state,
          label = state
        )) +
-  scale_fill_brewer(type = "qual", palette = "Set2") +
-  geom_flow(stat = "alluvium",
-            lode.guidance = "frontback",
-            color = "darkgray") +
-  geom_stratum() +
-  theme(legend.position = "bottom") +
-  ggtitle("NZAVS alluvial graph, subject-level: measured, lost, withdrawn")
+  scale_x_discrete(expand = c(.1, .1)) +
+  geom_flow() +
+  geom_stratum(alpha = .5) +
+  geom_text(stat = "stratum", size = 3) +
+  theme(legend.position = "none") +
+  ggtitle("NZAVS alluvial graph: within-subject x wave") +
+  theme_classic()
+
 ```
 
+
+
+## Graph of survival by Sample Frame
+
+
+```{r}
+#graph
+library(viridisLite)
+dats2 <- datt %>%
+  group_by(Wave,Sample.Frame) %>%
+  count(state)
+
+
+ggplot(as.data.frame(dats2),
+       aes(
+         y = n,
+         axis1 = Sample.Frame,
+         axis2 = Wave,
+         axis3 = state
+       )) +
+  geom_alluvium(aes(fill = Sample.Frame)) +
+  geom_stratum() +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  scale_x_discrete(limits = c("Sample.Frame","Wave", "state"),
+                   expand = c(.2, .05)) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  ylab("") +
+  scale_fill_viridis_d() +
+  ggtitle("NZAVS alluvial graph:  Sample.Frame X Wave") + theme_classic()
+
+```
+
+
+Fill with state
+
+```{r}
+#graph
+library(viridisLite)
+dats2 <- datt %>%
+  group_by(Wave,Sample.Frame) %>%
+  count(state)
+
+
+ggplot(as.data.frame(dats2),
+       aes(
+         y = n,
+         axis1 = Sample.Frame,
+         axis2 = Wave,
+         axis3 = state
+       )) +
+  geom_alluvium(aes(fill = state)) +
+  geom_stratum() +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  scale_x_discrete(limits = c("Sample.Frame","Wave", "state"),
+                   expand = c(.2, .05)) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  ylab("") +
+  scale_fill_viridis_d() +
+  ggtitle("NZAVS alluvial graph:  Sample.Frame X Wave") + theme_classic()
+
+```
+
+
+
+
+
+No Wave
+
+
+```{r}
+#graph
+library(viridisLite)
+dats2s <- datt %>%
+  group_by(Sample.Frame) %>%
+  count(state)
+
+dats2s
+ggplot(as.data.frame(dats2s),
+       aes(
+         y = n,
+         axis1 = Sample.Frame,
+         axis2 = state
+       )) +
+  geom_alluvium(aes(fill = state)) +
+  geom_stratum() +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  scale_x_discrete(limits = c("Sample.Frame", "state"),
+                   expand = c(.2, .05)) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  ylab("") +
+  scale_fill_viridis_d() +
+  ggtitle("NZAVS alluvial graph:  Sample.Frame") + theme_classic()
+
+```
+
+
+
+Within subject facet by sample frame
+
+
+
+```{r}
+# prepare data
+datt %>%
+  group_by(Sample.Frame) %>%
+  tally() %>%
+  arrange(desc(n)) %>%
+  print(n=24)
+
+
+datsSF <- datt %>%
+  group_by(Wave, state, Sample.Frame, Id) %>%
+  summarise(n = n()) 
+
+
+
+ggplot(datsSF,
+       aes(
+         x = Wave,
+         stratum = state,
+         alluvium = Id,
+         y = n,
+         fill = state,
+         label = state
+       )) +
+  scale_x_discrete(expand = c(.1, .1)) +
+  geom_flow() +
+  geom_stratum(alpha = .5) +
+ # geom_text(stat = "stratum", size = 3) +
+  theme(legend.position = "none") +
+  #   facet_wrap(~ Sample.Frame) +
+  facet_wrap(~ Sample.Frame, scales = "free") +
+    scale_fill_viridis_d() +
+  ggtitle("NZAVS alluvial graph: within-subject x wave and sample frame") +
+  theme_classic()
+
+
+# find NA Sample.Frame
+
+datsSF %>%
+  filter(is.na(Sample.Frame))
+
+
+```
 
 
 
