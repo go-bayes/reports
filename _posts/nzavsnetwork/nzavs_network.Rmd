@@ -83,7 +83,9 @@ Labels:
 # read data
 df <- readRDS(here::here("data", "df"))
 
-
+df%>%
+  select(Id,YearMeasured,Sample.Frame,Wave) %>%
+  filter(Id == 11303)
 
 
 
