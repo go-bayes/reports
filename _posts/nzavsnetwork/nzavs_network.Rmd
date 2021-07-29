@@ -54,7 +54,7 @@ sdf$Sample.Frame <- as.factor(sdf$Sample.Frame)
 sdf
 
 ##
-sdf.1 <- sdf %>%
+sdf.0 <- sdf %>%
   mutate(Wave = as.numeric(as.character(Wave))) %>%
   arrange(TSCORE) %>%
   group_by(Id) %>%
@@ -78,12 +78,23 @@ sdf.1 <- sdf %>%
              "measured")
     )
   )) %>%
-  ungroup() %>%
   dplyr::mutate(Wave = as.factor(Wave)) %>% # return Wave to a factor
-  dplyr::select(Wave, Id, state, Sample.Frame,TSCORE) %>%
+  dplyr::select(Wave, Id, state, Sample.Frame) %>%
   dplyr::filter(state != "notyetmeasured") %>%
   droplevels() %>%
-  group_by(Id)
+  arrange(Id, Wave)
+
+sdf.01 <- sdf.0 %>%
+  group_by(Id) %>%
+  mutate(lag_state = dplyr::lag(state, n = 1, default = "init"))
+
+sdf.01
+
+sdf.1<- sdf.01 %>%
+  group_by(Id, Wave) %>%
+  mutate(recovered = ifelse(lag_state == "lost" &
+                              state == "measured", "recovered", state)) 
+
 ```
 
 
@@ -154,8 +165,9 @@ sdf.1$Sample.Frame <-  recode_factor(
   "11.8" = "T11_Optin_Facebook",
   "11.9" = "T11 - Opt-in"
 )
-```
 
+
+```
 
 
 
@@ -165,17 +177,71 @@ We need to back fill the missing values for our alluvial graph. This is OK becau
 
 
 ```{r}
+str(sdf.1$recovered)
 
-ssdf <-sdf.1%>%  # Fill missing values for Sample.Frame
-  arrange(TSCORE,Id) %>%
-  fill(Sample.Frame) # fill is a useful function. 
-```
+
+
+
+ssdf0 <-sdf.1%>%  # Fill missing values for Sample.Frame
+  arrange(Id) %>%
+  group_by(Id) %>%
+  fill(Sample.Frame)  %>%
+  ungroup()# fill is a useful function. 
+
+
+tf <- ssdf0 %>%
+  mutate(Sample.Frame = as.character(Sample.Frame))
+table(ssdf0$recovered)
+
+ssdf <- tf %>%
+   mutate(state_frame = ifelse(recovered == "lost", "lost", 
+                              ifelse(recovered == "withdrawn", "withdrawn",
+                                     ifelse(recovered == "recovered", "recovered",
+                              Sample.Frame) )) )
+
+
+ssdf.0 <- ssdf %>%
+    mutate(state_frame = factor(state_frame)) 
+
+levels(ssdf.0$state_frame)
+
+ssdf.01 <- ssdf.0 %>%
+    mutate(state_frame = forcats::fct_relevel(state_frame, 
+                                              c("T01_Random_Elc",
+                                                "T02_Optin",
+                                                "T03_Booster",
+                                                "T03_Optin",
+                                                "T035_Optin",
+                                                "T035_Pacific_Booster",
+                                                "T04_Auckland_Elc_Booster",
+                                                "T04_ChrCh_Elc_Booster",
+                                                "T04_Maori_Elc_Booster",
+                                                "T04_Optin",
+                                                "T04_Random_Elc_Booster",
+                                                "T04_Weighted_Dep_Booster",
+                                                "T05_Optin",
+                                                "T05_Random_Elc_Booster",
+                                                "T06_Optin",
+                                                "T07_Optin",
+                                                "T08_Optin",
+                                                "T08_Random_Elc_Booster",
+                                                "T09_Optin",
+                                                "T10_Optin",
+                                                "T10_Random_Elc_Booster",
+                                                "T11 - Opt-in",
+                                                "T11_Optin_Facebook",
+                                                "recovered",
+                                                "lost",
+                                                "withdrawn" )))
+ 
+ table(ssdf.01$state_frame)
+  ```
 
 
 Next we briefly inspect that data frame. Note that `Sample.Frame` is at the level of repeated measures within individuals. So these are not counts of individuals within waves 
 
 ```{r}
-table(ssdf$Sample.Frame)
+table(ssdf.01$state_frame)
 ```
 
 
@@ -184,8 +250,8 @@ table(ssdf$Sample.Frame)
 
 ```{r}
 library(ggplot2)
-ggplot(ssdf) + 
-  geom_bar(mapping = aes(x = fct_infreq(Sample.Frame))) + 
+ggplot(ssdf.01) + 
+  geom_bar(mapping = aes(x = fct_infreq(state_frame))) + 
   xlab("Sample Frame") + 
    coord_flip() + theme_bw()
 ```
@@ -197,16 +263,43 @@ Next we create the alluvial graph for subject within wave x sample frame:
 
 ```{r ,fig.height = 20}
 # prepare data
-datsSF <- ssdf %>%
-  group_by(Wave, state, Sample.Frame, Id) %>%
+datsSF <- ssdf.01 %>%
+  group_by(Wave, state_frame, Id) %>%
   summarise(n = n())
+datsSF
+
 
 
 # graph
 ggplot(datsSF,
        aes(
          x = Wave,
-         stratum = state,
+         stratum = state_frame,
+         alluvium = Id,
+         y = n,
+         fill = state_frame,
+         label = state_frame
+       )) +
+  #scale_x_discrete(expand = c(.1, .1)) +
+  geom_flow() +
+  geom_stratum(alpha = .5) +
+  geom_text(stat = "stratum", size = 5) +
+  guides(color = guide_legend(override.aes = list(size = 20))) + 
+ # theme(legend.position = "top") +
+ # facet_wrap(~ Sample.Frame, scales = "free", ncol=3) +
+ scale_fill_viridis_d() +
+  ggtitle("NZAVS alluvial retention graph") +
+  theme_classic()
+
+```
+
+
+```{r}
+
+ggplot(datsSF,
+       aes(
+         x = Wave,
+         stratum = Sample.Frame,
          alluvium = Id,
          y = n,
          fill = state,
@@ -215,14 +308,16 @@ ggplot(datsSF,
   scale_x_discrete(expand = c(.1, .1)) +
   geom_flow() +
   geom_stratum(alpha = .5) +
-  # geom_text(stat = "stratum", size = 3) +
-  theme(legend.position = "none") +
-  facet_wrap(~ Sample.Frame, scales = "free", ncol=3) +
-  scale_fill_viridis_d() +
+ # geom_text(stat = "stratum", size = 3) +
+ # theme(legend.position = "none") +
+ # facet_wrap(~ Sample.Frame, scales = "free", ncol=3) +
+ scale_fill_viridis_d() +
   ggtitle("NZAVS alluvial retention graph") +
   theme_classic()
 
+
 ```
+
 
 
 It would appear that the retention efforts in 2018/2019 were especially effective at recovering lost participants. 
