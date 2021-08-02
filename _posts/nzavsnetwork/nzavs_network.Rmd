@@ -47,16 +47,87 @@ First we import the data, and create an indicator for measured/lost/withdrawn.
 
 ```{r}
 # read data. note that Wave 2011.5 = T035
-sdf <- readRDS(here::here("data", "sdf"))
+#sdf <- readRDS(here::here("data", "sdf"))
 
-# Make sample frame into a factor
-sdf$Sample.Frame <- as.factor(sdf$Sample.Frame)
+sampling_data <-
+  haven::read_sav(here::here("data", "GraphData.sav"
+  )
+)
+
+sampling_data <- haven::zap_formats(sampling_data)
+sampling_data <- haven::zap_label(sampling_data)
+sampling_data <- haven::zap_widths(sampling_data)
+sampling_data <- haven::zap_labels(sampling_data)
+
+sampling_data <- sampling_data %>%
+  rename(Id = Questionnaire.Num) 
+str(sampling_data)
+
+sampling_data
+
+table(sampling_data$SampleOriginYear)
+
+
+## make long
+inner_join(
+  sampling_data  %>%
+    dplyr::select(c(
+        Id,
+      c(
+        'T01',
+        "T02",
+        'T03',
+        "T035",
+        "T04",
+        'T05',
+        "T06",
+        'T07',
+        "T08",
+        "T09",
+        "T10",
+        "T11"
+      )
+    )) %>%      #~~~~ Left side = date component ~~~~~~~~
+    gather(Wave, YearMeasured,-Id) %>%  #~ long form = 1 row per prod per seq   ~
+    mutate(
+      Wave = recode_factor(
+        Wave,
+        T01 = "2009",
+        T02 = "2010",
+        T03 = "2011",
+        T035 = "2011.5",
+        T04  = "2012",
+        T05 = "2013",
+        T06 = "2014",
+        T07 = "2015",
+        T08 = "2016",
+        T09 = "2017",
+        T10 = "2018",
+        T11 = "2019"
+      )
+    ) %>%
+    arrange(Id),
+sampling_data %>% 
+dplyr::select(c(Id, starts_with('SampleOriginYear'))) %>% 
+  arrange(Id),
+) -> sdf
+head(sdf)
+
+sdf <- sdf %>%
+  mutate(SampleOriginYear = SampleOriginYear + 2008) 
 sdf
+#
+#  Make sample frame into a factor
+sdf$SampleOriginYear <- as.factor(sdf$SampleOriginYear)
+sdf
+
+table(sdf$SampleOriginYear)
+
 
 ##
 sdf.0 <- sdf %>%
   mutate(Wave = as.numeric(as.character(Wave))) %>%
-  arrange(TSCORE) %>%
+  arrange(Wave,Id) %>%
   group_by(Id) %>%
   mutate(first = {
     YearMeasured == 1
@@ -79,10 +150,13 @@ sdf.0 <- sdf %>%
     )
   )) %>%
   dplyr::mutate(Wave = as.factor(Wave)) %>% # return Wave to a factor
-  dplyr::select(Wave, Id, state, Sample.Frame) %>%
+  dplyr::select(Wave, Id, state, YearMeasured, SampleOriginYear) %>%
   dplyr::filter(state != "notyetmeasured") %>%
   droplevels() %>%
   arrange(Id, Wave)
+sdf.0
+
+table(sdf.0$SampleOriginYear)
 
 sdf.01 <- sdf.0 %>%
   group_by(Id) %>%
@@ -100,74 +174,74 @@ sdf.1<- sdf.01 %>%
 
 
 
-The SPSS variables names for the sample frames are as follows:
+<!-- The SPSS variables names for the sample frames are as follows: -->
+
+<!-- #  -->
+<!-- # ```{r, eval=FALSE} -->
+<!-- # Labels: -->
+<!-- #  value                                        label -->
+<!-- #    1.1     T01 - Original Random Electoral (40,500) -->
+<!-- #    1.9                                 T01 - Opt-in -->
+<!-- #    2.9                                 T02 - Opt-in -->
+<!-- #    3.1 T03 - Booster Sample - SST Additions (3,208) -->
+<!-- #    3.2 T03.5 - Pacific Booster (Snowball N Unknown) -->
+<!-- #    3.8                               T03.5 - Opt-in -->
+<!-- #    3.9                                 T03 - Opt-in -->
+<!-- #    4.1   T04 - Weighted Deprivation Booster (9,000) -->
+<!-- #    4.2      T04 - Random Electoral Booster (20,000) -->
+<!-- #    4.3    T04 - Auckland Electoral Booster (10,000) -->
+<!-- #    4.4        T04 - Maori Electoral Booster (9,000) -->
+<!-- #    4.5 T04 - Christchurch Electoral Booster (2,500) -->
+<!-- #    4.9                                 T04 - Opt-in -->
+<!-- #    5.1      T05 - Random Electoral Booster (70,000) -->
+<!-- #    5.2        T05 - Maori Electoral Booster (1,400) -->
+<!-- #    5.9                                 T05 - Opt-in -->
+<!-- #    6.9                                 T06 - Opt-in -->
+<!-- #    7.9                                 T07 - Opt-in -->
+<!-- #    8.1      T08 - Random Electoral Booster (80,000) -->
+<!-- #    8.9                           T08 - Opt-in (T08) -->
+<!-- #    9.9                                 T09 - Opt-in -->
+<!-- #   10.1     T10 - Random Electoral Booster (325,000) -->
+<!-- #   10.9                                 T10 - Opt-in -->
+<!-- #   11.8      T11 - Opt-in via Facebook Advertisement -->
+<!-- #   11.9                                 T11 - Opt-in -->
+<!-- # ``` -->
+<!-- #  -->
+<!-- #  -->
+<!-- # We abbreviate them as follows: -->
+<!-- #  -->
+<!-- # ```{r} -->
+<!-- # sdf.1$Sample.Frame <-  recode_factor( -->
+<!-- #   sdf.1$Sample.Frame, -->
+<!-- #   "1.1" = "T01_Random_Elc", -->
+<!-- #   "1.9" = "T01_Optin", # none observed -->
+<!-- #   "2.9" = "T02_Optin", -->
+<!-- #   "3.1" = "T03_Booster", -->
+<!-- #   "3.2" = "T035_Pacific_Booster", -->
+<!-- #   "3.8" = "T035_Optin", -->
+<!-- #   "3.9" = "T03_Optin", -->
+<!-- #   "4.1" = "T04_Weighted_Dep_Booster", -->
+<!-- #   "4.2" = "T04_Random_Elc_Booster", -->
+<!-- #   "4.3" = "T04_Auckland_Elc_Booster", -->
+<!-- #   "4.4" = "T04_Maori_Elc_Booster", -->
+<!-- #   "4.5" = "T04_ChrCh_Elc_Booster", -->
+<!-- #   "4.9" = "T04_Optin", -->
+<!-- #   "5.1" = "T05_Random_Elc_Booster", -->
+<!-- #   "5.2" = "T05_Maori_Elc_Booster", # none observed -->
+<!-- #   "5.9" = "T05_Optin", -->
+<!-- #   "6.9" = "T06_Optin", -->
+<!-- #   "7.9" = "T07_Optin", -->
+<!-- #   "8.1" = "T08_Random_Elc_Booster", -->
+<!-- #   "8.9" = "T08_Optin", -->
+<!-- #   "9.9" =  "T09_Optin", -->
+<!-- #   "10.1" = "T10_Random_Elc_Booster", -->
+<!-- #   "10.9" = "T10_Optin", -->
+<!-- #   "11.8" = "T11_Optin_Facebook", -->
+<!-- #   "11.9" = "T11 - Opt-in" -->
+<!-- # ) -->
 
 
-```{r, eval=FALSE}
-Labels:
- value                                        label
-   1.1     T01 - Original Random Electoral (40,500)
-   1.9                                 T01 - Opt-in
-   2.9                                 T02 - Opt-in
-   3.1 T03 - Booster Sample - SST Additions (3,208)
-   3.2 T03.5 - Pacific Booster (Snowball N Unknown)
-   3.8                               T03.5 - Opt-in
-   3.9                                 T03 - Opt-in
-   4.1   T04 - Weighted Deprivation Booster (9,000)
-   4.2      T04 - Random Electoral Booster (20,000)
-   4.3    T04 - Auckland Electoral Booster (10,000)
-   4.4        T04 - Maori Electoral Booster (9,000)
-   4.5 T04 - Christchurch Electoral Booster (2,500)
-   4.9                                 T04 - Opt-in
-   5.1      T05 - Random Electoral Booster (70,000)
-   5.2        T05 - Maori Electoral Booster (1,400)
-   5.9                                 T05 - Opt-in
-   6.9                                 T06 - Opt-in
-   7.9                                 T07 - Opt-in
-   8.1      T08 - Random Electoral Booster (80,000)
-   8.9                           T08 - Opt-in (T08)
-   9.9                                 T09 - Opt-in
-  10.1     T10 - Random Electoral Booster (325,000)
-  10.9                                 T10 - Opt-in
-  11.8      T11 - Opt-in via Facebook Advertisement
-  11.9                                 T11 - Opt-in
-```
-
-
-We abbreviate them as follows:
-
-```{r}
-sdf.1$Sample.Frame <-  recode_factor(
-  sdf.1$Sample.Frame,
-  "1.1" = "T01_Random_Elc",
-  "1.9" = "T01_Optin", # none observed
-  "2.9" = "T02_Optin",
-  "3.1" = "T03_Booster",
-  "3.2" = "T035_Pacific_Booster",
-  "3.8" = "T035_Optin",
-  "3.9" = "T03_Optin",
-  "4.1" = "T04_Weighted_Dep_Booster",
-  "4.2" = "T04_Random_Elc_Booster",
-  "4.3" = "T04_Auckland_Elc_Booster",
-  "4.4" = "T04_Maori_Elc_Booster",
-  "4.5" = "T04_ChrCh_Elc_Booster",
-  "4.9" = "T04_Optin",
-  "5.1" = "T05_Random_Elc_Booster",
-  "5.2" = "T05_Maori_Elc_Booster", # none observed
-  "5.9" = "T05_Optin",
-  "6.9" = "T06_Optin",
-  "7.9" = "T07_Optin",
-  "8.1" = "T08_Random_Elc_Booster",
-  "8.9" = "T08_Optin",
-  "9.9" =  "T09_Optin",
-  "10.1" = "T10_Random_Elc_Booster",
-  "10.9" = "T10_Optin",
-  "11.8" = "T11_Optin_Facebook",
-  "11.9" = "T11 - Opt-in"
-)
-
-
-```
+<!-- ``` -->
 
 
 
@@ -177,72 +251,60 @@ We need to back fill the missing values for our alluvial graph. This is OK becau
 
 
 ```{r}
-str(sdf.1$recovered)
+str(sdf.1$state)
 
 
-
+table(sdf.1$SampleOriginYear)
 
 ssdf0 <-sdf.1%>%  # Fill missing values for Sample.Frame
   arrange(Id) %>%
   group_by(Id) %>%
-  fill(Sample.Frame)  %>%
+  fill(SampleOriginYear)  %>%
   ungroup()# fill is a useful function. 
 
 
 tf <- ssdf0 %>%
-  mutate(Sample.Frame = as.character(Sample.Frame))
-table(ssdf0$recovered)
+  mutate(SampleOriginYear = as.character(SampleOriginYear))
+
+tf$state
 
 ssdf <- tf %>%
-   mutate(state_frame = ifelse(recovered == "lost", "lost", 
-                              ifelse(recovered == "withdrawn", "withdrawn",
-                                     ifelse(recovered == "recovered", "recovered",
-                              Sample.Frame) )) )
+   mutate(state_frame = ifelse(state == "lost", "lost",  
+                               ifelse(state == "withdrawn", "withdrawn",
+                                      SampleOriginYear)))
 
 
 ssdf.0 <- ssdf %>%
-    mutate(state_frame = factor(state_frame)) 
+    mutate(state_frame = factor(state_frame))
 
-levels(ssdf.0$state_frame)
+ levels(ssdf.0$state_frame)
 
 ssdf.01 <- ssdf.0 %>%
-    mutate(state_frame = forcats::fct_relevel(state_frame, 
-                                              c("T01_Random_Elc",
-                                                "T02_Optin",
-                                                "T03_Booster",
-                                                "T03_Optin",
-                                                "T035_Optin",
-                                                "T035_Pacific_Booster",
-                                                "T04_Auckland_Elc_Booster",
-                                                "T04_ChrCh_Elc_Booster",
-                                                "T04_Maori_Elc_Booster",
-                                                "T04_Optin",
-                                                "T04_Random_Elc_Booster",
-                                                "T04_Weighted_Dep_Booster",
-                                                "T05_Optin",
-                                                "T05_Random_Elc_Booster",
-                                                "T06_Optin",
-                                                "T07_Optin",
-                                                "T08_Optin",
-                                                "T08_Random_Elc_Booster",
-                                                "T09_Optin",
-                                                "T10_Optin",
-                                                "T10_Random_Elc_Booster",
-                                                "T11 - Opt-in",
-                                                "T11_Optin_Facebook",
-                                                "recovered",
+    mutate(state_frame = forcats::fct_relevel(state_frame,
+                                              c("2009",
+                                                "2010",
+                                                "2011",
+                                                "2011.5",
+                                                "2012",
+                                                "2013",
+                                                "2014",
+                                                "2015",
+                                                "2016",
+                                                "2017",
+                                                "2018",
+                                                "2019",
                                                 "lost",
                                                 "withdrawn" )))
- 
- table(ssdf.01$state_frame)
-  ```
-
-
-Next we briefly inspect that data frame. Note that `Sample.Frame` is at the level of repeated measures within individuals. So these are not counts of individuals within waves 
-
-```{r}
-table(ssdf.01$state_frame)
-```
+#  
+#  table(ssdf.01$state_frame)
+#   ```
+# 
+# 
+# Next we briefly inspect that data frame. Note that `Sample.Frame` is at the level of repeated measures within individuals. So these are not counts of individuals within waves 
+# 
+# ```{r}
+# table(ssdf.01$state_frame)
+# ```
 
 
 
@@ -250,7 +312,7 @@ table(ssdf.01$state_frame)
 
 ```{r}
 library(ggplot2)
-ggplot(ssdf.01) + 
+ggplot(ssdf) + 
   geom_bar(mapping = aes(x = fct_infreq(state_frame))) + 
   xlab("Sample Frame") + 
    coord_flip() + theme_bw()
@@ -263,7 +325,9 @@ Next we create the alluvial graph for subject within wave x sample frame:
 
 ```{r ,fig.height = 20}
 # prepare data
-datsSF <- ssdf.01 %>%
+
+
+datsSF <- ssdf %>%
   group_by(Wave, state_frame, Id) %>%
   summarise(n = n())
 datsSF
