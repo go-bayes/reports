@@ -305,7 +305,7 @@ ssdf.01 <- ssdf.0 %>%
 # ```{r}
 # table(ssdf.01$state_frame)
 # ```
-
+ssdf.01
 
 
 
@@ -358,33 +358,379 @@ ggplot(datsSF,
 ```
 
 
+<!-- ```{r} -->
+
+<!-- ggplot(datsSF, -->
+<!--        aes( -->
+<!--          x = Wave, -->
+<!--          stratum = state_frame, -->
+<!--          alluvium = Id, -->
+<!--          y = n, -->
+<!--          fill = state_frame, -->
+<!--          label = state_frame -->
+<!--        )) + -->
+<!--   scale_x_discrete(expand = c(.1, .1)) + -->
+<!--   geom_flow() + -->
+<!--   geom_stratum(alpha = .5) + -->
+<!--  # geom_text(stat = "stratum", size = 3) + -->
+<!--  # theme(legend.position = "none") + -->
+<!--  # facet_wrap(~ Sample.Frame, scales = "free", ncol=3) + -->
+<!--  scale_fill_viridis_d() + -->
+<!--   ggtitle("NZAVS alluvial retention graph") + -->
+<!--   theme_classic() -->
+
+
+<!-- ``` -->
+
+
+
+Another method
+
+
 ```{r}
 
-ggplot(datsSF,
-       aes(
-         x = Wave,
-         stratum = Sample.Frame,
-         alluvium = Id,
-         y = n,
-         fill = state,
-         label = state
-       )) +
-  scale_x_discrete(expand = c(.1, .1)) +
-  geom_flow() +
-  geom_stratum(alpha = .5) +
- # geom_text(stat = "stratum", size = 3) +
- # theme(legend.position = "none") +
- # facet_wrap(~ Sample.Frame, scales = "free", ncol=3) +
- scale_fill_viridis_d() +
-  ggtitle("NZAVS alluvial retention graph") +
-  theme_classic()
+# https://www.titanwolf.org/Network/q/4343508a-5b1e-4da0-b6e4-0448995f4f91/y
 
+dat <- data.frame(customer = c(rep(c(1, 2), each=3), 3, 3),
+              holiday_loc = c("SA", "SA", "AB", "SA", "SA", "SA", "AB", "AB"),
+              holiday_num = c(1, 2, 3, 1, 2, 3, 1, 2))
+
+# dat
+# 
+# dat_wide <- dat %>%
+#         spread(key=holiday_num, value= "holiday_loc")
+# 
+# dat_wide
+
+datsSF
+dat
+
+links <- 
+  dat %>% 
+  mutate("source" = paste(holiday_loc, holiday_num, sep = "_")) %>% 
+  group_by(customer) %>% 
+  arrange(holiday_num) %>% 
+  mutate("target" =  lead(source)) %>% 
+  ungroup() %>% 
+  arrange(customer) %>% 
+  filter(!is.na(target)) %>% 
+  select(source, target)
+links
+
+
+library(visNetwork)
+library(networkD3)
+
+# example
+URL <- paste0(
+        "https://cdn.rawgit.com/christophergandrud/networkD3/",
+        "master/JSONdata/energy.json")
+Energy <- jsonlite::fromJSON(URL)
+
+Energy
+# Plot
+sankeyNetwork(Links = Energy$links, Nodes = Energy$nodes, Source = "source",
+             Target = "target", Value = "value", NodeID = "name",
+             units = "TWh", fontSize = 12, nodeWidth = 30)
+
+
+ssdf.01
+
+dat <- data.frame(customer = c(rep(c(1, 2), each=3), 3, 3),
+              holiday_loc = c("SA", "SA", "AB", "SA", "SA", "SA", "AB", "AB"),
+              holiday_num = c(1, 2, 3, 1, 2, 3, 1, 2))
+
+dat
+
+sdf.0
+
+ssdf.01
+
+df <- ssdf.01 %>% 
+  group_by(  SampleOriginYear, Wave,state_frame) %>%
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>%
+  ungroup() %>%
+  arrange(Wave) 
+
+df
+# %>%
+#   rename( source = state_frame,
+#           target = Wave,
+#           value = n) %>%
+#   arrange(source,target)
+# df
+
+df
+dat
+df
+
+
+
+# df <- ssdf %>%
+#   group_by(Wave, state_frame) %>%
+#   summarise(n = n()) %>%
+#   arrange(state_frame,Wave)
+# df
+
+# 
+# df <- ssdf %>%
+#   group_by(state_frame, Wave) %>%
+#   summarise(n = n()) %>%
+#   arrange(state_frame,Wave)
+# df
+
+df
+
+
+links <- 
+  df %>% 
+ # mutate("source" = paste(SampleOriginYear, Wave, sep = "_")) %>% 
+  mutate("source" = (SampleOriginYear)) %>% 
+  group_by(Wave) %>% 
+  arrange(state_frame) %>%
+ # mutate("target" =  lead(source)) %>% 
+  mutate("target" =  Wave) %>% 
+  ungroup() %>% 
+  arrange(state_frame) %>% 
+  filter(!is.na(target)) %>% 
+  mutate(value = n) %>%
+  select(source, target, value,Wave, state_frame)
+links
+
+
+
+links <- data.frame(links)
+links
+
+node_names <- factor(sort(unique(c(as.character(links$state_frame)))))
+node_names
+                                   
+nodes <- data.frame(name = node_names)
+
+links <- data.frame(source = match(links$source, node_names) - 1,
+                    target = match(links$target, node_names) - 1,
+                    value = links$value,
+                    Wave = links$Wave)
+links
+nodes
+
+colnames(nodes) <-"name"
+nodes
+#links
+library(networkD3)
+
+
+sankeyNetwork(Links = links, Nodes = nodes,
+ Source = "source", Target = "target",
+ Value = "value", NodeID = "name")
+ 
+# remove cyclical links (source node is downstream from target node)
+links <- links[links$source < links$target, ]
+
+sankeyNetwork(Links = links, 
+               Nodes = nodes, 
+               Source = "source", 
+               Target = "target", 
+               LinkGroup = "Wave",
+               NodeID = "name", 
+               Value = "value", 
+               fontSize = 25,
+              nodeWidth = 10,
+              # iterations = 100, 
+               sinksRight = T)
+
+ saveNetwork(op, file="nzavs_sankey.html", selfcontained = T)
+
+# forceNetwork(
+#   Links = links,
+#   Nodes = nodes,
+#   Source = "source",
+#   Target = "target",
+#   Group = "Wave",
+#   NodeID = "name",
+#   Value = "value",
+#   opacity = .8,
+#   fontSize = 16,
+#   zoom = T
+# )
+
+
+
+
+
+ saveNetwork(op, file="sankey.html", selfcontained = T)
+ nodes_d3
+ op<-sankeyNetwork(Links = edges_d3, 
+               Nodes = nodes_d3, 
+               Source = "from", 
+               Target = "to", 
+               NodeID = "label",
+               Value = "weight",
+               units='weight',
+               NodeGroup = "group",
+               LinkGroup = "Effect",
+              # nodePadding = 10, 
+               iterations = 1000, 
+               sinksRight = T)
+ op 
+ sankeyNetworkOutput(op, op,width = "100%", height = "500px")
+ bbt1$CI_high
+
+
+### OLD
+links <- 
+  df %>% 
+  mutate("source" = paste(state_frame, Wave, sep = "_")) %>% 
+  mutate("source" = (state_frame)) %>% 
+  group_by(state_frame) %>% 
+  arrange(Wave) %>%
+ # mutate("target" =  lead(source)) %>% 
+  mutate("target" =  Wave) %>% 
+  ungroup() %>% 
+  arrange(Wave) %>% 
+  filter(!is.na(target)) %>% 
+  mutate(value = n) %>%
+  select(source, target, value,Wave)
+links
+
+links <- data.frame(links)
+
+
+node_names <- factor(sort(unique(c(as.character(links$source)))))
+node_names
+                                   
+nodes <- data.frame(name = node_names)
+
+links <- data.frame(source = match(links$source, node_names) - 1,
+                    target = match(links$target, node_names) - 1,
+                    value = links$value,
+                    Wave = links$Wave)
+
+nodes
+
+colnames(nodes) <-"name"
+nodes
+links
+library(networkD3)
+
+links
+sankeyNetwork(Links = links, Nodes = nodes,
+ Source = "source", Target = "target",
+ Value = "value", NodeID = "name")
+ 
+
+
+
+# 
+# sankeyNetwork(Links = links, Nodes = fj$Wave, Source = source,
+#              Target = "Wave", Value = "n", NodeID = "Wave",
+#              units = "TWh", fontSize = 12, nodeWidth = 30)
+# 
+
+
+
+ visNetwork(nodes, edges)
+
+ visNetwork(nodes, source) %>% 
+   visIgraphLayout(layout = "layout_with_fr") %>% 
+   visEdges(arrows = "middle")%>%
+   visEdges(arrows ="to")%>%
+   visOptions(selectedBy = "Indirect")
+
+
+
+ visNetwork(nodesS, edgesS) %>% 
+   visIgraphLayout(layout = "layout_with_fr") %>% 
+   visEdges(arrows = "middle")%>%
+   visLegend(useGroups = T, addNodes = data.frame(label = "Nodes", shape = "circle"))  
+
+
+ visNetwork(nodes, edges, width = "100%") %>% 
+   visEdges(arrows = 'from')
+
+
+ m2
+ nodes_d3 <- mutate(nodesS, id = id - 1)
+ edges_d3 <- mutate(edgesS, from = from - 1, to = to - 1)
+ edges_d3
+
+ visNetwork(nodesS, edgesS, width = "100%") %>% 
+ visOptions(highlightNearest = TRUE, nodesIdSelection = TRUE)
+
+ visNetwork(nodeS, edgeS, width = "100%") %>% 
+ visOptions(selectedBy = "group")
+
+ visNetwork(nodesS, edgesS, width = "100%") %>% 
+   visIgraphLayout(layout = "layout_with_fr") %>% 
+   visEdges(arrows = "to") %>% 
+    visHierarchicalLayout() 
+ %>%
+   visOptions(highlightNearest = F, nodesIdSelection = R)
+ %>%
+   visSave(file = "network.html")
+
+
+ edges_d3
+ nodes_d3
+
+ forceNetwork(Links = edges_d3, Nodes = nodes_d3, Source = "from", Target = "to", 
+              NodeID = "label", 
+              Group = "label", 
+              Value = "weight", 
+              opacity = .8, 
+              fontSize = 16, zoom = T)
+ edgesS
+ op<-sankeyNetwork(Links = edges_d3, 
+               Nodes = nodes_d3, 
+               Source = "from", 
+               Target = "to", 
+               LinkGroup = "Effect",
+               NodeID = "label", 
+               Value = "weight", 
+               fontSize = 16,
+              # iterations = 100, 
+               sinksRight = T)
+ op
+
+ saveNetwork(op, file="sankey.html", selfcontained = T)
+ nodes_d3
+ op<-sankeyNetwork(Links = edges_d3, 
+               Nodes = nodes_d3, 
+               Source = "from", 
+               Target = "to", 
+               NodeID = "label",
+               Value = "weight",
+               units='weight',
+               NodeGroup = "group",
+               LinkGroup = "Effect",
+              # nodePadding = 10, 
+               iterations = 1000, 
+               sinksRight = T)
+ op 
+ sankeyNetworkOutput(op, op,width = "100%", height = "500px")
+ bbt1$CI_high
 
 ```
 
 
 
-It would appear that the retention efforts in 2018/2019 were especially effective at recovering lost participants. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 <!-- ## Appendix Old Analysis -->
