@@ -486,13 +486,13 @@ df
 links <- 
   df %>% 
  # mutate("source" = paste(SampleOriginYear, Wave, sep = "_")) %>% 
-  mutate("source" = (SampleOriginYear)) %>% 
-  group_by(Wave) %>% 
-  arrange(state_frame) %>%
+  mutate("source" = (Wave)) %>% 
+  group_by(SampleOriginYear) %>% 
+  arrange(Wave) %>%
  # mutate("target" =  lead(source)) %>% 
-  mutate("target" =  Wave) %>% 
+  mutate("target" =  lead(Wave) )%>% 
   ungroup() %>% 
-  arrange(state_frame) %>% 
+  arrange(SampleOriginYear) %>% 
   filter(!is.na(target)) %>% 
   mutate(value = n) %>%
   select(source, target, value,Wave, state_frame)
@@ -503,11 +503,11 @@ links
 links <- data.frame(links)
 links
 
-node_names <- factor(sort(unique(c(as.character(links$state_frame)))))
+node_names <- factor(sort(unique(c(as.character(links$Wave)))))
 node_names
                                    
 nodes <- data.frame(name = node_names)
-
+nodes
 links <- data.frame(source = match(links$source, node_names) - 1,
                     target = match(links$target, node_names) - 1,
                     value = links$value,
@@ -532,7 +532,7 @@ sankeyNetwork(Links = links,
                Nodes = nodes, 
                Source = "source", 
                Target = "target", 
-               LinkGroup = "Wave",
+               LinkGroup = "state_frame",
                NodeID = "name", 
                Value = "value", 
                fontSize = 25,
