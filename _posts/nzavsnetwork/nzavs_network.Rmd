@@ -221,6 +221,9 @@ ssdf.01 <- ssdf.0 %>%
                                                 "missing",
                                                 "deceased" )))
 #  
+
+ssdf.01
+table1::table1(~ state_frame | Wave, data = ssdf.01, overall = FALSE)
 #  table(ssdf.01$state_frame)
 #   ```
 # 
@@ -328,8 +331,8 @@ p <- ggplot(
   # facet_wrap(~ Sample.Frame, scales = "free", ncol=3) +
   scale_fill_viridis_d() +
   ggtitle("NZAVS alluvial retention graph")  +
-  theme_economist_white() + 
-  #theme_bw() + 
+ # theme_economist_white() + 
+  theme_bw() + 
   #  theme_radar() +
   # theme_solarized() +
  # theme_abyss() + 
@@ -469,6 +472,8 @@ datsSS
 
 #aug_5_alluvial_missing_fixed_v1_SPACE_FREE_FACET
 # aug_6_alluvial_missing_fixed_v1_SPACE_FREE_FACET
+
+#16 x 12 
 ggplot(datsSS,
        aes(
          x = Wave,
@@ -481,7 +486,7 @@ ggplot(datsSS,
   scale_x_discrete(expand = c(.1, .1)) +
   geom_flow() +
   geom_stratum(alpha = .5) +
-  geom_text(stat = "stratum", size = 3) +
+  geom_text(stat = "stratum", size = 2) +
   theme(legend.position = "none") +
   scale_x_discrete(position = 'top') +
   scale_y_reverse()  + 
@@ -489,7 +494,7 @@ ggplot(datsSS,
   theme(strip.text.y = element_text(angle = 0))+
   # theme(legend.position = "top") +
   scale_fill_viridis_d() +
-  ggtitle("NZAVS alluvial retention graph")  + theme_bw() + 
+  ggtitle("NZAVS alluvial retention graph: facets are sample frames")  + theme_bw() + 
     theme(legend.title = element_blank())  # remove legend title
 
 
