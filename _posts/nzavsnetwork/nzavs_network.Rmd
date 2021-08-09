@@ -222,8 +222,13 @@ ssdf.01 <- ssdf.0 %>%
                                                 "deceased" )))
 #  
 
-ssdf.01
+ssdf.01 <- ssdf.01 %>%
+  rename(Recovered = recovered)
+
 table1::table1(~ state_frame | Wave, data = ssdf.01, overall = FALSE)
+table1::table1(~ Recovered | Wave, data = ssdf.01, overall = FALSE)
+
+
 #  table(ssdf.01$state_frame)
 #   ```
 # 
@@ -295,6 +300,7 @@ table(ssdf.01$SampleOriginYear)
 table(sampling_data$SampleOriginYear)
 library(ggsci)
 library(see)
+
 p <- ggplot(
   datsSF,
   aes(
@@ -311,84 +317,43 @@ p <- ggplot(
   geom_text(stat = "stratum", size = 2) +
   guides(color = guide_legend(override.aes = list(size = 20))) +
   scale_x_discrete(position = 'top', expand = c(0, 0)) +
-  scale_y_reverse(expand = c(0.001, 0.001),
-                 breaks = c(0,
-                            5000,
-                            10000,
-                            15000,
-                            20000,
-                            25000,
-                            30000,
-                            35000,
-                            40000,
-                            45000,
-                            50000,
-                            55000,
-                            60000,
-                            65000,
-                            70000))  + #n's 
+  scale_y_reverse(
+    expand = c(0.001, 0.001),
+    minor_breaks = seq(0, 70000, by = 1000),
+    breaks = seq(0, 70000, by = 5000)
+  ) + #n's
   # theme(legend.position = "top") +
   # facet_wrap(~ Sample.Frame, scales = "free", ncol=3) +
-  scale_fill_viridis_d() +
-  ggtitle("NZAVS alluvial retention graph")  +
- # theme_economist_white() + 
-  theme_bw() + 
+  # scale_fill_viridis_d() +
+  scale_fill_viridis_d(option = "turbo") +
+  ggtitle("NZAVS alluvial retention graph: waves 2009-2020")  +
+  # theme_economist_white() +
+   theme_bw() +
+  # theme_wsj() +
   #  theme_radar() +
   # theme_solarized() +
- # theme_abyss() + 
- # theme_economist() + 
-  #theme(panel.grid.minor = element_blank()) + 
-# theme(axis.text = element_text(colour = "blue")) + 
-  theme(legend.justification = "top") + 
+  # theme_abyss() +
+  # theme_economist() +
+  # theme(axis.text = element_text(colour = "blue")) +
+  theme(legend.justification = "top") +
   theme(legend.title = element_blank())  # remove legend title
 p
-#ggsave(p, path = here::here("figs"), width = 15, height = 12, device='tiff')
 
+file <- here("figs", paste("alluvial_highres_turbo_BW", ".png", sep = ""))
 
+ggsave(
+  file,
+  device = "png",
+#  path = here::here("figs", paste("alluvial_highres", ".png", sep = "")),
+  scale = 1,
+  width = 16,
+  height = 9,
+  units = "in",
+  dpi = 300,
+  limitsize = TRUE
+)
 
- 
-
-
-# Override the current theme: theme_set
-# The function theme_set() can be used to change the theme for the entire session. It returns the old theme, so that we can restore it later.
-# 
-# p <- ggplot(ToothGrowth, aes(x = dose, y = len)) + 
-#   geom_boxplot()
-# # Set theme_bw()
-# old.theme <- theme_set(theme_bw())
-# p
-
-# Restore the old theme
-#theme_set(old.theme)
-
-#Create a new theme called theme_bluewhite() by starting with the source code of the function theme_bw(). We’ll replace only some theme elements.
-# Create a new theme
-theme_bluewhite <- function (base_size = 11, base_family = "") {
-    theme_bw() %+replace% 
-    theme(
-      panel.grid.major  = element_line(color = "white"),
-      panel.background = element_rect(fill = "lightblue"),
-      panel.border = element_rect(color = "lightblue", fill = NA),
-      axis.line = element_line(color = "lightblue"),
-      axis.ticks = element_line(color = "lightblue"),
-      axis.text = element_text(color = "steelblue")
-      )
-}
-
-ggplot(
-  datsSF,
-  aes(
-    x = Wave,
-    stratum = state_frame,
-    alluvium = Id,
-    y = n,
-    fill = state_frame,
-    label = state_frame
-  )
-) +
-  geom_flow() +
-  geom_stratum(alpha = .5) +
-  geom_text(stat = "stratum", size = 2) +
+ "stratum", size = 2) +
   guides(color = guide_legend(override.aes = list(size = 20))) +
   scale_x_discrete(position = 'top', expand = c(0, 0)) +
   scale_y_reverse(expand = c(0.001, 0.001))  +
@@ -401,68 +366,13 @@ ggplot(
   theme(axis.text = element_text(colour = "red")) + 
   theme(legend.justification = "top") + 
   theme(legend.title = element_blank())  # remove legend title
-
-
-
-# graph
-# Version 1
-#aug_5_alluvial_missing_fixed_v1_LINES 15 x 12
-ggplot(
-  datsSF,
-  aes(
-    x = Wave,
-    stratum = state_frame,
-    alluvium = Id,
-    y = n,
-    fill = state_frame,
-    label = state_frame
-  )
-) +
-  geom_flow() +
-  geom_stratum(alpha = .5) +
-  geom_text(stat = "stratum", size = 2) +
-  guides(color = guide_legend(override.aes = list(size = 20))) +
-  scale_x_discrete(position = 'top', expand = c(0, 0)) +
-  scale_y_reverse(expand = c(0.001, 0.001))  +
-  # theme(legend.position = "top") +
-  # facet_wrap(~ Sample.Frame, scales = "free", ncol=3) +
-  scale_fill_viridis_d() +
-  ggtitle("NZAVS alluvial retention graph")  +
-  theme_bw() +
-  theme(legend.title = element_blank())  # remove legend title
-
-
-# VERSION 2
-#aug_5_alluvial_missing_fixed_v2_NO_LINES
-ggplot(
-  datsSF,
-  aes(
-    x = Wave,
-    stratum = state_frame,
-    alluvium = Id,
-    y = n,
-    fill = state_frame,
-    label = state_frame
-  )
-) +
-  geom_flow() +
-  geom_stratum(alpha = .5) +
-  geom_text(stat = "stratum", size = 2) +
-  guides(color = guide_legend(override.aes = list(size = 20))) +
-  scale_x_discrete(position = 'top', expand = c(0, 0)) +
-  scale_y_reverse(expand = c(0.001, 0.001))  +
-  # theme(legend.position = "top") +
-  # facet_wrap(~ Sample.Frame, scales = "free", ncol=3) +
-  scale_fill_viridis_d() +
-  ggtitle("NZAVS alluvial retention graph")  +
-  theme_classic() +
-  theme(legend.title = element_blank())  # remove legend title
-
 ```
 
-others
 
-```{r}
+Facet graph 
+
+
+```{r ,fig.height = 20}
 # prepare data
 ssdf.01
 datsSS <- ssdf.01 %>%
@@ -493,9 +403,27 @@ ggplot(datsSS,
   facet_grid(SampleOriginYear ~ ., scales = "free", space = "free") +
   theme(strip.text.y = element_text(angle = 0))+
   # theme(legend.position = "top") +
-  scale_fill_viridis_d() +
-  ggtitle("NZAVS alluvial retention graph: facets are sample frames")  + theme_bw() + 
+ # scale_fill_viridis_d(option="magma") +
+  scale_fill_viridis_d(option="turbo") +
+  ggtitle("NZAVS alluvial retention graph: waves 2009-2020",
+          subtitle  = "facets are sample frames")  + theme_bw() + 
     theme(legend.title = element_blank())  # remove legend title
+
+
+
+file <- here("figs", paste("alluvial_facets_turbo_highres", ".png", sep = ""))
+
+ggsave(
+  file,
+  device = "png",
+#  path = here::here("figs", paste("alluvial_highres", ".png", sep = "")),
+  scale = 1,
+  width = 16,
+  height = 9,
+  units = "in",
+  dpi = 300,
+  limitsize = TRUE
+)
 
 
 
