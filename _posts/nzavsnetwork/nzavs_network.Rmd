@@ -2,14 +2,14 @@ au---
 title: "NZAVS Sankey Network for Retention "
 description: ""
 author:
-  - name          : Chris G. Sibley
-    affiliation   : School of Psychology, University of Auckland
-    orcid_id: 0000-0002-4064-8800
   - name: Joseph Bulbulia
     url: https://josephbulbulia.netlify.app
     affiliation: Victoria University of Wellington
     affiliation_url: https://www.wgtn.ac.nz
     orcid_id: 0000-0002-5861-2056
+  - name          : Chris G. Sibley
+    affiliation   : School of Psychology, University of Auckland
+    orcid_id: 0000-0002-4064-8800
 date: 2021-JUL-22
 output:
   distill::distill_article:
@@ -34,46 +34,49 @@ knitr::opts_chunk$set(
 ```
 
 ```{r libs, include=TRUE}
-#packages
-library("tidyverse")
-library("here")
-library("ggalluvial")
-library("ggplot2")
-library("ggthemes")
-library("table1")
+# packages
+library("tidyverse") # data wrangling 
+library("here") # setting directories
+library("ggplot2") # graph 
+library("ggthemes") # themes
+library("table1") # tables
+library("ggalluvial") # alluvial graphs
 ```
 
 
-First we import the data, and create an indicator for measured/lost/withdrawn. 
-
 ```{r}
 # read data. note that Wave 2011.5 = T035
-#sdf <- readRDS(here::here("data", "sdf"))
+# sdf <- readRDS(here::here("data", "sdf"))
+
+# First we import the data, and create an indicator for measured/lost/withdrawn.
 
 sampling_data <-
-  haven::read_sav(here::here("data", "GraphData2.sav"
-  )
-)
-table(sampling_data$SampleOriginYear)
+  haven::read_sav(here::here("data", "GraphData2.sav"))
+# table(sampling_data$SampleOriginYear) check data
+
+# remove SPSS labels
 sampling_data <- haven::zap_formats(sampling_data)
 sampling_data <- haven::zap_label(sampling_data)
 sampling_data <- haven::zap_widths(sampling_data)
 sampling_data <- haven::zap_labels(sampling_data)
 
+# rename Id variable
 sampling_data <- sampling_data %>%
-  rename(Id = Questionnaire.Num) 
+  rename(Id = Questionnaire.Num)
 str(sampling_data)
 
-sampling_data
 
-table(sampling_data$SampleOriginYear)
+# checks
+# str(sampling_data)
+# table(sampling_data$SampleOriginYear)
 
 
-## make long
+## transform data into long form, required for ggalluvial, and rename the waves
+
 inner_join(
   sampling_data  %>%
     dplyr::select(c(
-        Id,
+      Id,
       c(
         'T01',
         "T02",
@@ -90,7 +93,7 @@ inner_join(
         "T12"
       )
     )) %>%      #~~~~ Left side = date component ~~~~~~~~
-    gather(Wave, YearMeasured,-Id) %>%  #~ long form = 1 row per prod per seq   ~
+    gather(Wave, YearMeasured, -Id) %>%  #~ long form = 1 row per prod per seq   ~
     mutate(
       Wave = recode_factor(
         Wave,
@@ -110,27 +113,30 @@ inner_join(
       )
     ) %>%
     arrange(Id),
-sampling_data %>% 
-dplyr::select(c(Id, starts_with('SampleOriginYear'))) %>% 
-  arrange(Id),
+  sampling_data %>%
+    dplyr::select(c(Id, starts_with('SampleOriginYear'))) %>%
+    arrange(Id),
 ) -> sdf
-head(sdf)
 
+# check data
+# head(sdf)
+
+# define sample origin year
 sdf <- sdf %>%
-  mutate(SampleOriginYear = SampleOriginYear + 2008) 
-sdf
-#
+  mutate(SampleOriginYear = SampleOriginYear + 2008)
+
 #  Make sample frame into a factor
 sdf$SampleOriginYear <- as.factor(sdf$SampleOriginYear)
-sdf
 
-table(sdf$SampleOriginYear)
+# Check
+# table(sdf$SampleOriginYear)
 
+## Created levels for "missing", "not yet measured" and "deceased"
+## then filter "not yet measured"
 
-##
 sdf.0 <- sdf %>%
   mutate(Wave = as.numeric(as.character(Wave))) %>%
-  arrange(Wave,Id) %>%
+  arrange(Wave, Id) %>%
   group_by(Id) %>%
   mutate(first = {
     YearMeasured == 1
@@ -139,7 +145,7 @@ sdf.0 <- sdf %>%
   }) %>%
   mutate(
     value_tmp = if_else(first == 1, Wave, NA_real_),
-    firstwave  = mean(value_tmp, na.rm = TRUE) # this is a  hack (but works)
+    firstwave  = mean(value_tmp, na.rm = TRUE) # this is a hack, but works
   ) %>%
   mutate(state  = ifelse(
     YearMeasured == -1,
@@ -157,52 +163,46 @@ sdf.0 <- sdf %>%
   dplyr::filter(state != "notyetmeasured") %>%
   droplevels() %>%
   arrange(Id, Wave)
-sdf.0
 
-table(sdf.0$SampleOriginYear)
+# Check
+# table(sdf.0$SampleOriginYear)
+
+# This is to create a "recovered" state. Not used but could be useful for modelling recovery:
 
 sdf.01 <- sdf.0 %>%
   group_by(Id) %>%
   mutate(lag_state = dplyr::lag(state, n = 1, default = "init"))
 
-sdf.01
-
-sdf.1<- sdf.01 %>%
+sdf.1 <- sdf.01 %>%
   group_by(Id, Wave) %>%
   mutate(recovered = ifelse(lag_state == "missing" &
                               state == "measured", "recovered", state)) 
 
-```
 
-
-
-We need to back fill the missing values for our alluvial graph. This is OK because a participants original sampling frame does not change. 
-
-
-```{r}
+# We need to back fill the missing values for our alluvial graph.
+# This is OK because a participants original sampling frame does not change. 
 
 ssdf0 <-sdf.1%>%  # Fill missing values for Sample.Frame
   arrange(Id) %>%
   group_by(Id) %>%
   fill(SampleOriginYear)  %>%
-  ungroup()# fill is a useful function. 
+  ungroup() 
 
+# now we create the "state_frame" variable
 tf <- ssdf0 %>%
   mutate(SampleOriginYear = as.character(SampleOriginYear))
-
-tf$state
 
 ssdf <- tf %>%
    mutate(state_frame = ifelse(state == "missing", "missing",  
                                ifelse(state == "deceased", "deceased",
                                       SampleOriginYear)))
-
-
 ssdf.0 <- ssdf %>%
     mutate(state_frame = factor(state_frame))
 
- levels(ssdf.0$state_frame)
+# check 
+# levels(ssdf.0$state_frame)
 
+# next we order the levels of the factor to create a pretty graph 
 ssdf.01 <- ssdf.0 %>%
     mutate(state_frame = forcats::fct_relevel(state_frame,
                                               c("2009",
@@ -220,61 +220,13 @@ ssdf.01 <- ssdf.0 %>%
                                                 "2020",
                                                 "missing",
                                                 "deceased" )))
-#  
 
+# This is code for the tables: uncomment to run
 ssdf.01 <- ssdf.01 %>%
   rename(Recovered = recovered)
-
-table1::table1(~ state_frame | Wave, data = ssdf.01, overall = FALSE)
-table1::table1(~ Recovered | Wave, data = ssdf.01, overall = FALSE)
-
-
-#  table(ssdf.01$state_frame)
-#   ```
 # 
-# 
-# Next we briefly inspect that data frame. Note that `Sample.Frame` is at the level of repeated measures within individuals. So these are not counts of individuals within waves 
-# 
-# ```{r}
-# table(ssdf.01$state_frame)
-# ```
-ssdf.01
-# 
-# library(easyalluvial)
-# suppressPackageStartupMessages( require(parcats) )
-# 
-# df2<- df %>%
-#   rename(value = n)
-# 
-# col_vector = c('tomato', 'green3', "blue")
-# ssdf.01
-# 
-# dat<-ssdf.01%>%
-#   drop_na()
-#   
-# p <- alluvial_long(dat,
-#               key = Wave,
-#               value = state,
-#               id = Id ,
-#               NA_label = '',
-#               complete = FALSE,
-#               fill_by = 'value' ,
-#               fill_right = T
-#               )
-# p
-# parcats(p, marginal_histograms = TRUE, imp = TRUE, data_input = df)
-# 
-# #parcats(p, marginal_histograms = FALSE, data_input = dat)
-# 
-# 
-# # 
-# 
-# ```{r}
-# library(ggplot2)
-# ggplot(ssdf) + 
-#   geom_bar(mapping = aes(x = fct_infreq(state_frame))) + 
-#   xlab("Sample Frame") + 
-#    coord_flip() + theme_bw()
+# table1::table1( ~ state_frame | Wave, data = ssdf.01, overall = FALSE)
+# table1::table1( ~ Recovered | Wave, data = ssdf.01, overall = FALSE)
 ```
 
 
@@ -284,22 +236,14 @@ Next we create the alluvial graph for subject within wave x sample frame:
 
 ```{r ,fig.height = 20}
 # prepare data
-
 datsSF <- ssdf.01 %>%
   group_by(Wave, state_frame, Id) %>%
   summarise(n = n())
-datsSF
 
-# wdatsSF <- ssdf %>%
-#   group_by(state_frame, Wave) %>%
-#   summarise(n = n())
-# wdatsSF
+# check data
+# datsSF
 
-# 16 X 12 aug7_singlegraph_v1
-table(ssdf.01$SampleOriginYear)
-table(sampling_data$SampleOriginYear)
-library(ggsci)
-library(see)
+# Graph 
 
 p <- ggplot(
   datsSF,
@@ -321,55 +265,40 @@ p <- ggplot(
     expand = c(0.001, 0.001),
     minor_breaks = seq(0, 70000, by = 1000),
     breaks = seq(0, 70000, by = 5000)
-  ) + #n's
-  # theme(legend.position = "top") +
-  # facet_wrap(~ Sample.Frame, scales = "free", ncol=3) +
-  # scale_fill_viridis_d() +
+  ) + 
   scale_fill_viridis_d(option = "turbo") +
   ggtitle("NZAVS alluvial retention graph: waves 2009-2020")  +
-  # theme_economist_white() +
-   theme_bw() +
+   theme_bw() +   # other themese below. 
   # theme_wsj() +
-  #  theme_radar() +
+  # theme_radar() +
   # theme_solarized() +
   # theme_abyss() +
   # theme_economist() +
+  # theme_economist_white() +
   # theme(axis.text = element_text(colour = "blue")) +
   theme(legend.justification = "top") +
   theme(legend.title = element_blank())  # remove legend title
-p
 
-file <- here("figs", paste("alluvial_highres_turbo_BW", ".png", sep = ""))
+# graph 
+p 
 
-ggsave(
-  file,
-  device = "png",
-#  path = here::here("figs", paste("alluvial_highres", ".png", sep = "")),
-  scale = 1,
-  width = 16,
-  height = 9,
-  units = "in",
-  dpi = 300,
-  limitsize = TRUE
-)
-
- "stratum", size = 2) +
-  guides(color = guide_legend(override.aes = list(size = 20))) +
-  scale_x_discrete(position = 'top', expand = c(0, 0)) +
-  scale_y_reverse(expand = c(0.001, 0.001))  +
-  # theme(legend.position = "top") +
-  # facet_wrap(~ Sample.Frame, scales = "free", ncol=3) +
-  #scale_fill_viridis_d() +
-  ggtitle("NZAVS alluvial retention graph")  +
-  theme_bluewhite() + 
-  #theme(panel.grid.minor = element_blank()) + 
-  theme(axis.text = element_text(colour = "red")) + 
-  theme(legend.justification = "top") + 
-  theme(legend.title = element_blank())  # remove legend title
+# to save file in your directory at correct resolution, uncomment below 
+# file <- here("figs", paste("alluvial_highres_turbo_BW", ".png", sep = ""))
+# 
+# ggsave(
+#   file,
+#   device = "png",
+#   scale = 1,
+#   width = 16,
+#   height = 9,
+#   units = "in",
+#   dpi = 300,
+#   limitsize = TRUE
+# )
 ```
 
 
-Facet graph 
+## Facet graph 
 
 
 ```{r ,fig.height = 20}
@@ -378,12 +307,9 @@ ssdf.01
 datsSS <- ssdf.01 %>%
   group_by(Wave, state, SampleOriginYear,Id) %>%
   summarise(n = n())
-datsSS
 
-#aug_5_alluvial_missing_fixed_v1_SPACE_FREE_FACET
-# aug_6_alluvial_missing_fixed_v1_SPACE_FREE_FACET
 
-#16 x 12 
+# Graph
 ggplot(datsSS,
        aes(
          x = Wave,
@@ -399,53 +325,56 @@ ggplot(datsSS,
   geom_text(stat = "stratum", size = 2) +
   theme(legend.position = "none") +
   scale_x_discrete(position = 'top') +
-  scale_y_reverse()  + 
+    scale_y_reverse(
+    expand = c(0.001, 0.001),
+    minor_breaks = seq(0, 70000, by = 1000),
+    breaks = seq(0, 70000, by = 1000)) +
   facet_grid(SampleOriginYear ~ ., scales = "free", space = "free") +
   theme(strip.text.y = element_text(angle = 0))+
-  # theme(legend.position = "top") +
- # scale_fill_viridis_d(option="magma") +
-  scale_fill_viridis_d(option="turbo") +
+   scale_fill_viridis_d(option="viridis") +
+ # scale_fill_viridis_d(option="turbo") + # another option 
   ggtitle("NZAVS alluvial retention graph: waves 2009-2020",
-          subtitle  = "facets are sample frames")  + theme_bw() + 
+          subtitle  = "Facets are sample frames")  + theme_bw() + 
     theme(legend.title = element_blank())  # remove legend title
 
 
+# # uncomment to save file 
+# 
+# file <- here("figs", paste("alluvial_facets_turbo_highres_VIRIDIS_3", ".png", sep = ""))
+# 
+# ggsave(
+#   file,
+#   device = "png",
+# #  path = here::here("figs", paste("alluvial_highres", ".png", sep = "")),
+#   scale = 1,
+#   width = 16,
+#   height = 9,
+#   units = "in",
+#   dpi = 300,
+#   limitsize = TRUE
+# )
 
-file <- here("figs", paste("alluvial_facets_turbo_highres", ".png", sep = ""))
-
-ggsave(
-  file,
-  device = "png",
-#  path = here::here("figs", paste("alluvial_highres", ".png", sep = "")),
-  scale = 1,
-  width = 16,
-  height = 9,
-  units = "in",
-  dpi = 300,
-  limitsize = TRUE
-)
-
-
-
-#aug_5_alluvial_missing_fixed_v1_SIMPLE_NO_SAMPLE_FRAMES
-ggplot(datsSS,
-       aes(
-         x = Wave,
-         stratum = state,
-         alluvium = Id,
-         y = n,
-         fill = state,
-         label = state
-       )) +
-  scale_x_discrete(expand = c(.1, .1)) +
-  geom_flow() +
-  geom_stratum(alpha = .5) +
-  geom_text(stat = "stratum", size = 3) +
-  theme(legend.position = "none") +
-  scale_x_discrete(position = 'top') +
-  scale_y_reverse()  + 
-  scale_fill_viridis_d() +
-  ggtitle("NZAVS alluvial retention graph: wave to wave")  + theme_bw()
+# 
+# 
+# #aug_5_alluvial_missing_fixed_v1_SIMPLE_NO_SAMPLE_FRAMES
+# ggplot(datsSS,
+#        aes(
+#          x = Wave,
+#          stratum = state,
+#          alluvium = Id,
+#          y = n,
+#          fill = state,
+#          label = state
+#        )) +
+#   scale_x_discrete(expand = c(.1, .1)) +
+#   geom_flow() +
+#   geom_stratum(alpha = .5) +
+#   geom_text(stat = "stratum", size = 3) +
+#   theme(legend.position = "none") +
+#   scale_x_discrete(position = 'top') +
+#   scale_y_reverse()  + 
+#   scale_fill_viridis_d() +
+#   ggtitle("NZAVS alluvial retention graph: wave to wave")  + theme_bw()
 ```
 
 ```{r} 
