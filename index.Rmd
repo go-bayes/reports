@@ -4,6 +4,7 @@ site: distill::distill_website
 listing: 
   posts:
     - nzavs
+    - nzavsnetwork
     - covid
     - mus
     - police
