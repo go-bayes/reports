@@ -235,7 +235,7 @@ ssdf.01 <- ssdf.0 %>%
 
 #  Uncomment to create tables
 # table1::table1( ~ state_frame | Wave, data = ssdf.01, overall = FALSE)
-# table1::table1( ~ Recovered | Wave, data = ssdf.01, overall = FALSE)
+#table1::table1( ~ Recovered | Wave, data = ssdf.01, overall = FALSE)
 ```
 
 
@@ -356,3 +356,140 @@ ggplot(datsSS,
 #   limitsize = TRUE
 # )
 ```
+
+
+
+
+
+```{r, include = FALSE, eval = FALSE}
+## Multilevel model of state change (not to publish just yet)
+
+# Install packages
+# library("brms")
+# library("rstanarm")
+# library("bayesplot")
+# library("easystats")
+# library("kableExtra")
+# library("broom")
+# library("tidybayes")
+# library("bmlm")
+# if (!require(tidyLPA)) {
+#   install.packages("tidyLPA")
+# }
+# # rstan options
+# rstan_options(auto_write = TRUE)
+# options(mc.cores = parallel::detectCores ())
+# theme_set(theme_classic())
+
+library(msm)
+# view data
+str(ssdf.01)
+
+# create a year measure. Should really be TSCORE but for now:
+str(ssdf.01$Recovered)
+ssdf.01
+dat <- ssdf.01 %>%
+#  filter(Wave = 20)
+  mutate(Id = factor(Id)) %>%
+#  dplyr::group_by(Id) %>% filter(n() > 2) %>%
+# dplyr::ungroup(Id)  %>%
+  mutate(State = as.factor(state)) %>%
+  mutate(Recovered = as.factor(Recovered)) %>%
+  mutate(State = forcats::fct_relevel(State,
+                                      c("measured",
+                                        "missing",
+                                        # "recovered",
+                                        "deceased"))) %>%
+  mutate(Recovered = forcats::fct_relevel(Recovered,
+                                          c(
+                                            "measured",
+                                            "missing",
+                                            "recovered",
+                                            "deceased"
+                                          ))) %>%
+  # filter(Wave != 2009) %>% # No recovered here
+  # filter(Recovered != "deceased") %>%
+  mutate(year = as.numeric(Wave) - 1,
+         state = as.numeric(as.factor(State)),
+         recovered = as.numeric(as.factor(Recovered)))  # 1 = measured, 2 = missing, 3 = recovered, 4 = desceased
+
+str(dat$state)
+table(dat$recovered)
+length(unique(dat$Id))
+glimpse(dat)
+
+# # Model -- will take too long -- do later
+# m1 <- brm(
+#   bf(recovered  ~
+#        year + 
+#        (1|Id) + # do later, will take too long
+#        (1|Wave)),
+#   family = cumulative(link = "logit"),
+#   data = dat,
+#   file = here::here("models", "ordinal_recovered"),
+#   silent = FALSE
+# )
+# 
+# par_m1 <- parameters::model_parameters(m1)
+# par_m1
+
+library("msm")
+# transitions
+
+statetable.msm(State, Id, data=dat)
+statetable.msm(Recovered, Id, data = dat)
+# allow all transitions
+Q0  <- rbind(c(.1, .1, .1),
+             c(.1, .1, .1),
+             c(.1, .1, .1))
+# Model
+
+crude_mod <- crudeinits.msm(state ~ year, subject=Id, qmatrix = Q0, data = dat)
+crude_mod
+
+
+
+
+#  control = list ( trace = 2, REPORT = 1 )  
+
+mod_1 <- msm(state ~ year, subject=Id, qmatrix = crude_mod, data = dat, deathexact = 3,
+            control=list(fnscale=4000) )
+mod_1
+
+pmatrix.msm(mod_1)
+pmatrix.msm(mod_1, t=3)
+sojourn.msm(mod_1)
+test_msm
+# model 
+
+
+# recovery model
+Q1  <- rbind(c(.1, .1, 0, .1),
+             c(0, .1, .1, .1),
+             c(.1, .1, .1, .1),
+             c(0, 0, 0, 0))
+crude_modR <- crudeinits.msm(recovered ~ year, subject=Id, qmatrix = Q1, data = dat)
+crude_modR
+))
+# Model
+
+r_mod <- msm(recovered ~ year, subject=Id, qmatrix = crude_modR, data = dat, deathexact = 4,
+            control=list(fnscale=4000) )
+r_mod
+
+pmatrix.msm(r_mod, t=2)
+sojourn.msm(r_mod)
+
+
+# expected vs fitted values
+library("msmtools")
+
+prev <- prevalence.msm( r_mod, ci = 'normal')
+
+prevplot(w_mod, prev, ci = 'normal', mintimeexact = TRUE )
+
+survplot(r_mod, km = TRUE, ci = 'none',
+          verbose = FALSE )
+```
+
+
