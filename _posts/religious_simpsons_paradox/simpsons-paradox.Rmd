@@ -1,0 +1,479 @@
+---
+title: "Religious Change is a Simpson's Paradox"
+description: ""
+author:
+  - name: Joseph Bulbulia
+    url: https://josephbulbulia.netlify.app
+    affiliation: Victoria University of Wellington
+    affiliation_url: https://www.wgtn.ac.nz
+    orcid_id: 0000-0002-5861-2056
+  - name          : Chris G. Sibley
+    affiliation   : School of Psychology, University of Auckland
+    orcid_id: 0000-0002-4064-8800
+date: 2021-JAN-10
+output:
+  distill::distill_article:
+    self_contained: true
+    toc: true
+    code_folding: true
+bibliography: r-references.bib
+editor_options: 
+  markdown: 
+    wrap: 60
+---
+
+```{r setup, include=FALSE}
+# setup
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  layout = "l-body-outset",
+  fig.width = 16,
+  fig.height = 9,
+  collapse = TRUE,
+  R.options = list(width = 60
+  )
+)
+
+# packages
+library("tidyverse") # data wrangling 
+library("here") # setting directories
+library("ggplot2") # graph 
+library("ggthemes") # themes
+library("table1") # tables
+library("msm") # alluvial graphs
+```
+
+
+## Religious change at a societial level indicates "clocklike" decline
+
+```{r  poprelchange, fig.cap= "Clock-like Decline in Proportion of Christian Affiliation since 1966 at about 1%-2% per year", cache = TRUE, code_folding=TRUE, include = FALSE}
+# Show decline in religion at the Society Level, using census data
+# religious decline in new Zealand
+
+# import census data
+declineUSE <-
+  as.data.frame(read.csv(here::here("data", "declineUSE.csv")))
+decline <- declineUSE %>%
+  select(-"NoReligion")
+decline
+
+
+library(ggplot2)
+pr <-
+  ggplot(decline, aes(y = PercentagePopulation, x = Years)) + theme_bw() +
+  geom_smooth(method = "glm") +
+  geom_point(
+    stat = "identity",
+    colour = "red",
+    fill = "white",
+    size = 2,
+    stroke = 1
+  ) + labs(x = "Time", y = "Percentage Christians") +
+  labs(title = "Aggregate proportional decline in Christian affiliation: New Zealand years 1966-2018")  +
+  scale_y_continuous(limits = c(0, 1)) +
+  theme_bw()
+#pr
+#plot
+```
+
+Figure \@ref(fig:hmmchange) a. presents New Zealand Census data for
+society-level religious affiliation. The census data show a clock-like
+decline in religious affiliation at the level of the New Zealand
+population since 1966 of about 1% loss in religious affiliation per
+year, and more recently, closer to 2% loss. This suggests that people are becoming less religious over time.
+
+
+## Religious change at the individual level consists of opposing processes
+
+
+However, society-level change is the average of two opposing processes
+that occur at the level of individuals:
+
+-   **religious affiliation**: people might affiliate from a position of
+    no-affiliation.
+-   **religious disaffiliation**: people might disaffiliate from a
+    position of affiliation.
+
+These two opposing processes occur against a background of stability -
+most people remain constant in their religious affiliation or
+disaffiliation.
+
+Here, we use a Hidden Markov Model to estimate rates of religious
+affiliation and disaffiliation across the New Zealand population from
+2009/10 -- 2020 in a sample of respondents who completed at least two
+NZAVS waves ($N$ = 48272).
+
+We find that, annually, the society-level rate of religious
+disaffiliation in New Zealand is .02%. That is the difference between
+the disaffiliation rate (Pr = .03) and the religious affiliation rate
+(Pr = .01). NZAVS data do not capture fluctuations from migration,
+hence, the NZAVS closely approximates the national census estimate for
+net religious change at the society level.
+
+```{r  msm, cache = TRUE, include = TRUE}
+# Using markov models, show that change within people as they age differs from the society-wide trend
+df <- readRDS(here::here("data", "df"))
+#create dataframe
+dat  <- df %>%
+  dplyr::filter(YearMeasured ==1 )%>%
+  dplyr::select(Wave,Age,Wave,Religious1,Id, Relid, years)%>%
+  dplyr::mutate(yearW  = as.numeric(Wave)) %>%
+ # filter(!is.na(Religious1))%>%
+  group_by(Id) %>% filter(n() > 1)%>%
+  filter(n() !=0)%>%
+  ungroup(Id)%>%
+  arrange(Id,yearW)
+
+length(unique(dat$Id)) # 48272
+
+### MSN ANALYIS BELOW ###
+# commenting out model to save time (which I've saved in a file, below)
+# initial matrix for transitions
+Q0 <- rbind(c(.9,.1),
+            c(.1,.9))
+
+# 
+crudeinR<-crudeinits.msm(Religious1 ~ yearW, Id, data=dat, qmatrix=Q0)
+#  avoid running to save time
+gh.mod.mnm  <- msm(Religious1 ~ yearW, Id,
+                   data=dat,
+                   covariates =  ~Age,
+                   qmatrix = crudeinR,
+                   ematrix = rbind(c(.1,.1),c(.1,.1)),
+                   est.initprobs = TRUE)
+
+#saveRDS(gh.mod.mnm, here::here("models","gh.mod.mnm"))
+
+gh.mod.mnm<-readRDS(here::here("models","gh.mod.mnm"))
+
+#probability matrix
+msm::pmatrix.msm(gh.mod.mnm) # The probability matrix is the same
+
+# probabilities
+#print(gh.mod.mnm)
+
+```
+
+<!-- ```{r  hmmchangeU, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from greater disaffiliation among young people than affiliation.", echo =FALSE} -->
+<!-- knitr::include_graphics(here::here("jpg", "simpar.jpg")) -->
+<!-- ``` -->
+
+```{r  hmmchange, cache = TRUE, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from much greater disaffiliation among young people than affiliation.", include = TRUE, code_folding=TRUE}
+
+#, fig.cap="Hidden markov model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from much greater disaffiliation among young people than affiliation.
+# Religious Affiliation (Innit Pr = .61);  Disaffiliation (Innit Pr = .39)
+# THIS GETS INITIAL PROBABILITIES
+
+# note to self, this code can be improved
+### CREATE PLOT  ###  CONVERSION AGE PLOT
+## 20 year olds
+p20 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 20), ci = "normal")
+p20.Convert <- p20$estimates[1, 2]
+p20.Convert.L <- p20$L[1, 2]
+# get upper bound
+p20.Convert.U <- p20$U[1, 2]
+con.20 <- c(20, p20.Convert, p20.Convert.L, p20.Convert.U)
+## 30 year olds
+p30 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 30), ci = "normal")
+p30.Convert <- p30$estimates[1, 2]
+# set lower bound
+p30.Convert.L <- p30$L[1, 2]
+# get upper bound
+p30.Convert.U <- p30$U[1, 2]
+#combine
+con.30 <- c(30, p30.Convert, p30.Convert.L, p30.Convert.U)
+## 40 year old
+p40 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 40), ci = "normal")
+# Get Transition to Relid Estimate
+p40.Convert <- p40$estimates[1, 2]
+# set lower bound
+p40.Convert.L <- p40$L[1, 2]
+# get upper bound
+p40.Convert.U <- p40$U[1, 2]
+con.40 <- c(40, p40.Convert, p40.Convert.L, p40.Convert.U)
+## 50 year old
+p50 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 50), ci = "normal")
+# Get Transition to Relid Estimate
+p50.Convert <- p50$estimates[1, 2]
+# set lower bound
+p50.Convert.L <- p50$L[1, 2]
+# get upper bound
+p50.Convert.U <- p50$U[1, 2]
+con.50 <- c(50, p50.Convert, p50.Convert.L, p50.Convert.U)
+## 60 year olds
+p60 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 60), ci = "normal")
+# Get Transition to Relid Estimate
+p60.Convert <- p60$estimates[1, 2]
+# set lower bound
+p60.Convert.L <- p60$L[1, 2]
+# get upper bound
+p60.Convert.U <- p60$U[1, 2]
+con.60 <- c(60, p60.Convert, p60.Convert.L, p60.Convert.U)
+## 70 year olds
+p70 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 70), ci = "normal")
+# Get Transition to Relid Estimate
+p70.Convert <- p70$estimates[1, 2]
+# set lower bound
+p70.Convert.L <- p70$L[1, 2]
+# get upper bound
+p70.Convert.U <- p70$U[1, 2]
+con.70 <- c(70, p70.Convert, p70.Convert.L, p70.Convert.U)
+### ## 80 year olds
+p80 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 80), ci = "normal")
+# Get Transition to Relid Estimate
+p80.Convert <- p80$estimates[1, 2]
+# set lower bound
+p80.Convert.L <- p80$L[1, 2]
+# get upper bound
+p80.Convert.U <- p80$U[1, 2]
+con.80 <- c(80, p80.Convert, p80.Convert.L, p80.Convert.U)
+# ### ## 90 year olds
+p90 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 90), ci = "normal")
+# # Get Transition to Relid Estimate
+p90.Convert <- p90$estimates[1, 2]
+# # set lower bound
+p90.Convert.L <- p90$L[1, 2]
+p90.Convert.U <- p90$U[1, 2]
+con.90 <- c(90, p90.Convert, p90.Convert.L, p90.Convert.U)
+# ### create data frame for conversion plot
+conplot <-
+  data.frame(rbind(con.20, con.30, con.40, con.50, con.60, con.70, con.80, con.90))
+colnames(conplot) <-
+  c("age", "conv_probability", "conv_lower", "conv_upper")
+library(ggplot2)
+#library(wesanderson)
+#wes_palette("Zissou1", type = c("discrete"))
+#library("ggsci")
+plot.con <-
+  ggplot(aes(
+    x = age,
+    y = conv_probability,
+    ymin = conv_lower,
+    ymax = conv_upper
+  ),
+  data = conplot) + geom_point(stroke = 2, colour = "#d1495b")  +
+  geom_linerange(alpha =   1, colour = "#d1495b") +
+  geom_smooth(colour = "#d1495b",
+              method = "loess",
+              se = FALSE)  +
+  scale_y_continuous(limits = c(0, .1)) +
+  labs(x = "Age", y = "Religious Affiliation Transition Probability w/ 95% CI") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2010-2020")
+
+#plot.con
+#gh.mod.mnm
+
+##### CREAT PLOT FOR DECONVERSION
+## 20 year olds
+p20 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 20), ci = "normal")
+# Get Transition to Relid Estimate
+p20.decon <- p20$estimates[2, 1]
+p20.decon.L <- p20$L[2, 1]
+p20.decon.U <- p20$U[2, 1]
+decon.20 <- c(20, p20.decon, p20.decon.L, p20.decon.U)
+p30 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 30), ci = "normal")
+p30.decon <- p30$estimates[2, 1]
+p30.decon.L <- p30$L[2, 1]
+p30.decon.U <- p30$U[2, 1]
+decon.30 <- c(30, p30.decon, p30.decon.L, p30.decon.U)
+p40 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 40), ci = "normal")
+p40.decon <- p40$estimates[2, 1]
+p40.decon.L <- p40$L[2, 1]
+p40.decon.U <- p40$U[2, 1]
+decon.40 <- c(40, p40.decon, p40.decon.L, p40.decon.U)
+p50 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 50), ci = "normal")
+p50.decon <- p50$estimates[2, 1]
+p50.decon.L <- p50$L[2, 1]
+p50.decon.U <- p50$U[2, 1]
+decon.50 <- c(50, p50.decon, p50.decon.L, p50.decon.U)
+p60 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 60), ci = "normal")
+p60.decon <- p60$estimates[2, 1]
+p60.decon.L <- p60$L[2, 1]
+p60.decon.U <- p60$U[2, 1]
+decon.60 <- c(60, p60.decon, p60.decon.L, p60.decon.U)
+p70 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 70), ci = "normal")
+p70.decon <- p70$estimates[2, 1]
+p70.decon.L <- p70$L[2, 1]
+p70.decon.U <- p70$U[2, 1]
+decon.70 <- c(70, p70.decon, p70.decon.L, p70.decon.U)
+p80 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 80), ci = "normal")
+p80.decon <- p80$estimates[2, 1]
+p80.decon.L <- p80$L[2, 1]
+p80.decon.U <- p80$U[2, 1]
+decon.80 <- c(80, p80.decon, p80.decon.L, p80.decon.U)
+p90 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 90), ci = "normal")
+p90.decon <- p90$estimates[2, 1]
+p90.decon.L <- p90$L[2, 1]
+p90.decon.U <- p90$U[2, 1]
+decon.90 <- c(90, p90.decon, p90.decon.L, p90.decon.U)
+
+### create data frame for conversion plot
+deconplot <-
+  data.frame(rbind(
+    decon.20,
+    decon.30,
+    decon.40,
+    decon.50,
+    decon.60,
+    decon.70,
+    decon.80,
+    decon.90
+  ))
+colnames(deconplot) <-
+  c("age", "decon_probability", "decon_lower", "decon_upper")
+library(ggplot2)
+plot.decon <-
+  ggplot(aes(
+    x = age,
+    y = decon_probability,
+    ymin = decon_lower,
+    ymax = decon_upper
+  ),
+  data = deconplot) +
+  geom_point(alpha = 1,
+             colour = "#00798c",
+             stroke = 2) +   geom_linerange(alpha = 1, colour = "#00798c") +
+  #scale_y_continuous(limits=c(0,.1))    +
+  geom_smooth(colour = "#00798c", se = T) +
+  labs(x = "Age", y = "Religious Disaffiliation Transition Probability w/ 95% CI") +
+  theme_bw() +
+  labs(title = "Religious (Dis)affiliation Dynamics")  +
+  theme(legend.position = "bottom")
+
+library(gridExtra)
+#grid.arrange(plot.con,plot.decon, ncol=2)
+### SUPERIMPOSE
+deconplot$Group <- as.factor(rep("Disaffiliation", nrow(deconplot)))
+conplot$Group <- as.factor(rep("Affiliation", nrow(conplot)))
+deconplot2 <- deconplot %>%
+  dplyr::mutate(
+    conv_probability = decon_probability,
+    conv_lower = decon_lower,
+    conv_upper = decon_upper
+  ) %>%
+  dplyr::select(-c(decon_probability, decon_upper, decon_lower))
+
+comboplot <- rbind(conplot, deconplot2)
+#comboplot
+# get initial probabilities for title label
+#pmatrix.msm(gh.mod.mnm)
+
+library(ggplot2)
+# plot.combo <-
+#   ggplot(
+#     aes(
+#       x = age,
+#       y = conv_probability,
+#       ymin = conv_lower,
+#       ymax = conv_upper,
+#       colour = Group
+#     ),
+#     data = comboplot
+#   ) +
+#   geom_point(alpha = 1, stroke = 2) +
+#   geom_linerange(alpha = 1) +
+#   geom_smooth(se = F) +
+#   scale_y_continuous(limits = c(0, .96))  +
+#   labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI: range: Pr = 0 to Pr = 1 ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2010 -- 2020") +
+#   #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+#   scale_colour_manual(values = c("#d1495b", "#00798c")) +
+#   theme(legend.position = "bottom")
+# plot.combo
+
+
+plotindividual <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, 1))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2010-2020") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_colour_manual(values = c("#d1495b", "#00798c")) +
+  theme(legend.position = "bottom")
+
+library(patchwork)
+pr + plotindividual  + 
+  plot_annotation(title = 'Aggregated society-level change (a) differs from Individual-level religious change (b)', tag_levels = "a")
+
+
+#pr / plot.combo + plot_annotation(title = "Religious Change over Time",
+#         subtitle = "(i) Society-level aggregate change (ii) Individual-level process: affiliation vs. disaffiliation",
+#tag_levels = "i")
+```
+
+However, as evident in Figure \@ref(fig:hmmchange), individual-level
+NZAVS data reveal that as people age, the religious affiliation rate
+gradually increases. Likewise, as people age, the religious
+disaffiliation rate gradually decreases. The age at which religious
+affiliation exceeds disaffiliation is about 77 years old. The
+society-level trend and individual-level trends run in the opposite
+directions because there is higher relative religious disaffiliation
+among young people. This example illustrates what is called a "Simpson's
+Paradox." Wherever there is potential for switching between states at an
+individual level, there is on opportunity for a Simpson's Paradox. Most
+facts of interest about the role of religion in a persons life are
+subject to switching.
+
+## Religious change is a Simpson's Paradox
+
+```{r hmmchangeI, cache = TRUE, fig.cap="Close up of opposing processes within indiviuals (scale pr = 0 to pr = .1). Hidden Markov Model reveals that as people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from much greater disaffiliation among young people than affiliation.", include = TRUE, code_folding=TRUE}
+plotI <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .1))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI: range: Pr = 0 to Pr = 1 ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2010 -- 2020") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_colour_manual(values = c("#d1495b", "#00798c")) +
+  theme(legend.position = "bottom")
+plotI
+```
+
+
+Appreciating that religious change is a Simpson's paradox helps to build
+an intuition for why panel data are so powerful. Sociologists have
+documented persistent declines in religious affiliation across western
+societies, a process Max Weber called "the disenchantment of the world"
+[@Weber1946-zp]. This disenchantment theory is a central dogma in the
+sociology of religion [@Norris2004-gu]. The theory is accurate for
+describing society-level dynamics. Indeed, NZAVS data confirm the
+society-level "disenchantment." However, this central dogma is poorly
+suited for understanding how religion and spirituality take shape within
+the lives of individuals.

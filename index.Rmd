@@ -5,9 +5,11 @@ listing:
   posts:
     - nzavs
     - nzavsnetwork
+    - religious_simpsons_paradox
     - covid
     - mus
     - police
+
 ---
 
 ```{r setup, include=FALSE}
