@@ -1,0 +1,531 @@
+---
+title: "NZAVS Vaccination Attitudes"
+description: ""
+author:
+  - name: Joseph Bulbulia
+    url: https://josephbulbulia.netlify.app
+    affiliation: Victoria University of Wellington
+    affiliation_url: https://www.wgtn.ac.nz
+    orcid_id: 0000-0002-5861-2056
+  - name          : Chris G. Sibley
+    affiliation   : School of Psychology, University of Auckland
+    orcid_id: 0000-0002-4064-8800
+date: 2021-AUG-10
+output:
+  distill::distill_article:
+    self_contained: true
+    toc: true
+    code_folding: true
+---
+
+## Alluvial graph: NZAVS sample retention by wave and sample frame
+
+Here we investigate attitudes to vaccinating Children in New Zealand. 
+Figure \@ref(fig:) presents results.  
+
+
+
+For more information about the NZAVS see: [here](https://www.psych.auckland.ac.nz/en/about/new-zealand-attitudes-and-values-study.html) and [here](https://go-bayes.github.io/reports/posts/nzavs/)
+
+
+
+```{r setup, include=FALSE}
+# setup
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  layout = "l-body-outset",
+  fig.width = 16,                            
+  fig.height = 9,
+  collapse = TRUE,
+  R.options = list(width = 60
+  )
+)
+# packages
+library("tidyverse") # data wrangling 
+library("haven")
+library("here") # setting directories
+library("ggplot2") # graph 
+library("ggthemes") # themes
+library("table1") # tables
+library("lme4")
+
+library("ggdag")
+library("brms")
+library("rstan")
+library("rstanarm")
+library("bayesplot")
+library("easystats")
+library("kableExtra")
+library("broom")
+library("tidybayes")
+library("bmlm")
+# rstan options
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores ())
+theme_set(theme_classic())
+```
+
+## Did the Covid Pandemic affect attitudes to Vaccination? 
+
+Here we investigate whether, and how, the Covid pandemic in New Zealand affected attitudes to the safety of vaccination in New Zealand. 
+
+This question is theoretically interesting. The Covid pandemic was accompagnied by misinformation and conspiracy theories about the saftey of vaccines, which may have reduced confidence in vaccine saftey. However, in New Zealand, the government adopted a pro-science attitude to science, which may have increased confidence in vaccine saftety.
+
+The New Zealand Attitudes and Values Study (NZAVS) is a national panel study launched in 2009 that investigating stability and change in attitudes and values among New Zealanders over time. In both the year previous to the pandemic (2018/19) and the year of the pandemic (2019/20) study contained the question " It is safe to vaccinate children following the standard NZ immunization schedule."  Here, using responses within the same individuals, we investigate whether, and how, attitudes to the vaccination of children changed after 29 February 2020 when New Zealand experienced its first case of community Covid transmission.   
+
+## Method
+
+
+```{r cache=TRUE, echo = FALSE}
+# import data
+df <- readRDS(here::here("data", "df"))
+
+df$Child.VaccinationActual # If you have children under 18, are their vaccinations up-to-date, as per the recommendations of your doctor/GP?
+df$HLTH.ChildVaccination  # It is safe to vaccinate children following the standard NZ immunization schedule.
+```
+
+```{r cache = TRUE, echo = FALSE}
+ord_dates_class <- c(
+  "Baseline", 
+  "PreCOVID", 
+  "JanFeb", 
+  "EarlyMarch", 
+  "Lockdown",
+  "PostLockdown")
+
+
+ord_cov <- c(
+  "PreCovid", 
+  "PostCovid")
+
+
+# 3665 days after 30 June 2009 Saturday 13 July 2019
+# 3842 days after 30 June 2009 Monday 6 January 2020
+# 3895 days after 30 June 2009 Friday 28 February 2020
+# 3921 days after 30 June 2009 WED MAR 25th
+# 3954 days after 30 June 2009 Monday 27 April 2020
+# 3672 days after June 30 2009 Saturday 20 July 2019
+```
+
+
+```{r cache = TRUE, echo = FALSE}
+cv <- df %>%
+  dplyr::filter(YearMeasured == 1) %>%
+  dplyr::filter(Wave == 2018 | Wave == 2019) %>%
+  dplyr::group_by(Id) %>% 
+  dplyr::filter(n() > 1) %>%
+  dplyr::filter(n() != 0) %>%
+  dplyr::ungroup(Id) %>%
+  dplyr::mutate(Covid_Timeline =
+                    as.factor(ifelse(
+                      TSCORE %in% 3896:3921, # feb 29 - march 25th
+                      "EarlyMarch",
+                      ifelse(
+                        TSCORE %in% 3922:3954,
+                        "Lockdown", #march 26- Mon 27 April 2020
+                        ifelse(
+                          TSCORE > 3954, # after april 27th 20202
+                          "PostLockdown",
+                          ifelse(
+                            TSCORE %in% 3842:3895, # jan 6 to feb 28
+                            "JanFeb",
+                          ifelse(
+                            TSCORE %in% 3665:3841 &
+                              Wave == 2019,
+                            "PreCOVID",
+                            "Baseline"  # 3672 TSCORE or  20 July 2019
+                          )
+                        )
+                      )
+                    ) 
+                 ) ))%>%
+  dplyr::mutate(PrePostCovid0 =
+                  ifelse(
+                    TSCORE > 3895, "PostLockdown",
+                    ifelse(
+                      TSCORE < 3895 &
+                        Wave == 2019,
+                      "PreCOVID",
+                      "Baseline"
+                    )
+                  ))%>% 
+  dplyr::group_by(PrePostCovid0) %>% 
+  filter(n() > 1) %>%
+  ungroup() %>% # There is overlap between waves, we only want repeated measures
+  dplyr::mutate(PrePostCovid =
+                  ifelse(
+                    TSCORE > 3895, "PostCovid",
+                      "PreCovid"
+                  ))%>% 
+  dplyr::select(
+    TSCORE,
+    WSCORE,
+    Wave,
+    Partner,
+    Employed,
+    Sat.Government,
+    HLTH.ChildVaccination,
+    Child.VaccinationActual,
+    NZ.Business.Conditions,
+    NZ.Economic.Situation,
+    PrePostCovid,
+    years,
+    Id,
+    Parent,
+    SWB.SatPWI02, # your health
+    Hours.Work,
+    Hours.Exercise,
+    KESSLER6,
+    Hours.SocialMedia,
+    Hours.Internet,
+    KESSLER6sum,
+    Age,
+    Male,
+    Relid,
+    Pol.Orient,
+    Urban,
+    GenCohort,
+    Edu,
+    YearMeasured,
+    Covid_Timeline,
+    HLTH.SleepHours,
+    HLTH.Fatigue,
+    LIFESAT,
+    PWI,
+    EthnicCats,
+    NZdep,
+    Partner,
+    Pol.Orient,
+    Urban,
+    Euro,
+    Religious,
+    NZdep,
+    WSCORE,
+    Religion.Church,
+    Your.Future.Security, 
+    Parent,
+    PrePostCovid0
+  ) %>%
+  dplyr::mutate(
+    Urban = (Urban),
+    Euro = (Euro),
+    Religious = as.factor(Religious),
+    Your_Health = (SWB.SatPWI02),
+    Your_Future_Security = Your.Future.Security,
+    Covid_Timeline = as.factor(Covid_Timeline),
+    PrePostCovid0
+  )%>%
+  dplyr::mutate(
+    WSCORE = as.factor(WSCORE),
+    #EduC = scale(as.numeric(Edu), scale = F, center = TRUE),
+    Sat.Government = scale(Sat.Government),
+   # AgeDecadeC = scale(Age, scale = F, center = T) / 10,
+    Hours.Work10 = as.integer(Hours.Work) / 10,
+    Hours.Sleep = as.integer(HLTH.SleepHours),
+    Hours.Exercise = as.integer(Hours.Exercise),
+    Fatigue = as.integer(HLTH.Fatigue),
+    K6sum = as.integer(KESSLER6 * 6),
+    KESSLER6SUM_S = scale(KESSLER6sum),
+    NZdepS = scale(NZdep),
+    PolOrientS = scale(Pol.Orient, scale = T, center = T),
+    Conservative = Pol.Orient,
+    logSM = log(Hours.SocialMedia + 1),
+    logINT = log(Hours.Internet + 1),
+    logEX = log(Hours.Exercise + 1),
+    logWK= log(Hours.Work + 1),
+    KESSLER6sum = as.integer(KESSLER6sum),
+    Hours.Work = as.integer(Hours.Work),
+    Hours.Exercise = as.integer(Hours.Exercise)
+  ) %>%
+  dplyr::mutate(Covid_Timeline = forcats::fct_relevel(Covid_Timeline, ord_dates_class)) %>%
+  dplyr::mutate(PrePostCovid = forcats::fct_relevel(PrePostCovid, ord_cov)) %>%
+  # dplyr::filter(
+  #   Covid_Timeline == "Baseline" |
+  #     Covid_Timeline == "EarlyMarch" |
+  #     Covid_Timeline == "Lockdown" |
+  #     Covid_Timeline == "PostLockdown"
+  # ) %>% 
+ # dplyr::group_by(Id) %>% filter(n() > 1) %>%
+#  dplyr::filter(n() != 0) %>%
+  droplevels()
+
+#table((cv$Covid_Timeline)) # 8640
+#length(unique(cv$Id))
+
+cv1 <- cv %>%
+  filter(Parent == 1) %>%
+  mutate(years0 = years - min(years)) # meaningful 0 for years
+
+length(unique(cv1$Id)) # 25566
+```
+
+
+
+```{r}
+naniar::vis_miss(cv1, warn_large_data = FALSE)
+
+hist(cv1$HLTH.ChildVaccination)
+
+```
+
+
+First we investigate population level change in a pre/post sample of New Zealanders who responded to the 
+
+
+```{r cache=TRUE}
+
+HLTH.ChildVaccination <- lmer(HLTH.ChildVaccination  ~   (PrePostCovid) +  (1|Id),  cv1)
+plot(ggeffects::ggpredict(HLTH.ChildVaccination, terms = "PrePostCovid[all]"))  + scale_y_continuous(limits = c(1,7))
+
+# library(ordinal)
+# fm1 <- clmm2(as.factor(HLTH.ChildVaccination) ~ Covid_Timeline + years0, random=Id, data=cv1)
+
+```
+
+
+
+
+```{r cache = TRUE}
+m1 <- brm(
+  bf(HLTH.ChildVaccination  ~
+       PrePostCovid  + (1 | Id)),
+  family = cumulative(link = "logit"),
+  data = cv1,
+  file = here::here("models", "vax_attitudes"),
+  silent = FALSE
+)
+
+par_m1 <- parameters::model_parameters(m1)
+par_m1
+saveRDS(par_m1, here::("models","par_m1"))
+plot(par_m1)
+```
+
+Hre we can see that the log-odds of Fatigue dropped during Lockdown. But how exactly did Fatigue drop?
+
+As with logistic regression, the coefficients here are not obvious. To interpret results, we should graph the predicted outcomes at specific values.
+
+### Interpreting results of an ordinal model using graphical methods
+
+To understand what is happening, we plot all the individual intercepts by setting `categorical = TRUE`. Following McElreath's Statistical Rethinking, we will predict outcomes using the .89 probability credible interval:
+
+```{r}
+
+plot(
+  conditional_effects(
+    m1,
+    categorical = TRUE,
+    prob = 0.89,
+    re_formula = NA,
+  ),   # WE cannot graph points when the points arg = TRUE
+  points = TRUE,
+  point_args = list(
+    alpha = 0.1,
+    width = .1,
+    size = .2
+  )
+)[[1]] 
+
+
+```
+
+
+
+This is another method for graphing, where the individual facets denote our expected response thresholds:
+
+```{r}
+plot(ggeffects::ggpredict(
+  m1, 
+  effects = "PrePostCovid"),
+  )
+```
+
+
+
+## ANother approach
+
+
+```{r}
+
+library(LMest)
+
+cv2 <- cv1 %>%
+  dplyr::filter(
+      Covid_Timeline == "Baseline" |
+      Covid_Timeline == "EarlyMarch" |
+      Covid_Timeline == "Lockdown" |
+      Covid_Timeline == "PostLockdown"
+  ) %>%
+ dplyr::group_by(Id) %>% filter(n() > 1) %>%
+  ungroup()
+length(unique(cv2$Id))
+
+widelong <-  cv2 %>%
+  dplyr::select(Id,HLTH.ChildVaccination,PrePostCovid)
+
+
+
+
+##THIS HANGS
+#out <- with(relwidelong, long2matrices(id = Id, X = Age, Y = Religious))
+
+wide<- spread(widelong,PrePostCovid,HLTH.ChildVaccination)
+head(wide)
+
+wide2<-wide[complete.cases(wide), ]
+
+
+
+x_var_list<-names(wide2[,2:3])
+x_var_list
+library(lcsm)
+plot_trajectories(data = wide2,
+                 id_var = "Id", 
+                 var_list = x_var_list,
+                 xlab = "Condition", ylab = "Value",
+                 connect_missing = F, 
+                 random_sample_frac = 0.02, 
+                 title_n = TRUE)  +
+  facet_wrap(~Id)
+
+#ldf.5$Pol.Orient
+
+```
+
+
+
+```{r}
+
+library(TraMineR)
+seq.m<-seqdef(wide[,2:3])
+
+seq.m
+head(seq.m)
+
+# EXPLORATION
+seqiplot(seq.m, border = NA, with.legend = "top")
+seqfplot(seq.m, weighted = FALSE, border = NA, with.legend = FALSE, main = "Frequencies")
+seqmsplot(seq.m)
+seqmtplot(seq.m)
+seqtab(seq.m)
+seqIplot(seq.m)
+sd <- seqstatd(seq.m)
+plot(sd, type="d")
+seqstatd(seq.m, weighted=FALSE)
+seqdplot(seq.m)
+seqrplot(seq.m)
+
+seqtab(seq.m, idxs = 1:20)
+
+ss<-seqtrate(seq.m)
+ss
+round(ss, 2)
+dev.off()
+## USE THESE PLOTS
+sd<-seqtransn(seq.m)
+sd
+table(sd)
+qplot(sd)
+(seqdss(seq.m))
+(seqdur(seq.m))
+seqdur(seq.m)
+```
+
+
+
+
+```{r}
+library(seqHMM)
+sc_initmod_random <- build_hmm(observations = seq.m, n_states = 3)
+sc_initmod_random
+
+sc_initmod_random$initial_probs
+
+
+
+sc_initmod <- build_hmm(observations = seq.m, 
+                        initial_probs = sc_initmod_random$initial_probs, 
+                        transition_probs = sc_initmod_random$transition_probs, 
+                        emission_probs = sc_initmod_random$emission_probs, 
+                        threads =4, 
+                        seed = 123)
+
+
+
+sc_fit <- fit_model(sc_initmod)
+
+fm<-sc_fit$model
+fm
+
+names <- c("Strong Pro Vax \n init = .5","Low \n init = .11","Med \n init = .39")
+summary(fm, conditional_se = FALSE)
+library(igraph)
+plot(sc_fit$model,
+     layout = layout_nicely,
+      main = "Hidden States Transitions Vaccination Attitudes",
+      vertex.label = names,
+      legend.prop =.1,
+      ncol.legend = 3,
+    # cex.edge.width = 0.8, 
+    # edge.arrow.size = 1,
+    vertex.label.dist = 1.1, 
+    combine.slices = 0.02 ,
+      loops = FALSE,
+    # Remove edges with probability less than 0.01
+  trim = 0.01,
+    combined.slice.label = "others (emission prob. < 0.02)"
+
+)
+dev.off()
+
+transprob<-as.matrix(fm$transition_probs)
+transprob
+```
+
+
+
+## Causal Inference 
+
+
+
+
+```{r include = FALSE}
+library(ggdag)
+
+library(ggdag)
+dg <- dagify(
+  va ~ male + edu + eth + relig + covid + age + pol + U,
+  edu ~ eth + age + U,
+  relig ~ age + pol + eth + male,
+  exposure =  "covid",
+  outcome =   "va",
+  latent = "U",
+  labels = c(
+    "va" = "Vaccination Attitudes",
+    "male" = "male",
+    "eth" = "ethnicity",
+    "edu" = "education",
+    "relig" = "religious identification",
+    "age" = "age",
+    "covid" = "covid timeline",
+    "pol" = "political orientation",
+    "U" = "Unmeasured"
+  )
+) %>%
+  tidy_dagitty() 
+#%>%
+#  control_for("cs")
+
+dplot1 <-
+  ggdag::ggdag_collider(dg, use_labels = "label", text = FALSE) + theme_dag_blank() +
+  labs(title = "")
+dplot1
+
+
+ggdag::ggdag_adjustment_set(dg, use_labels = "label", text = FALSE) + theme_dag_blank() +
+  labs(title = "")
+```
+
+
