@@ -198,8 +198,6 @@ ggdag::ggdag_adjustment_set(dg, use_labels = "label", text = FALSE) + theme_dag_
 Our model is:
 
 ```{r}
-equatiomatic::extract_eq(m1,
-                         wrap = TRUE, 
-                         terms_per_line = 2)
+
 ```
 

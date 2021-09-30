@@ -18,18 +18,11 @@ output:
     code_folding: true
 ---
 
-## Alluvial graph: NZAVS sample retention by wave and sample frame
-
-Here we investigate attitudes to vaccinating Children in New Zealand. 
-Figure \@ref(fig:) presents results.  
+Here we investigate attitudes to vaccinating children in New Zealand. 
+<!-- Figure \@ref(fig:) presents results.   -->
 
 
-
-For more information about the NZAVS see: [here](https://www.psych.auckland.ac.nz/en/about/new-zealand-attitudes-and-values-study.html) and [here](https://go-bayes.github.io/reports/posts/nzavs/)
-
-
-
-```{r setup, include=FALSE}
+```{r setup, code_folding = FALSE, include=FALSE}
 # setup
 knitr::opts_chunk$set(
   echo = TRUE,
@@ -71,19 +64,29 @@ theme_set(theme_classic())
 
 Here we investigate whether, and how, the Covid pandemic in New Zealand affected attitudes to the safety of vaccination in New Zealand. 
 
-This question is theoretically interesting. The Covid pandemic was accompagnied by misinformation and conspiracy theories about the saftey of vaccines, which may have reduced confidence in vaccine saftey. However, in New Zealand, the government adopted a pro-science attitude to science, which may have increased confidence in vaccine saftety.
+This question is theoretically interesting. The covid-19 pandemic was accompagnied by misinformation and conspiracy theories about the saftey of vaccines, which may have reduced confidence in vaccine safety. 
 
-The New Zealand Attitudes and Values Study (NZAVS) is a national panel study launched in 2009 that investigating stability and change in attitudes and values among New Zealanders over time. In both the year previous to the pandemic (2018/19) and the year of the pandemic (2019/20) study contained the question " It is safe to vaccinate children following the standard NZ immunization schedule."  Here, using responses within the same individuals, we investigate whether, and how, attitudes to the vaccination of children changed after 29 February 2020 when New Zealand experienced its first case of community Covid transmission.   
+However, in New Zealand, the government adopted a pro-science attitude to science, which may have increased confidence in vaccine saftety.
+
+The New Zealand Attitudes and Values Study (NZAVS) is a national panel study launched in 2009 that investigating stability and change in attitudes and values among New Zealanders over time. In both the year previous to the pandemic (2018/19) and the year of the pandemic (2019/20) study contained the question 
+
+> "It is safe to vaccinate children following the standard NZ immunization schedule." 
+
+Here, using responses within the same individuals, we investigate whether, and how, attitudes to the vaccination of children changed after 29 February 2020 when New Zealand experienced its first case of community Covid transmission.   
 
 ## Method
 
 
-```{r cache=TRUE, echo = FALSE}
+```{r cache=TRUE, echo = FALSE,code_folding = FALSE}
 # import data
 df <- readRDS(here::here("data", "df"))
 
-df$Child.VaccinationActual # If you have children under 18, are their vaccinations up-to-date, as per the recommendations of your doctor/GP?
-df$HLTH.ChildVaccination  # It is safe to vaccinate children following the standard NZ immunization schedule.
+df%>%
+  group_by(Wave) %>%
+  summarise(mean = mean(HLTH.ChildVaccination, na.rm=TRUE))
+
+# df$Child.VaccinationActual # If you have children under 18, are their vaccinations up-to-date, as per the recommendations of your doctor/GP?
+# df$HLTH.ChildVaccination  # It is safe to vaccinate children following the standard NZ immunization schedule.
 ```
 
 ```{r cache = TRUE, echo = FALSE}
@@ -113,11 +116,14 @@ ord_cov <- c(
 ```{r cache = TRUE, echo = FALSE}
 cv <- df %>%
   dplyr::filter(YearMeasured == 1) %>%
-  dplyr::filter(Wave == 2018 | Wave == 2019) %>%
+  dplyr::filter(Wave == 2018 |  Wave == 2019) %>%
+  dplyr::filter(!is.na(HLTH.ChildVaccination)) %>%
+  droplevels() %>%
   dplyr::group_by(Id) %>% 
-  dplyr::filter(n() > 1) %>%
-  dplyr::filter(n() != 0) %>%
+  dplyr::filter(n() == 2) %>%
   dplyr::ungroup(Id) %>%
+  dplyr::filter(Parent == 1) %>%
+  droplevels() %>%
   dplyr::mutate(Covid_Timeline =
                     as.factor(ifelse(
                       TSCORE %in% 3896:3921, # feb 29 - march 25th
@@ -159,6 +165,10 @@ cv <- df %>%
                     TSCORE > 3895, "PostCovid",
                       "PreCovid"
                   ))%>% 
+  dplyr::group_by(Id) %>% 
+  dplyr::filter(n() == 2) %>%
+  dplyr::ungroup(Id) %>%
+  droplevels() %>%
   dplyr::select(
     TSCORE,
     WSCORE,
@@ -254,34 +264,40 @@ cv <- df %>%
 #table((cv$Covid_Timeline)) # 8640
 #length(unique(cv$Id))
 
+# select only parents
 cv1 <- cv %>%
-  filter(Parent == 1) %>%
   mutate(years0 = years - min(years)) # meaningful 0 for years
 
-length(unique(cv1$Id)) # 25566
+#length(unique(cv1$Id)) # 25566
+
+count_waves_participants <- function(x){
+  out<-dplyr::count(tally(group_by(x, Id), sort = TRUE, name="number_waves"), number_waves)
+  print(out)
+}
+
+count_waves_participants(cv)
 ```
 
 
-
-```{r}
-naniar::vis_miss(cv1, warn_large_data = FALSE)
-
-hist(cv1$HLTH.ChildVaccination)
-
-```
 
 
 First we investigate population level change in a pre/post sample of New Zealanders who responded to the 
 
 
 ```{r cache=TRUE}
-
-HLTH.ChildVaccination <- lmer(HLTH.ChildVaccination  ~   (PrePostCovid) +  (1|Id),  cv1)
-plot(ggeffects::ggpredict(HLTH.ChildVaccination, terms = "PrePostCovid[all]"))  + scale_y_continuous(limits = c(1,7))
+library(splines)
+HLTH.ChildVaccination <- lmer(HLTH.ChildVaccination  ~   bs(years0) +  (1|Id),  cv1)
+plot(ggeffects::ggpredict(HLTH.ChildVaccination, terms = "years0[all]"), add.data = TRUE, dot.alpha = .03) 
 
 # library(ordinal)
 # fm1 <- clmm2(as.factor(HLTH.ChildVaccination) ~ Covid_Timeline + years0, random=Id, data=cv1)
 
+```
+
+```{r}
+equatiomatic::extract_eq(HLTH.ChildVaccination,
+                         wrap = TRUE, 
+                         terms_per_line = 1)
 ```
 
 
@@ -486,10 +502,12 @@ transprob
 
 
 
-## Causal Inference 
+## Appendix: Causal Inference 
 
 
+Here we consider potential confounders in our model. We find that all backdoor paths are unconditionally closed, and furthermore, that there are no confounding colliders. 
 
+We are therefore able to obtain an unbiased estimate for the causal effect of the covid-19 timeline on vaccination attitudes. 
 
 ```{r include = FALSE}
 library(ggdag)
@@ -518,14 +536,27 @@ dg <- dagify(
 #%>%
 #  control_for("cs")
 
-dplot1 <-
-  ggdag::ggdag_collider(dg, use_labels = "label", text = FALSE) + theme_dag_blank() +
-  labs(title = "")
-dplot1
+# dplot1 <-
+#   ggdag::ggdag_collider(dg, use_labels = "label", text = FALSE) + theme_dag_blank() +
+#   labs(title = "")
+# dplot1
 
 
 ggdag::ggdag_adjustment_set(dg, use_labels = "label", text = FALSE) + theme_dag_blank() +
   labs(title = "")
 ```
 
+
+## Appendix: Missing cata
+
+
+```{r}
+naniar::vis_miss(cv1, warn_large_data = FALSE)
+```
+
+
+
+## Appendix: For more information
+
+For more information about the NZAVS see: [here](https://www.psych.auckland.ac.nz/en/about/new-zealand-attitudes-and-values-study.html) and [here](https://go-bayes.github.io/reports/posts/nzavs/)
 
