@@ -9,6 +9,7 @@ listing:
     - covid
     - mus
     - police
+    - spiriteuthanasia
 
 ---
 

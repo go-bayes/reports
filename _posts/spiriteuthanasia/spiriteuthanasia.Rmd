@@ -1,0 +1,185 @@
+---
+title: "Attitudes to Euthanasia as predicted by Spiritual Identification"
+description: ""
+author:
+  - name: Joseph Bulbulia
+    url: https://josephbulbulia.netlify.app
+    affiliation: Victoria University of Wellington
+    affiliation_url: https://www.wgtn.ac.nz
+    orcid_id: 0000-0002-5861-2056
+  - name          : Richard Egan
+    affiliation   : Public Health, University of Otago
+    orcid_id: 0000-0000-000-0000
+date: 2021-Sep-30
+output:
+  distill::distill_article:
+    self_contained: true
+    toc: true
+    code_folding: true
+---
+
+```{r setup, code_folding = FALSE, include=FALSE}
+# setup
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  layout = "l-body-outset",
+  fig.width = 16,
+  fig.height = 9,
+  collapse = TRUE,
+  R.options = list(width = 60
+  )
+)
+# packages
+library("tidyverse") # data wrangling 
+library("here") # setting directories
+library("ggplot2") # graph 
+library("ggthemes") # themes
+library("table1") # tables
+library("lme4") # alluvial graphs
+library("ggeffects") # alluvial graphs
+
+```
+
+
+
+### Relations of Spirituality to Euthanasia Attitudes Stratified by Religious
+
+
+
+We investigate the relationship between spirituality and attitudes to Euthanasia. 
+
+The New Zealand Attitudes and Values Study contains the following Questions, to which participants respond on a 1-7 scale from lowest to highest level of acceptance:
+
+> Suppose a person has a painful incurable disease. Do you think that doctors should be allowed by law to end the patient’s life if the patient requests it? (scale 1-7)
+
+> I identify as a spiritual person (scale 1-7)
+
+There is only one year in which both of these questions co-occur: 2016. 
+
+The New Zealand Attitudes and Values Study also contains a question about religious identification: 
+
+> Do you identify with a religion and/or spiritual group? (Yes/No)
+
+And for those who indicate that they identify with a religion or spiritual group
+
+> How important is your religion to how you see yourself? (scale 1-7)
+
+
+Our sample consists of $$N = 19805$$ participants for which there was complete information.  Our model investigating the relationship between Spiritual Identification on Attitudes to Euthanasia adjusts for potentially confounding co-variates (see Appendix 2).
+
+
+
+```{r}
+# read data
+df <- readRDS(here::here("data", "df"))
+# data wrangling
+dt1<- df %>%
+  filter(YearMeasured ==1) %>%
+  filter(Wave == 2016 ) %>%
+  droplevels() %>%
+  arrange(Wave) %>%
+  mutate(SpiritualIdentificationS = as.numeric(scale(Spiritual.Identification)),
+         RelidS = as.numeric(scale(Relid)),
+         AgeS = as.numeric(scale(Age)),
+         EduS = as.numeric(scale(as.numeric(Edu))),
+         polS = as.numeric(scale(Pol.Orient)))
+         
+#glimpse(dt1) # inspect data
+```
+
+```{r}
+#model 
+m1 <- glm(Issue.Euthanasia ~  SpiritualIdentificationS * RelidS  + AgeS + EduS + polS , data = dt1)
+```
+
+
+Focusing on the main effect of Spiritual Identification and support for Euthanasia, we find a negative relationship:
+
+```{r}
+library(viridisLite)
+plot(ggeffects::ggpredict(m1, terms = c( "SpiritualIdentificationS")), add.data = TRUE, dot.alpha = 0.1) + scale_y_continuous(limits = c(1,7)) + scale_colour_viridis_c() + 
+  xlab("Level of Spiritual Identification (standarised)") + ylab("Attitudes to Euthanasia (1-7)")
+```
+
+
+However, stratifying across levels of religious identification, we find this effect is driven entirely by high levels of religious identification
+
+
+
+```{r}
+library(viridisLite)
+plot(ggeffects::ggpredict(m1, terms = c( "SpiritualIdentificationS", "RelidS")), add.data = TRUE, dot.alpha = 0.1) + scale_y_continuous(limits = c(1,7)) +
+    xlab("Level of Spiritual Identification (standarised)") + ylab("Attitudes to Euthanasia (1-7)") + scale_colour_viridis_c()
+```
+
+
+This finding reveals is important. Religious identification and spiritual identification are correlated. However, when it comes to ethics at the end of life, people who are highly spiritual but not religious strongly differ from highly religious people. Put simply, whereas high levels of religiosity predicts lower levels of support for end of life, high levels of spirituality does not. It is only among the jointly religious and spiritual population that we find lower support. 
+
+An important note: generally, the New Zealand population is strongly supportive of euthanasia for people who seek to end their life with medical help when facing incurable disease. Even highly religious people average above the mid-point of support for such a right. 
+
+
+
+For more information about the NZAVS see: [here](https://www.psych.auckland.ac.nz/en/about/new-zealand-attitudes-and-values-study.html) and [here](https://go-bayes.github.io/reports/posts/nzavs/)
+
+
+## Appendix: Results table
+
+```{r}
+sjPlot::tab_model(m1)
+```
+
+
+
+## Appendix: Causal Assumpitons
+
+
+```{r dagg}
+library(ggdag)
+
+library(ggdag)
+dg <- dagify(
+  euth ~ age + spirit + relid + pol + eth + edu + U,
+  edu ~ eth + age + U,
+  relid ~ age + pol + eth + male,
+  spirit ~ relid + age + pol + eth + edu + male,
+  exposure =  "spirit",
+  outcome =   "euth",
+  latent = "U",
+  labels = c(
+    "euth" = "Euthanasia Attitudes",
+    "male" = "male",
+    "spirit" = "Spirituality",
+    "eth" = "ethnicity",
+    "edu" = "education",
+    "relid" = "religious identification",
+    "age" = "age",
+    "pol" = "political orientation",
+    "U" = "Unmeasured"
+  )
+) %>%
+  tidy_dagitty() 
+#%>%
+#  control_for("cs")
+
+# dplot1 <-
+#   ggdag::ggdag_collider(dg, use_labels = "label", text = FALSE) + theme_dag_blank() +
+#   labs(title = "")
+# dplot1
+
+
+ggdag::ggdag_adjustment_set(dg, use_labels = "label", text = FALSE) + theme_dag_blank() +
+  labs(title = "Adjustment set for variables needed to obtain an unbaiased causal estimate of spirituality on attitudes to Euthanasia ")
+```
+
+
+
+Our model is:
+
+```{r}
+equatiomatic::extract_eq(m1,
+                         wrap = TRUE, 
+                         terms_per_line = 2)
+```
+
