@@ -67,8 +67,7 @@ And for those who indicate that they identify with a religion or spiritual group
 > How important is your religion to how you see yourself? (scale 1-7)
 
 
-Our sample consists of $$N = 19805$$ participants for which there was complete information.  Our model investigating the relationship between Spiritual Identification on Attitudes to Euthanasia adjusts for potentially confounding co-variates (see Appendix 2).
-
+Our sample consists of $$N = 19805$$ participants for which there was complete information. 
 
 
 ```{r}
@@ -88,6 +87,22 @@ dt1<- df %>%
          
 #glimpse(dt1) # inspect data
 ```
+
+
+
+Notably, religious identification and spiritual identification are correlated:
+
+```{r}
+library(correlation)
+c1 <- correlation::correlation(dt1, select = "RelidS", select2 = "SpiritualIdentificationS") 
+  
+summary(c1) %>%
+  print_html()
+```
+
+However, it is possible that within these populations of identification people differ. Our statistical model investigating the relationship between Spiritual Identification on Attitudes to Euthanasia stratifies accross different levels of both Spiritual Identification and Religious Identification, while also adjusting for potentially confounding co-variates (see Appendix 2).
+
+
 
 ```{r}
 #model 
@@ -118,7 +133,7 @@ plot(ggeffects::ggpredict(m1, terms = c( "SpiritualIdentificationS", "RelidS")),
 
 Generally, the New Zealand population is supportive of euthanasia for people who seek to end their life with medical help when facing incurable disease. Even highly religious people average above the mid-point of support for such a right. However, on average, highly religious express less support than do secular people. 
 
-Our interest is in the relationship of spiritual identification to euthanasia attitudes. Although religious identification and spiritual identification are correlated when it comes to ethics at the end of life, people who are highly spiritual but not religious strongly differ from highly religious people. Whereas high levels of religiosity predicts lower levels of support for end of life, high levels of spirituality does not. It is only among the jointly religious and spiritual population that we find lower support. This finding reveals is important because it reveals a separatation between spiritual identification and religious identification on a topic of public importance.
+Our interest is in the relationship of spiritual identification to euthanasia attitudes. Religious identification and spiritual identification are correlated. However, when it comes to ethics at the end of life, people who are highly spiritual but not religious strongly differ from highly religious people. Whereas high levels of religiosity predicts lower levels of support for end of life, high levels of spirituality does not. It is only among the jointly religious and spiritual population that we find lower support. This finding reveals is important because it reveals a separatation between spiritual identification and religious identification on a topic of public importance.
 
 
 
