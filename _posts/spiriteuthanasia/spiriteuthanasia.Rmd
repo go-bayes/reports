@@ -115,9 +115,11 @@ plot(ggeffects::ggpredict(m1, terms = c( "SpiritualIdentificationS", "RelidS")),
 ```
 
 
-This finding reveals is important. Religious identification and spiritual identification are correlated. However, when it comes to ethics at the end of life, people who are highly spiritual but not religious strongly differ from highly religious people. Put simply, whereas high levels of religiosity predicts lower levels of support for end of life, high levels of spirituality does not. It is only among the jointly religious and spiritual population that we find lower support. 
 
-An important note: generally, the New Zealand population is strongly supportive of euthanasia for people who seek to end their life with medical help when facing incurable disease. Even highly religious people average above the mid-point of support for such a right. 
+Generally, the New Zealand population is supportive of euthanasia for people who seek to end their life with medical help when facing incurable disease. Even highly religious people average above the mid-point of support for such a right. However, on average, highly religious express less support than do secular people. 
+
+Our interest is in the relationship of spiritual identification to euthanasia attitudes. Although religious identification and spiritual identification are correlated when it comes to ethics at the end of life, people who are highly spiritual but not religious strongly differ from highly religious people. Whereas high levels of religiosity predicts lower levels of support for end of life, high levels of spirituality does not. It is only among the jointly religious and spiritual population that we find lower support. This finding reveals is important because it reveals a separatation between spiritual identification and religious identification on a topic of public importance.
+
 
 
 
