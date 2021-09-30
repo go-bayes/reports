@@ -1,5 +1,5 @@
 ---
-title: "Attitudes to Euthanasia as predicted by Spiritual Identification"
+title: "Spiritual Identification Affects Political Attitutes"
 description: ""
 author:
   - name          : Richard Egan
@@ -47,7 +47,7 @@ library("ggeffects") # alluvial graphs
 
 
 
-### Relations of Spirituality to Euthanasia Attitudes Stratified by Religious
+### Spirituality and Euthanasia Attitudes
 
 
 
@@ -221,9 +221,20 @@ plot(ggeffects::ggpredict(m4, terms = c( "SpiritualIdentificationS", "RelidS")),
 sjPlot::tab_model(m1)
 ```
 
+```{r}
+sjPlot::tab_model(m2)
+```
+
+```{r}
+sjPlot::tab_model(m3)
+```
+
+```{r}
+sjPlot::tab_model(m4)
+```
 
 
-## Appendix: Causal Assumpitons
+## Appendix: Causal Assumptions
 
 
 ```{r dagg}
