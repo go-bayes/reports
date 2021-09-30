@@ -81,9 +81,9 @@ Here, using responses within the same individuals, we investigate whether, and h
 # import data
 df <- readRDS(here::here("data", "df"))
 
-df%>%
-  group_by(Wave) %>%
-  summarise(mean = mean(HLTH.ChildVaccination, na.rm=TRUE))
+# df%>%
+#   group_by(Wave) %>%
+#   summarise(mean = mean(HLTH.ChildVaccination, na.rm=TRUE))
 
 # df$Child.VaccinationActual # If you have children under 18, are their vaccinations up-to-date, as per the recommendations of your doctor/GP?
 # df$HLTH.ChildVaccination  # It is safe to vaccinate children following the standard NZ immunization schedule.
@@ -117,7 +117,6 @@ ord_cov <- c(
 cv <- df %>%
   dplyr::filter(YearMeasured == 1) %>%
   dplyr::filter(Wave == 2018 |  Wave == 2019) %>%
-  dplyr::filter(!is.na(HLTH.ChildVaccination)) %>%
   droplevels() %>%
   dplyr::group_by(Id) %>% 
   dplyr::filter(n() == 2) %>%
@@ -309,14 +308,19 @@ m1 <- brm(
        PrePostCovid  + (1 | Id)),
   family = cumulative(link = "logit"),
   data = cv1,
-  file = here::here("models", "vax_attitudes"),
+  file = here::here("models", "vax_1"),
   silent = FALSE
 )
 
-par_m1 <- parameters::model_parameters(m1)
-par_m1
-saveRDS(par_m1, here::("models","par_m1"))
+par_v1 <- parameters::model_parameters(m1)
+par_v1
+saveRDS(par_m1, here::("models","par_v1"))
 plot(par_m1)
+
+# Another approach
+plot(ggeffects::ggpredict(m1, terms = "PrePostCovid")) 
+
+
 ```
 
 Hre we can see that the log-odds of Fatigue dropped during Lockdown. But how exactly did Fatigue drop?
@@ -328,7 +332,6 @@ As with logistic regression, the coefficients here are not obvious. To interpret
 To understand what is happening, we plot all the individual intercepts by setting `categorical = TRUE`. Following McElreath's Statistical Rethinking, we will predict outcomes using the .89 probability credible interval:
 
 ```{r}
-
 plot(
   conditional_effects(
     m1,
@@ -367,6 +370,7 @@ plot(ggeffects::ggpredict(
 
 library(LMest)
 
+# We investigate only pre-post covide responses
 cv2 <- cv1 %>%
   dplyr::filter(
       Covid_Timeline == "Baseline" |
@@ -402,7 +406,7 @@ plot_trajectories(data = wide2,
                  var_list = x_var_list,
                  xlab = "Condition", ylab = "Value",
                  connect_missing = F, 
-                 random_sample_frac = 0.02, 
+                 random_sample_frac = 0.01, 
                  title_n = TRUE)  +
   facet_wrap(~Id)
 
@@ -413,18 +417,17 @@ plot_trajectories(data = wide2,
 
 
 ```{r}
-
 library(TraMineR)
 seq.m<-seqdef(wide[,2:3])
 
-seq.m
-head(seq.m)
+#seq.m
+#head(seq.m)
 
 # EXPLORATION
-seqiplot(seq.m, border = NA, with.legend = "top")
-seqfplot(seq.m, weighted = FALSE, border = NA, with.legend = FALSE, main = "Frequencies")
-seqmsplot(seq.m)
-seqmtplot(seq.m)
+#seqiplot(seq.m, border = NA, with.legend = "top")
+#seqfplot(seq.m, weighted = FALSE, border = NA, with.legend = FALSE, main = "Frequencies")
+#seqmsplot(seq.m)
+#seqmtplot(seq.m)
 seqtab(seq.m)
 seqIplot(seq.m)
 sd <- seqstatd(seq.m)
@@ -455,6 +458,8 @@ seqdur(seq.m)
 ```{r}
 library(seqHMM)
 sc_initmod_random <- build_hmm(observations = seq.m, n_states = 3)
+                               
+                             
 sc_initmod_random
 
 sc_initmod_random$initial_probs
@@ -475,7 +480,7 @@ sc_fit <- fit_model(sc_initmod)
 fm<-sc_fit$model
 fm
 
-names <- c("Strong Pro Vax \n init = .5","Low \n init = .11","Med \n init = .39")
+names <- c("Med \n init = .39","Strong Pro Vax \n init = .5","Low \n init = .11")
 summary(fm, conditional_se = FALSE)
 library(igraph)
 plot(sc_fit$model,
@@ -490,11 +495,11 @@ plot(sc_fit$model,
     combine.slices = 0.02 ,
       loops = FALSE,
     # Remove edges with probability less than 0.01
-  trim = 0.01,
+  trim = 0.00001,
     combined.slice.label = "others (emission prob. < 0.02)"
 
 )
-dev.off()
+#dev.off()
 
 transprob<-as.matrix(fm$transition_probs)
 transprob

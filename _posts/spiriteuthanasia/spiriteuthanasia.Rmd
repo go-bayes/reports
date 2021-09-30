@@ -134,6 +134,11 @@ plot(ggeffects::ggpredict(m1, terms = c( "SpiritualIdentificationS", "RelidS")),
 
 
 
+
+
+
+
+
 Generally, the New Zealand population is supportive of euthanasia for people who seek to end their life with medical help when facing incurable disease. Even highly religious people average above the mid-point of support for such a right. However, on average, highly religious express less support than do secular people. 
 
 Our interest is in the relationship of spiritual identification to euthanasia attitudes. Religious identification and spiritual identification are correlated. However, when it comes to ethics at the end of life, people who are highly spiritual but not religious strongly differ from highly religious people. Whereas high levels of religiosity predicts lower levels of support for end of life, high levels of spirituality does not. It is only among the jointly religious and spiritual population that we find lower support. This finding reveals is important because it reveals a separatation between spiritual identification and religious identification on a topic of public importance.
@@ -143,6 +148,72 @@ Our interest is in the relationship of spiritual identification to euthanasia at
 
 For more information about the NZAVS see: [here](https://www.psych.auckland.ac.nz/en/about/new-zealand-attitudes-and-values-study.html) and [here](https://go-bayes.github.io/reports/posts/nzavs/)
 
+
+
+
+## Other issues
+
+
+### Genetic Engineering
+
+
+> Ensuring that all food and food ingredients sold in New Zealand are free from Genetically Modified Organisms.
+
+> Strict regulation limiting the use of genetic engineering in humans.
+
+
+```{r}
+#model 
+m2 <- glm(Issue.Food.GMO ~  SpiritualIdentificationS * RelidS  + AgeS + EduS + polS , data = dt1)
+```
+
+
+```{r}
+library(viridisLite)
+plot(ggeffects::ggpredict(m2, terms = c( "SpiritualIdentificationS", "RelidS")), add.data = TRUE, dot.alpha = 0.1) + scale_y_continuous(limits = c(1,7)) + scale_colour_viridis_c() + 
+  xlab("Level of Spiritual Identification (standarised)") + ylab("Attitudes to Genetic Engineering (1-7)")
+```
+
+### Income Redistribution
+
+> Redistributing money and wealth more evenly among a larger percentage of the people in New Zealand through heavy taxes on the rich.
+
+
+No differences and greater acceptance of taxation among both highly religiously identified and highly spiritually identified. Here we find that having either a high religious or a high spiritual identity (or both) drives support for income redistribution.
+
+
+```{r}
+#model 
+m3 <- glm(Issue.IncomeRedistribution ~  SpiritualIdentificationS * RelidS  + AgeS + EduS + polS , data = dt1)
+```
+
+
+```{r}
+library(viridisLite)
+plot(ggeffects::ggpredict(m3, terms = c( "SpiritualIdentificationS", "RelidS")), add.data = TRUE, dot.alpha = 0.1) + scale_y_continuous(limits = c(1,7)) + scale_colour_viridis_c() + 
+  xlab("Level of Spiritual Identification (standarised)") + ylab("Attitudes to Income Redistribution (1-7)")
+```
+
+
+
+### Healthy Lifestyle
+
+> Government initiatives to inform and promote healthy lifestyle choices.
+
+
+Here we see a convergence: high religious identification and high sprituality support Governmet investment in health.  At the low end of spiritual identification, among those who are high in religious identification there is markedly lower support, whereas there is only only moderately reduced support among those who are low in both spiritual identification and religious identification.  This reveals the importance of spirituality as a moderator of attitudes for governement investment in health. 
+
+```{r}
+#model 
+m4 <- glm(Issue.GovtHealthPolicy ~  SpiritualIdentificationS * RelidS  + AgeS + EduS + polS , data = dt1)
+```
+
+
+```{r}
+library(viridisLite)
+plot(ggeffects::ggpredict(m4, terms = c( "SpiritualIdentificationS", "RelidS")), add.data = TRUE, dot.alpha = 0.1) + scale_y_continuous(limits = c(1,7)) + scale_colour_viridis_c() + 
+  xlab("Level of Spiritual Identification (standarised)") + ylab("Attitudes to Government Support for Healthy Lifestyles (1-7)")
+```
 
 ## Appendix: Results table
 
@@ -196,8 +267,11 @@ ggdag::ggdag_adjustment_set(dg, use_labels = "label", text = FALSE) + theme_dag_
 
 
 Our model is:
-
 ```{r}
-
+equatiomatic::extract_eq(m1,
+                         wrap = TRUE, 
+                         terms_per_line = 1)
 ```
+
+
 
