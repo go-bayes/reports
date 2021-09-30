@@ -2,14 +2,17 @@
 title: "Attitudes to Euthanasia as predicted by Spiritual Identification"
 description: ""
 author:
+  - name          : Richard Egan
+    affiliation   : Public Health, University of Otago
+    orcid_id: 0000-0000-000-0000
+  - name          : Chris G. Sibley
+    affiliation   : School of Psychology, University of Auckland
+    orcid_id: 0000-0002-4064-8800
   - name: Joseph Bulbulia
     url: https://josephbulbulia.netlify.app
     affiliation: Victoria University of Wellington
     affiliation_url: https://www.wgtn.ac.nz
     orcid_id: 0000-0002-5861-2056
-  - name          : Richard Egan
-    affiliation   : Public Health, University of Otago
-    orcid_id: 0000-0000-000-0000
 date: 2021-Sep-30
 output:
   distill::distill_article:
