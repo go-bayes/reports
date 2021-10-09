@@ -1,0 +1,50 @@
+---
+title: "Religion in New Zealand"
+description: |
+author:
+  - name: Joseph Bulbulia
+    url: https://josephbulbulia.netlify.app
+    affiliation: Victoria University of Wellington
+    affiliation_url: https://www.wgtn.ac.nz
+    orcid_id: 0000-0002-5861-2056
+date: 2021-FEB-28
+output:
+  distill::distill_article:
+    self_contained: false
+    toc: false
+editor_options: 
+  chunk_output_type: console
+---
+
+
+
+
+```{r global_options, include = FALSE}
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE,
+  collapse = TRUE,
+  echo = FALSE,
+  fig.width = 16,
+  fig.height = 9
+)
+#results="hide",
+#fig.width= 8,
+#fig.height=,
+#fig.fullwidth = TRUE)
+```
+
+
+```{r, layout = "l-body-outset", cache =TRUE}
+bmlm::mlm_path_plot(xlab = "Condition\n(X)",
+              mlab = "Mediator\n(M)",
+              ylab = "Distress\n(Y)")
+```
+
+
+## Talk
+
+
+
+
+
