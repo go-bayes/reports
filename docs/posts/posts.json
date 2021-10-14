@@ -187,6 +187,23 @@
     "preview_height": 1920
   },
   {
+    "path": "posts/nzreligion/",
+    "title": "Religion in New Zealand",
+    "description": {},
+    "author": [
+      {
+        "name": "Joseph Bulbulia",
+        "url": "https://josephbulbulia.netlify.app"
+      }
+    ],
+    "date": "2021-02-28",
+    "categories": [],
+    "contents": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nThe New Zealand Attitudes and Values Study\nPlanned 20-year longitudinal study, currently in its 12\\(^{th}\\) year.\nSample frame drawn randomly from NZ Electoral Roll.\nPostal questionnaire (coverage; retention ~ 80%)\nFocus on personality, social attitudes, values, religion, meaning-making, perfectionism, virtues, habits, employment, experiences of discrimination, physical and psychological health, and environmental attitudes …\nCurrent sample contains 34782 unique people, which is \\(>\\) 1% of the NZ adult population.\nHere, N = 67634 longitudinal participants who responded to both the 2018/19 and 2019/20 NZAVS waves.\n\n\n\nFigure 1: NZAVS questionnaire\n\n\n\nCovid\n\n\n\nWhat we did with our time?\n\n\n\n",
+    "preview": {},
+    "last_modified": "2021-10-12T13:38:46+13:00",
+    "input_file": "slides.knit.md"
+  },
+  {
     "path": "posts/religious_simpsons_paradox/",
     "title": "Religious Change is a Simpson's Paradox",
     "description": "",

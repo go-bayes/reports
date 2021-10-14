@@ -49,6 +49,10 @@ xaringanExtra::embed_xaringan(url = "slides.html", ratio = "16:9")
 ```
 
 
+You can find more information about the NZAVS:[HERE](https://www.psych.auckland.ac.nz/en/about/new-zealand-attitudes-and-values-study.html)
+    
+    
+
 > I identify as a spiritual person (scale 1-7)
 
 > Do you identify with a religion and/or spiritual group? (Yes/No)

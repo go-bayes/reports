@@ -52,7 +52,7 @@ library("ggalluvial") # alluvial graphs
 ```{r dataordering, include = TRUE}
 # First we import the data, and create an indicator for measured/lost/withdrawn.
 
-
+library("ggalluvial") # alluvial graphs
 # data sent by Chris Sibley Aug 2021
 sampling_data <-
   haven::read_sav(here::here("data", "GraphData2.sav"))

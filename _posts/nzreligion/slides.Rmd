@@ -1,19 +1,21 @@
 ---
 title: "Religion in New Zealand"
-description: |
-author:
-  - name: Joseph Bulbulia
-    url: https://josephbulbulia.netlify.app
-    affiliation: Victoria University of Wellington
-    affiliation_url: https://www.wgtn.ac.nz
-    orcid_id: 0000-0002-5861-2056
-date: 2021-FEB-28
+date: "2021-OCT-12"
 output:
-  distill::distill_article:
-    self_contained: false
-    toc: false
-editor_options: 
-  chunk_output_type: console
+  ioslides_presentation:
+    mainfont: roboto
+    incremental: yes
+    transition: 0
+    smaller: no
+    widescreen: no
+    selfcontained: yes
+    css: extra.css
+  beamer_presentation:
+    incremental: yes
+bibliography: bibliography.bib
+editor_options:
+  markdown:
+    wrap: 72
 ---
 
 
@@ -32,17 +34,1188 @@ knitr::opts_chunk$set(
 #fig.width= 8,
 #fig.height=,
 #fig.fullwidth = TRUE)
+
+# packages
+library("tidyverse") # data wrangling 
+library("here") # setting directories
+library("ggplot2") # graph 
+library("ggthemes") # themes
+library("table1") # tables
+library("lme4") # alluvial graphs
+library("ggeffects") # alluvial graphs
+library("patchwork")
+library("ggplot2")
+
+#easystats::easystats_update()
+library("easystats")
+
+
+```
+
+```{r setup, include=FALSE}
+# See: https://rstudio-pubs-static.s3.amazonaws.com/27777_55697c3a476640caa0ad2099fe914ae5.html#/
+# setup
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE #,
+#  layout = "l-body-outset" #,
+ # fig.width= 12,
+ # fig.height= 10,
+#  collapse =TRUE,
+#  R.options = list(width = 60)
+)
+
+```
+
+```{r cache=TRUE, echo = FALSE}
+# import data
+df <- readRDS(here::here("data", "df"))
+# filter years measured
+df <- dplyr::filter(df, YearMeasured == 1)
+
+# filter current wave
+w19 <- df %>% dplyr::filter(Wave == 2019)
+```
+
+```{r cache = TRUE, echo = FALSE}
+ord_dates_class <- c(
+  "Baseline", 
+  "PreCOVID", 
+  "JanFeb", 
+  "EarlyMarch", 
+  "Lockdown",
+  "PostLockdown")
+
+# 3665 days after 30 June 2009 Saturday 13 July 2019
+# 3842 days after 30 June 2009 Monday 6 January 2020
+# 3895 days after 30 June 2009 Friday 28 February 2020
+# 3921 days after 30 June 2009 WED MAR 25th
+# 3954 days after 30 June 2009 Monday 27 April 2020
+# 3672 days after June 30 2009 Saturday 20 July 2019
 ```
 
 
-```{r, layout = "l-body-outset", cache =TRUE}
-bmlm::mlm_path_plot(xlab = "Condition\n(X)",
-              mlab = "Mediator\n(M)",
-              ylab = "Distress\n(Y)")
+```{r cache = TRUE, echo = FALSE}
+cv <- df %>%
+  dplyr::filter(YearMeasured == 1) %>%
+  dplyr::filter(Wave == 2018 | Wave == 2019) %>%
+  dplyr::group_by(Id) %>% 
+  filter(n() > 1) %>%
+  dplyr::filter(n() != 0) %>%
+  dplyr::ungroup(Id) %>%
+  dplyr::mutate(Covid_Timeline =
+                    as.factor(ifelse(
+                      TSCORE %in% 3896:3921, # feb 29 - march 25th
+                      "EarlyMarch",
+                      ifelse(
+                        TSCORE %in% 3922:3954,
+                        "Lockdown", #march 26- Mon 27 April 2020
+                        ifelse(
+                          TSCORE > 3954, # after april 27th 20202
+                          "PostLockdown",
+                          ifelse(
+                            TSCORE %in% 3842:3895, # jan 6 to feb 28
+                            "JanFeb",
+                          ifelse(
+                            TSCORE %in% 3665:3841 &
+                              Wave == 2019,
+                            "PreCOVID",
+                            "Baseline"  # 3672 TSCORE or  20 July 2019
+                          )
+                        )
+                      )
+                    ) 
+                 ) ))%>%
+  dplyr::mutate(PrePostCovid =
+                  ifelse(
+                    TSCORE > 3895, "PostLockdown",
+                    ifelse(
+                      TSCORE < 3895 &
+                        Wave == 2019,
+                      "PreCOVID",
+                      "Baseline"
+                    )
+                  ))%>% 
+  dplyr::group_by(PrePostCovid) %>% 
+  filter(n() > 1) %>%
+  ungroup() %>% # There is overlap between waves, we only want repeated measures 
+  dplyr::select(
+    TSCORE,
+    WSCORE,
+    Wave,
+    Partner,
+    Employed,
+    Sat.Government,
+    NZ.Business.Conditions,
+    NZ.Economic.Situation,
+    PrePostCovid,
+    Rel.Conflict,
+    Rel.Satisfaction,
+    Hours.SocialMedia,
+    Hours.Exercise,
+    HoursCharity,
+    Hours.Internet,
+    Hours.News,
+    Hours.Family,
+    Hours.Friends,
+    Hours.Housework,
+    Hours.Children,
+    Hours.Religious,
+    Hours.Work,
+    Hours.Commute,
+    Hours.TV,
+    Hours.CompGames,
+    Hours.Community,
+    Family.Time,
+    Community.Time,
+    Friends.Time,
+    Family.Money,
+    Friends.Money,
+    Community.Money,
+    years,
+    Id,
+    Parent,
+    SWB.SatPWI02, # your health
+    Hours.Work,
+    Hours.Exercise,
+    LIFEMEANING,
+    KESSLER6,
+    KESSLER6sum,
+    Age,
+    Male,
+    Relid,
+    Pol.Orient,
+    Urban,
+    GenCohort,
+    Edu,
+    YearMeasured,
+    Covid_Timeline,
+    HLTH.SleepHours,
+    HLTH.Fatigue,
+    LIFESAT,
+    PWI,
+    EthnicCats,
+    NZdep,
+    Partner,
+    Pol.Orient,
+    Urban,
+    Euro,
+    Religious,
+    NZdep,
+    WSCORE,
+    Religion.Church,
+    Emp.JobSecure,
+    Emp.JobSat,
+    Emp.JobValued,
+    Alcohol.Intensity,
+    Alcohol.Frequency,
+    Your.Future.Security
+  ) %>%
+  dplyr::group_by(Id) %>% filter(n() > 1) %>%
+  dplyr::filter(n() != 0) %>%
+  dplyr::ungroup(Id) %>%
+  dplyr::mutate(
+    Urban = (Urban),
+    Euro = (Euro),
+    Religious = as.factor(Religious),
+    Your_Health = (SWB.SatPWI02),
+    Your_Future_Security = Your.Future.Security,
+    Covid_Timeline = as.factor(Covid_Timeline)
+  ) %>%
+  dplyr::mutate(
+    WSCORE = as.factor(WSCORE),
+    #EduC = scale(as.numeric(Edu), scale = F, center = TRUE),
+    Sat.Government = scale(Sat.Government),
+   # AgeDecadeC = scale(Age, scale = F, center = T) / 10,
+    Hours.Work10 = as.integer(Hours.Work) / 10,
+    Hours.Sleep = as.integer(HLTH.SleepHours),
+    Hours.Exercise = as.integer(Hours.Exercise),
+    Fatigue = as.integer(HLTH.Fatigue),
+    K6sum = as.integer(KESSLER6 * 6),
+    LIFEMEANING_S = scale(LIFEMEANING),
+    NZdepS = scale(NZdep),
+    PolOrientS = scale(Pol.Orient, scale = T, center = T),
+    Conservative = Pol.Orient,
+    logSM = log(Hours.SocialMedia + 1),
+    logINT = log(Hours.Internet + 1),
+    logEX = log(Hours.Exercise + 1),
+    logWK= log(Hours.Work + 1),
+    logCT = log(Hours.Commute + 1),
+    KESSLER6sum = as.integer(KESSLER6sum),
+    Alcohol.Intensity_S = scale(Alcohol.Intensity),
+    Alcohol.Frequency_S = scale(Alcohol.Frequency),
+    Hours.Work = as.integer(Hours.Work),
+    Hours.Exercise = as.integer(Hours.Exercise),
+    yearS = years - min(years)
+  ) %>%
+  dplyr::mutate(Covid_Timeline = forcats::fct_relevel(Covid_Timeline, ord_dates_class))
+```
+
+```{r cache = TRUE, echo = FALSE}
+# Subset Employed
+cvE <- cv%>%
+  dplyr::filter(Employed == 1)
+
+# Subset Partner
+cvP <- cv%>%
+  dplyr::filter(Partner == 1)
+
+# Subset Religious
+cvR <- cv%>%
+  dplyr::filter(Relid != 0)
+```
+
+```{r cache = TRUE, echo = FALSE}
+cv <- cbind(cv,
+            demean(
+              cv,
+              select = c(
+                "KESSLER6sum",
+                "logEX",
+                "logSM",
+                "logINT",
+                "logWK",
+                "logCT",
+                "Hours.Sleep",
+                "Hours.Work10",
+                "Hours.Exercise",
+                "Sat.Government",
+                "Hours.Children",
+                "Hours.Internet",
+                "Hours.Friends",
+                "Hours.Family",
+                "Hours.Religious",
+                "Hours.Community",
+                "Rel.Satisfaction",
+                "Rel.Conflict",
+                "Family.Time",
+                "Family.Money",
+                "Friends.Time",
+                "Friends.Money",
+                "Community.Time",
+                "Community.Money",
+                "Fatigue",
+                "Alcohol.Intensity",
+                "Alcohol.Frequency",
+                "Emp.JobSecure",
+                "Friends.Time",
+                "Family.Time",
+                "Community.Time",
+                "Hours.SocialMedia",
+                "Hours.Internet",
+                "Your_Future_Security",
+                "LIFEMEANING"
+              ),
+              group = "Id"
+            )) 
+
+
+
+# Demean employed
+# cf <- dplyr::filter(df, Wave == 2019)%>% filter(YearMeasured ==1)
+# length(unique(cf$Id))
+
+# test that we only have repeated measures
+# test <-cv %>%
+#   group_by(Id)%>%
+#   count()%>%
+#   ungroup() 
+```
+
+```{r cache = TRUE}
+# covid timeline
+# 3665 days after 30 June 2009 Saturday 13 July 2019
+# 3842 days after 30 June 2009 Monday 6 January 2020
+# 3895 days after 30 June 2009 Friday 28 February 2020
+# 3921 days after 30 June 2009 WED MAR 25th
+library(lubridate)
+library(tidyverse)
+
+
+carep <- cv %>%
+  dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30) + TSCORE) %>%
+  count(day = floor_date(timeline, "day")) %>%
+dplyr::mutate(condition = ifelse(
+    day < "2019-06-20",
+    "Baseline",
+    ifelse(
+      day >= "2019-06-20" &
+        day < "2020-01-06",
+      "PreCOVID",
+      ifelse(
+        day >= "2020-01-06" & day < "2020-02-29",
+        "Jan_Feb",
+        ifelse(
+          day >= "2020-02-29" & day < "2020-03-25",
+          "EarlyMarch",
+          ifelse(
+            day >= "2020-03-25" &
+              day < "2020-04-28",
+            "Lockdown",
+            "Postlockdown"
+            )))))) %>%
+  dplyr::mutate(condition = forcats::fct_relevel(condition, ord_dates_class)) %>%
+  arrange(day)
+
+# get COVID date
+dates_vline0<- as.Date("2018-06-03")
+dates_vline1<- as.Date("2019-06-20")
+dates_vline2<- as.Date("2020-01-06")
+dates_vline3<- as.Date("2020-02-28")
+# get data of change of baseline
+dates_vline4<- as.Date("2020-03-25")
+dates_vline5 <- as.Date("2020-04-27")
+dates_vline6 <- as.Date("2020-10-15")
+# for line in a graph
+
+# for line in a graph
+#
+dates_vline10 <- which(carep$day %in% dates_vline0)
+dates_vline1b <- which(carep$day %in% dates_vline1)
+dates_vline2b <- which(carep$day %in% dates_vline2)
+dates_vline3b <- which(carep$day %in% dates_vline3)
+dates_vline4b <- which(carep$day %in% dates_vline4)
+dates_vline5b <- which(carep$day %in% dates_vline5)
+dates_vline6b <- which(carep$day %in% dates_vline6)
+
+
+tline <- ggplot(carep, aes(day, n)) +
+  geom_col(aes(fill = condition)) + scale_x_date(date_labels = "%b/%Y", limits = c(as.Date("2018-06-10"), as.Date("2020-10-15")))  + scale_y_continuous(limits = c(0, 1000))  +
+ geom_vline(xintercept = as.numeric(carep$day[dates_vline10]),
+             col = "black",
+             linetype = "dashed") +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline1b]),
+             col = "red",
+             linetype = "dashed") +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline2b]),
+             col = "red") +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline3b]),
+             col = "red",
+             linetype = "dashed") +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline4b]),
+             col = "red",
+             linetype = "dashed") +
+    geom_vline(xintercept = as.numeric(carep$day[dates_vline5b]),
+             col = "red",
+             linetype = "dashed") + 
+  xlab("NZAVS Waves 10 and 11 daily counts: repeated measures") + ylab("Count of Responses")  + theme_classic() +   scale_fill_viridis_d() + theme(
+    legend.position = "top",
+    legend.text = element_text(size = 6),
+    legend.title = element_text(color = "Black", size = 8)
+  ) +
+  annotate(
+    "rect",
+    xmin = as.Date("2018-01-03"),
+    xmax = dates_vline1,
+    ymin = 0,
+    ymax = 1000,
+    alpha = .1,
+    fill = "darkblue"
+  )  +
+  annotate(
+    "rect",
+    xmin = dates_vline1,
+    xmax = dates_vline6,
+    ymin = 0,
+    ymax = 1000,
+    alpha = .001
+  ) +
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-07-10"),
+    y = 750,
+    xend = as.Date("2019-10-15"),
+    yend = 800,
+    curvature = -.2,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-07-10"),
+    y = 750,
+    xend = as.Date("2020-01-30"),
+    yend = 850,
+    curvature = -.2,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-07-10"),
+    y = 750,
+    xend = as.Date("2020-03-10"),
+    yend = 875,
+    curvature = -.2,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-07-10"),
+    y = 750,
+    xend = as.Date("2020-04-10"),
+    yend = 900,
+    curvature = -.2,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-07-10"),
+    y = 750,
+    xend = as.Date("2020-06-10"),
+    yend = 925,
+    curvature = -.2,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate("text",
+           x = as.Date("2018-07-01"),
+           y = 755,
+           label = "0") +  annotate("text",
+           x = as.Date("2019-10-25"),
+           y = 800,
+           label = "1") + 
+   annotate("text",
+           x = as.Date("2020-02-10"),
+           y = 850,
+           label = "2") + 
+  annotate("text",
+           x = as.Date("2020-03-15"),
+           y = 875,
+           label = "3") +
+  annotate("text",
+           x = as.Date("2020-04-20"),
+           y = 900,
+           label = "4") +
+  annotate("text",
+           x = as.Date("2020-06-10"),
+           y = 925,
+           label = "5")
 ```
 
 
-## Talk
+
+
+## The New Zealand Attitudes and Values Study
+
+-   Planned 20-year longitudinal study, currently in its 12$^{th}$ year.
+-   Sample frame drawn randomly from NZ Electoral Roll.
+-   Postal questionnaire (coverage; retention \~ 80%)
+-   Focus on personality, social attitudes, values, religion,
+    meaning-making, perfectionism, virtues, habits, employment,
+    experiences of discrimination, physical and psychological health,
+    and environmental attitudes ...
+-   Current sample contains `r  length(unique(w19$Id))` unique people, which is $>$ 1% of
+    the NZ adult population.
+<!-- -   Here, *N* = `r  length(unique(w19$Id))` longitudinal participants who responded -->
+<!--     to **both** the 2018/19 and 2019/20 NZAVS waves. -->
+
+
+## Questionaire
+
+```{r questions, layout="l-body-outset", fig.cap = "NZAVS questionnaire"}
+knitr::include_graphics(here::here("figs", "questions.png"))
+```
+
+## Religious Change
+
+
+```{r  poprelchange, fig.cap= "Clock-like Decline in Proportion of Christian Affiliation since 1966 at about 1% per year", cache = TRUE, code_folding=TRUE}
+# Show decline in religion at the Society Level, using census data
+# religious decline in new Zealand
+
+# import census data
+declineUSE <-
+  as.data.frame(read.csv(here::here("data", "declineUSE.csv")))
+decline <- declineUSE %>%
+  dplyr::mutate(
+    Christians = as.numeric(Christians),
+    Population = as.numeric(Population),
+    PercentagePopulation = as.numeric(PercentagePopulation)
+  )
+
+library(ggplot2)
+pr <-
+  ggplot(decline, aes(y = PercentagePopulation, x = Years)) + theme_bw() +
+  geom_smooth(method = "glm") +
+  geom_point(
+    stat = "identity",
+    colour = "red",
+    fill = "white",
+    size = 2,
+    stroke = 1
+  ) + labs(x = "Time", y = "Percentage Christians") + labs(title = "Aggregate proportional decline in Christian affiliation: New Zealand years 1966-2018")  + scale_y_continuous(limits = c(0, 1)) +
+  theme_classic()
+#plot
+pr 
+```
+
+## Timeline 
+
+```{r bigtimeline, cache= TRUE,  fig.cap = "Daily counts of data entry for the New Zealand Attitudes and Values Study (2009-2020). Red vertical lines indicate major events that affected large segments of the population. In addition to these major society-level events, countless *natural experiments* have been occurring at the individual level. Measuring people before, during, and after such exposures enables powerful inferences about the functional consequences of religion and spirituality simultaneously at both social and individual levels."}
+
+
+datrep <- df %>%
+  dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30) + TSCORE) %>%
+  count(day = floor_date(timeline, "day")) %>%
+  dplyr::mutate(Year = factor(ifelse(
+    day < "2010-01-01",
+    2009,
+    ifelse(
+      day < "2011-01-01",
+      2010,
+      ifelse(
+        day < "2012-01-01",
+        2011,
+        ifelse(
+          day < "2013-01-01",
+          2012,
+          ifelse(
+            day < "2014-01-01",
+            2013,
+            ifelse(
+              day < "2015-01-01",
+              2014,
+              ifelse(
+                day < "2016-01-01",
+                2015,
+                ifelse(
+                  day < "2017-01-01",
+                  2016,
+                  ifelse(
+                    day < "2018-01-01",
+                    2017,
+                    ifelse(day < "2019-01-01", 2018,
+                           ifelse(day < "2020-01-01", 2019, 2020))
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  ))) %>%
+  arrange(day)
+
+
+
+# create date lines
+ceq <- as.Date("2011-02-22")
+keq <- as.Date("2016-11-14")
+ter <- as.Date("2019-03-15")
+cov <- as.Date("2020-02-28")
+
+# get number for dates
+ceqD <- which(datrep$day %in% ceq)
+keqD <- which(datrep$day %in% keq)
+terD <- which(datrep$day %in% ter)
+covD <- which(datrep$day %in% cov)
+
+
+# create dates
+
+d1 <- as.numeric(datrep$day[ceqD])
+d2 <- as.numeric(datrep$day[keqD])
+d3 <- as.numeric(datrep$day[terD])
+d4 <- as.numeric(datrep$day[covD])
+
+# create break points
+cuts <-
+  data.frame(
+    Big_Events = c(
+      "Christchurch Earthquake",
+      "Kaikoura Earthquake",
+      "Mosque Attacks",
+      "NZ First COVID-19 Case"
+    ),
+    vals = c(d1, d2, d3, d4),
+    stringsAsFactors = FALSE
+  )
+
+
+ggplot(datrep, aes(day, n)) +
+  geom_col(aes(fill = Year)) + scale_x_date(date_labels = "%b/%Y")  +
+  geom_vline(
+    mapping = aes(xintercept = vals,
+                  colour = Big_Events),
+    data = cuts,
+    linetype = "dashed",
+    show.legend = TRUE
+  )  +
+  xlab("NZAVS daily counts") + ylab("Count of Responses") + ggtitle("NZAVS Daily Counts")  + theme_classic()  +  scale_fill_viridis_d()
+```
+
+
+```{r  msm, cache = TRUE, include = TRUE, eval=FALSE}
+# Using markov models, show that change within people as they age differs from the society-wide trend
+
+#create dataframe     
+dat  <- df %>%
+  filter(YearMeasured == 1 )%>% # select people who were measured at least twice
+  dplyr::select(Wave,Age,Wave,Religious1,Id, Relid, years)%>%
+  dplyr::mutate(yearW  = as.numeric(Wave)) %>%
+  group_by(Id) %>% filter(n() > 2)%>%
+  filter(n() !=0)%>%
+  ungroup(Id)%>%
+  arrange(Id,yearW)
+
+#length(unique(dat$Id))
+
+
+### MSN ANALYIS BELOW ###
+# commenting out model to save time (which I've saved in a file, below)
+# initial matrix for transitions
+
+### MSN ANALYIS BELOW ###
+
+
+Q0 <- rbind(c(.9,.1),
+            c(.1,.9))
+
+
+# Crude initial transitions 
+crudeinR <- msm::crudeinits.msm(Religious1 ~ yearW, Id, data=dat, qmatrix=Q0)
+
+# model
+gh.mod.mnm  <- msm(Religious1 ~ yearW, Id,
+                   data=dat,
+                   covariates =  ~ Age,
+                   qmatrix = crudeinR,
+                   ematrix = rbind(c(.1,.1),c(.1,.1)),
+                   est.initprobs = TRUE)
+
+```
+
+```{r eval=FALSE,include=TRUE, eval = FALSE}
+# save model
+saveRDS(
+  gh.mod.mnm, here::here("models","hidden_markov_model_religous_change")
+)
+```
+
+```{r}
+readRDS(here::here(("models","hidden_markov_model_religous_change"))
+```
+
+#probability matrix
+msm::pmatrix.msm(gh.mod.mnm) # The probability matrix is the same
+```
+
+```{r  hmmchangeU, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from greater disaffiliation among young people than affiliation.", echo =FALSE}
+knitr::include_graphics(here::here("jpg", "simpar.jpg"))
+```
+
+
+```{r  hmmchange, cache = TRUE, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from much greater disaffiliation among young people than affiliation.", include = FALSE, code_folding=TRUE}
+#, fig.cap="Hidden markov model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from much greater disaffiliation among young people than affiliation.
+# Religious Affiliation (Innit Pr = .61);  Disaffiliation (Innit Pr = .39)
+# THIS GETS INITIAL PROBABILITIES
+#print(gh.mod.mnm)
+
+# note to self, this code can be improved
+### CREATE PLOT  ###  CONVERSION AGE PLOT
+## 20 year olds
+p20 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 20), ci = "normal")
+p20.Convert <- p20$estimates[1, 2]
+p20.Convert.L <- p20$L[1, 2]
+# get upper bound
+p20.Convert.U <- p20$U[1, 2]
+con.20 <- c(20, p20.Convert, p20.Convert.L, p20.Convert.U)
+## 30 year olds
+p30 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 30), ci = "normal")
+p30.Convert <- p30$estimates[1, 2]
+# set lower bound
+p30.Convert.L <- p30$L[1, 2]
+# get upper bound
+p30.Convert.U <- p30$U[1, 2]
+#combine
+con.30 <- c(30, p30.Convert, p30.Convert.L, p30.Convert.U)
+## 40 year old
+p40 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 40), ci = "normal")
+# Get Transition to Relid Estimate
+p40.Convert <- p40$estimates[1, 2]
+# set lower bound
+p40.Convert.L <- p40$L[1, 2]
+# get upper bound
+p40.Convert.U <- p40$U[1, 2]
+con.40 <- c(40, p40.Convert, p40.Convert.L, p40.Convert.U)
+## 50 year old
+p50 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 50), ci = "normal")
+# Get Transition to Relid Estimate
+p50.Convert <- p50$estimates[1, 2]
+# set lower bound
+p50.Convert.L <- p50$L[1, 2]
+# get upper bound
+p50.Convert.U <- p50$U[1, 2]
+con.50 <- c(50, p50.Convert, p50.Convert.L, p50.Convert.U)
+## 60 year olds
+p60 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 60), ci = "normal")
+# Get Transition to Relid Estimate
+p60.Convert <- p60$estimates[1, 2]
+# set lower bound
+p60.Convert.L <- p60$L[1, 2]
+# get upper bound
+p60.Convert.U <- p60$U[1, 2]
+con.60 <- c(60, p60.Convert, p60.Convert.L, p60.Convert.U)
+## 70 year olds
+p70 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 70), ci = "normal")
+# Get Transition to Relid Estimate
+p70.Convert <- p70$estimates[1, 2]
+# set lower bound
+p70.Convert.L <- p70$L[1, 2]
+# get upper bound
+p70.Convert.U <- p70$U[1, 2]
+con.70 <- c(70, p70.Convert, p70.Convert.L, p70.Convert.U)
+### ## 80 year olds
+p80 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 80), ci = "normal")
+# Get Transition to Relid Estimate
+p80.Convert <- p80$estimates[1, 2]
+# set lower bound
+p80.Convert.L <- p80$L[1, 2]
+# get upper bound
+p80.Convert.U <- p80$U[1, 2]
+con.80 <- c(80, p80.Convert, p80.Convert.L, p80.Convert.U)
+# ### ## 90 year olds
+p90 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 90), ci = "normal")
+# # Get Transition to Relid Estimate
+p90.Convert <- p90$estimates[1, 2]
+# # set lower bound
+p90.Convert.L <- p90$L[1, 2]
+p90.Convert.U <- p90$U[1, 2]
+con.90 <- c(90, p90.Convert, p90.Convert.L, p90.Convert.U)
+# ### create data frame for conversion plot
+conplot <-
+  data.frame(rbind(con.20, con.30, con.40, con.50, con.60, con.70, con.80, con.90))
+colnames(conplot) <-
+  c("age", "conv_probability", "conv_lower", "conv_upper")
+library(ggplot2)
+#library(wesanderson)
+#wes_palette("Zissou1", type = c("discrete"))
+#library("ggsci")
+plot.con <-
+  ggplot(aes(
+    x = age,
+    y = conv_probability,
+    ymin = conv_lower,
+    ymax = conv_upper
+  ),
+  data = conplot) + geom_point(stroke = 2, colour = "#d1495b")  +
+  geom_linerange(alpha =   1, colour = "#d1495b") +
+  geom_smooth(colour = "#d1495b",
+              method = "loess",
+              se = FALSE)  +
+  scale_y_continuous(limits = c(0, .1)) +
+  labs(x = "Age", y = "Religious Affiliation Transition Probability w/ 95% CI") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2010 -- 2020")
+
+#plot.con
+#gh.mod.mnm
+
+##### CREAT PLOT FOR DECONVERSION
+## 20 year olds
+p20 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 20), ci = "normal")
+# Get Transition to Relid Estimate
+p20.decon <- p20$estimates[2, 1]
+p20.decon.L <- p20$L[2, 1]
+p20.decon.U <- p20$U[2, 1]
+decon.20 <- c(20, p20.decon, p20.decon.L, p20.decon.U)
+p30 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 30), ci = "normal")
+p30.decon <- p30$estimates[2, 1]
+p30.decon.L <- p30$L[2, 1]
+p30.decon.U <- p30$U[2, 1]
+decon.30 <- c(30, p30.decon, p30.decon.L, p30.decon.U)
+p40 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 40), ci = "normal")
+p40.decon <- p40$estimates[2, 1]
+p40.decon.L <- p40$L[2, 1]
+p40.decon.U <- p40$U[2, 1]
+decon.40 <- c(40, p40.decon, p40.decon.L, p40.decon.U)
+p50 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 50), ci = "normal")
+p50.decon <- p50$estimates[2, 1]
+p50.decon.L <- p50$L[2, 1]
+p50.decon.U <- p50$U[2, 1]
+decon.50 <- c(50, p50.decon, p50.decon.L, p50.decon.U)
+p60 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 60), ci = "normal")
+p60.decon <- p60$estimates[2, 1]
+p60.decon.L <- p60$L[2, 1]
+p60.decon.U <- p60$U[2, 1]
+decon.60 <- c(60, p60.decon, p60.decon.L, p60.decon.U)
+p70 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 70), ci = "normal")
+p70.decon <- p70$estimates[2, 1]
+p70.decon.L <- p70$L[2, 1]
+p70.decon.U <- p70$U[2, 1]
+decon.70 <- c(70, p70.decon, p70.decon.L, p70.decon.U)
+p80 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 80), ci = "normal")
+p80.decon <- p80$estimates[2, 1]
+p80.decon.L <- p80$L[2, 1]
+p80.decon.U <- p80$U[2, 1]
+decon.80 <- c(80, p80.decon, p80.decon.L, p80.decon.U)
+p90 <-
+  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 90), ci = "normal")
+p90.decon <- p90$estimates[2, 1]
+p90.decon.L <- p90$L[2, 1]
+p90.decon.U <- p90$U[2, 1]
+decon.90 <- c(90, p90.decon, p90.decon.L, p90.decon.U)
+
+### create data frame for conversion plot
+deconplot <-
+  data.frame(rbind(
+    decon.20,
+    decon.30,
+    decon.40,
+    decon.50,
+    decon.60,
+    decon.70,
+    decon.80,
+    decon.90
+  ))
+colnames(deconplot) <-
+  c("age", "decon_probability", "decon_lower", "decon_upper")
+library(ggplot2)
+plot.decon <-
+  ggplot(aes(
+    x = age,
+    y = decon_probability,
+    ymin = decon_lower,
+    ymax = decon_upper
+  ),
+  data = deconplot) +
+  geom_point(alpha = 1,
+             colour = "#00798c",
+             stroke = 2) +   geom_linerange(alpha = 1, colour = "#00798c") +
+  #scale_y_continuous(limits=c(0,.1))    +
+  geom_smooth(colour = "#00798c", se = T) +
+  labs(x = "Age", y = "Religious Disaffiliation Transition Probability w/ 95% CI") +
+  theme_bw() +
+  labs(title = "Religious (Dis)affiliation Dynamics")  +
+  theme(legend.position = "bottom")
+
+library(gridExtra)
+#grid.arrange(plot.con,plot.decon, ncol=2)
+### SUPERIMPOSE
+deconplot$Group <- as.factor(rep("Disaffiliation", nrow(deconplot)))
+conplot$Group <- as.factor(rep("Affiliation", nrow(conplot)))
+deconplot2 <- deconplot %>%
+  dplyr::mutate(
+    conv_probability = decon_probability,
+    conv_lower = decon_lower,
+    conv_upper = decon_upper
+  ) %>%
+  dplyr::select(-c(decon_probability, decon_upper, decon_lower))
+
+comboplot <- rbind(conplot, deconplot2)
+#comboplot
+# get initial probabilities for title label
+#pmatrix.msm(gh.mod.mnm)
+
+library(ggplot2)
+plot.combo <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .1))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI: range: Pr = 0 to Pr = 1/100 ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2010 -- 2020") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_colour_manual(values = c("#d1495b", "#00798c")) +
+  theme(legend.position = "bottom")
+plot.combo
+
+#pr / plot.combo + plot_annotation(title = "Religious Change over Time",
+#         subtitle = "(i) Society-level aggregate change (ii) Individual-level process: affiliation vs. disaffiliation",
+#tag_levels = "i")
+```
+
+
+## Alluvial graph 
+
+
+```{r dataordering, include = TRUE}
+# First we import the data, and create an indicator for measured/lost/withdrawn.
+
+library("ggalluvial") # alluvial graphs
+# data sent by Chris Sibley Aug 2021
+sampling_data <-
+  haven::read_sav(here::here("data", "GraphData2.sav"))
+# table(sampling_data$SampleOriginYear) check data
+
+# remove SPSS labels
+sampling_data <- haven::zap_formats(sampling_data)
+sampling_data <- haven::zap_label(sampling_data)
+sampling_data <- haven::zap_widths(sampling_data)
+sampling_data <- haven::zap_labels(sampling_data)
+
+# rename Id variable
+sampling_data <- sampling_data %>%
+  rename(Id = Questionnaire.Num)
+
+# check
+#str(sampling_data)
+
+# checks
+# str(sampling_data)
+# table(sampling_data$SampleOriginYear)
+
+## transform data into long form, required for ggalluvial, and rename the waves
+
+inner_join(
+  sampling_data  %>%
+    dplyr::select(c(
+      Id,
+      c(
+        'T01',
+        "T02",
+        'T03',
+        "T035",
+        "T04",
+        'T05',
+        "T06",
+        'T07',
+        "T08",
+        "T09",
+        "T10",
+        "T11",
+        "T12"
+      )
+    )) %>%      #~~~~ Left side = date component ~~~~~~~~
+    gather(Wave, YearMeasured, -Id) %>%  #~ long form = 1 row per prod per seq   ~
+    mutate(
+      Wave = recode_factor(
+        Wave,
+        T01 = "2009",
+        T02 = "2010",
+        T03 = "2011",
+        T035 = "2011.5",
+        T04  = "2012",
+        T05 = "2013",
+        T06 = "2014",
+        T07 = "2015",
+        T08 = "2016",
+        T09 = "2017",
+        T10 = "2018",
+        T11 = "2019",
+        T12 = "2020"
+      )
+    ) %>%
+    arrange(Id),
+  sampling_data %>%
+    dplyr::select(c(Id, starts_with('SampleOriginYear'))) %>%
+    arrange(Id),
+) -> sdf
+
+# check data
+# head(sdf)
+
+# define sample origin year
+sdf <- sdf %>%
+  mutate(SampleOriginYear = SampleOriginYear + 2008)
+
+#  Make sample frame into a factor
+sdf$SampleOriginYear <- as.factor(sdf$SampleOriginYear)
+
+# Check
+# table(sdf$SampleOriginYear)
+
+## Created levels for "missing", "not yet measured" and "deceased"
+## then filter "not yet measured"
+
+sdf.0 <- sdf %>%
+  mutate(Wave = as.numeric(as.character(Wave))) %>%
+  arrange(Wave, Id) %>%
+  group_by(Id) %>%
+  mutate(first = {
+    YearMeasured == 1
+  } %>% {
+    . * !duplicated(.)
+  }) %>%
+  mutate(
+    value_tmp = if_else(first == 1, Wave, NA_real_),
+    firstwave  = mean(value_tmp, na.rm = TRUE) # this is a hack, but works
+  ) %>%
+  mutate(state  = ifelse(
+    YearMeasured == -1,
+    "deceased",
+    ifelse(
+      YearMeasured == 0 & Wave < firstwave,
+      "notyetmeasured",
+      ifelse(YearMeasured == 0 &
+               Wave > firstwave, "missing",
+             "measured")
+    )
+  )) %>%
+  dplyr::mutate(Wave = as.factor(Wave)) %>% # return Wave to a factor
+  dplyr::select(Wave, Id, state, YearMeasured, SampleOriginYear) %>%
+  dplyr::filter(state != "notyetmeasured") %>%
+  droplevels() %>%
+  arrange(Id, Wave)
+
+# Check
+# table(sdf.0$SampleOriginYear)
+
+# This is to create a "recovered" state. Not used but could be useful for modelling recovery:
+
+sdf.01 <- sdf.0 %>%
+  group_by(Id) %>%
+  mutate(lag_state = dplyr::lag(state, n = 1, default = "init"))
+
+sdf.1 <- sdf.01 %>%
+  group_by(Id, Wave) %>%
+  mutate(recovered = ifelse(lag_state == "missing" &
+                              state == "measured", "recovered", state))
+
+
+# We need to back fill the missing values for our alluvial graph.
+# This is OK because a participants original sampling frame does not change.
+
+ssdf0 <- sdf.1 %>%  # Fill missing values for Sample.Frame
+  arrange(Id) %>%
+  group_by(Id) %>%
+  fill(SampleOriginYear)  %>%
+  ungroup()
+
+# now we create the "state_frame" variable
+tf <- ssdf0 %>%
+  mutate(SampleOriginYear = as.character(SampleOriginYear))
+
+ssdf <- tf %>%
+  mutate(state_frame = ifelse(
+    state == "missing",
+    "missing",
+    ifelse(state == "deceased", "deceased",
+           SampleOriginYear)
+  ))
+ssdf.0 <- ssdf %>%
+  mutate(state_frame = factor(state_frame))
+
+# check
+# levels(ssdf.0$state_frame)
+
+# next we order the levels of the factor to create a pretty graph
+ssdf.01 <- ssdf.0 %>%
+  mutate(state_frame = forcats::fct_relevel(
+    state_frame,
+    c(
+      "2009",
+      "2010",
+      "2011",
+      "2011.5",
+      "2012",
+      "2013",
+      "2014",
+      "2015",
+      "2016",
+      "2017",
+      "2018",
+      "2019",
+      "2020",
+      "missing",
+      "deceased"
+    )
+  )) %>%
+  rename(Recovered = recovered) # for pretty table
+
+#  Uncomment to create tables
+# table1::table1( ~ state_frame | Wave, data = ssdf.01, overall = FALSE)
+#table1::table1( ~ Recovered | Wave, data = ssdf.01, overall = FALSE)
+```
+
+
+```{r graphalluvial, fig.cap = "NZAVS waves 2009-2020."}
+# prepare data for graph 
+datsSF <- ssdf.01 %>%
+  group_by(Wave, state_frame, Id) %>%
+  summarise(n = n())
+
+# check data
+# head(datsSF)
+# str(datsSF)
+
+# Graph
+
+ggplot(
+  datsSF,
+  aes(
+    x = Wave,
+    stratum = state_frame,
+    alluvium = Id,
+    y = n,
+    fill = state_frame,
+    label = state_frame
+  )
+) +
+  geom_flow() +
+  geom_stratum(alpha = .5) +
+  geom_text(stat = "stratum", size = 2) +
+  guides(color = guide_legend(override.aes = list(size = 20))) +
+  scale_x_discrete(position = 'top', expand = c(0, 0)) +
+  scale_y_reverse(
+    expand = c(0.001, 0.001),
+    minor_breaks = seq(0, 70000, by = 1000),
+    breaks = seq(0, 70000, by = 5000)
+  ) +
+  scale_fill_viridis_d(option = "turbo") +
+  ggtitle("NZAVS alluvial retention graph: waves 2009-2020")  +
+  theme_bw() +   # other theme options below.
+  # theme_wsj() +
+  # theme_radar() +
+  # theme_solarized() +
+  # theme_abyss() +
+  # theme_economist() +
+  # theme_economist_white() +
+  # theme(axis.text = element_text(colour = "blue")) +
+  theme(legend.justification = "top") +
+  theme(legend.title = element_blank())  # remove legend title
+
+# to save file in your directory at correct resolution, uncomment below
+# file <- here("figs", paste("alluvial_highres_turbo_BW", ".png", sep = ""))
+#
+# ggsave(
+#   file,
+#   device = "png",
+#   scale = 1,
+#   width = 16,
+#   height = 9,
+#   units = "in",
+#   dpi = 300,
+#   limitsize = TRUE
+# )
+```
+
+
+
+## Covid
+
+```{r cache = TRUE}
+# GRAPH
+tline + plot_annotation(title = "NZAVS COVID timeline", 
+subtitle = "0(34778) 1.PreCVD(23460) 2.JanFeb(2678) 3.March(2537) 4.LckDwn(1647) 5.PostLD(4456)")
+```
+
+# What we did with our time?
+
+
+
 
 
 
