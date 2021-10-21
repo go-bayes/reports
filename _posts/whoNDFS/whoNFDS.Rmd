@@ -509,10 +509,10 @@ plotmat(toz,
 
 ### We next attempt to describe the Christian NFDs
 
-#### Age
 
-```{r}
-# age
+
+```{r, include = F, eval=FALSE}
+# age, use only if referees require
 library("easystats")
 m_age <- brm(
   Age | weights(w.GendAgeEthnic)  ~ ChristianBigDoms,
@@ -538,7 +538,6 @@ plot(
 
 parameters::model_parameters(m_age, test = "pd")%>%
   print_html
-
 ```
 
 
@@ -562,11 +561,11 @@ table1::table1(
 ```
 
 
-### Monthly Church Attendance
+### Models 
 
 
 ```{r}
- # poisson models require rates to be integers
+ # poisson models require rates to be integers, zero inflation because there is an abundance of zeros
 
 gt1 <- gt1 %>%
   mutate(MonthlyChurch = as.integer(MonthlyChurch),
@@ -632,62 +631,91 @@ m_relid <- brm(
 
 ch <- conditional_effects(m_church, c("ChristianBigDoms"), prob =  0.89)
 
-plot(ch, points = TRUE, 
-     point_args = list(alpha =1/50,
+p0 <-plot(ch, points = TRUE, 
+     point_args = list(alpha =.01,
                        width = .1))[[1]] + 
-  scale_y_sqrt() 
+ scale_y_sqrt( breaks = seq(0, 30, by = 5),  name = "Monthly Church Frequency") +
+   xlab("Christian Denominations")#+ annotation_logticks() 
   
+p0
+
+sc <- conditional_effects(m_scripture, c("ChristianBigDoms"), prob =  0.89)
+p1 <- plot(sc, points = TRUE, 
+     point_args = list(alpha =.005,
+                       width = .1))[[1]] + 
+  scale_y_sqrt( breaks = seq(0, 100, by = 5),  name = "Weekly Scripture Frequency")+
+   xlab("Christian Denominations")#+ annotation_logticks()  
+p1
+
+
+pr <- conditional_effects(m_prayer, c("ChristianBigDoms"), prob =  0.89)
+p2 <- plot(pr, points = TRUE, 
+     point_args = list(alpha =.005,
+                       width = .1))[[1]] + 
+  scale_y_sqrt( breaks = seq(0, 100, by = 5), name = "Weekly Prayer Frequency") + 
+   xlab("Christian Denominations")#+ annotation_logticks()  
+
+p2
+
+gd <- conditional_effects(m_god, c("ChristianBigDoms"), prob =  0.89)
+
+p3 <- plot(gd)[[1]] + expand_limits(y=c(0,1)) +
+  ylab("Probability for belief in God (0-1)")+ 
+   xlab("Christian Denominations")#+ annotation_logticks()  
+
+p3
+
+sp <- conditional_effects(m_spirit, c("ChristianBigDoms"), prob =  0.89)
+
+p4 <- plot(sp)[[1]] + expand_limits(y=c(0,1)) +
+  ylab("Probability of belief in a Spirit or Life Force (0-1)") + 
+   xlab("Christian Denominations")#+ annotation_logticks()  
+
+
+p4
+
+spID <- conditional_effects(m_spiritID, c("ChristianBigDoms"), prob =  0.89)
+
+
+p5 <- plot(spID,points = TRUE, 
+     point_args = list(alpha =.002,
+                       width = .1))[[1]] +
+  ylab("Spiritual Identification (1-7)")+ 
+   xlab("Christian Denominations")#+ annotation_logticks() 
 
 
 
-
-p<-ggpredict(m_church, terms = "ChristianBigDoms")
-plot(p, 
-     add.data = TRUE,
-     dot.alpha =  0.035)
-
-conditional_effects(m_scripture, c("ChristianBigDoms"),
-                        prob = c(0.11, 0.89),
-                        categorical = F)
+relID <- conditional_effects(m_relid, c("ChristianBigDoms"), prob =  0.89)
 
 
-conditional_effects(m_prayer, c("ChristianBigDoms"),
-                        probs = c(0.11, 0.89),
-                        categorical = F)
-
-
-conditional_effects(m_god, c("ChristianBigDoms"),
-                        probs = c(0.11, 0.89),
-                        categorical = F)
-
-conditional_effects(m_spirit, c("ChristianBigDoms"),
-                        probs = c(0.11, 0.89),
-                        categorical = F)
-
-
-conditional_effects(m_spiritID, c("ChristianBigDoms"),
-                        probs = c(0.11, 0.89),
-                        categorical = F)
-
-
-conditional_effects(m_relid, c("ChristianBigDoms"),
-                        probs = c(0.11, 0.89),
-                        categorical = F)
+p6 <- plot(relID,points = TRUE, 
+     point_args = list(alpha =.002,
+                       width = .1))[[1]] +
+  ylab("Religious Identification (1-7)") + 
+    xlab("Christian Denominations") #+ annotation_logticks() 
+#+ annotation_logticks() 
 
 
 
+library(patchwork)
 
-# pp checks
-pp.dommod<-pp_check(m_age, resp = "Age") + ylab("Age")
-pp.dommod # 1000 x 1000
+p0|(p1 + p2) / (p3 + p4 )/ (p5 + p6) + 
+ #  plot_layout(nrow = 2, byrow = TRUE) + 
+  plot_annotation(title = "Christian NFDs exhibit high levels of religious commitment", 
+                  tag_levels = 'a') 
 
-tidy_stan
-plot( 
-  parameters::model_parameters(m_age, test = "pd")
-)
-
-parameters::model_parameters(m_age, test = "pd")%>%
-  print_html
+# nfd 1500 x 1500
+# # pp checks
+# pp.dommod<-pp_check(m_age, resp = "Age") + ylab("Age")
+# pp.dommod # 1000 x 1000
+# 
+# tidy_stan
+# plot( 
+#   parameters::model_parameters(m_age, test = "pd")
+# )
+# 
+# parameters::model_parameters(m_age, test = "pd")%>%
+#   print_html
 ```
 
 
