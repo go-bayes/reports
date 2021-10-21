@@ -1,0 +1,2022 @@
+---
+title: "Religion in New Zealand 2009-2020"
+description: ""
+author:
+  - name: Joseph Bulbulia
+    url: https://josephbulbulia.netlify.app
+    affiliation: Victoria University of Wellington
+    affiliation_url: https://www.wgtn.ac.nz
+    orcid_id: 0000-0002-5861-2056
+date: 2021-Sep-30
+output:
+  distill::distill_article:
+    self_contained: true
+    toc: true
+    code_folding: true
+---
+
+```{r setup, code_folding = FALSE, include=FALSE}
+# setup
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  layout = "l-body-outset",
+  fig.width = 16,
+  fig.height = 9,
+  collapse = TRUE,
+  R.options = list(width = 60
+  )
+)
+# packages
+library("tidyverse") # data wrangling 
+library("here") # setting directories
+library("ggplot2") # graph 
+library("ggthemes") # themes
+library("table1") # tables
+library("lme4") # alluvial graphs
+library("ggeffects") # alluvial graphs
+library("ggthemes")
+library("gghighlight")
+library('msm')
+library('seqHMM')
+library("rstan")
+library("brms")
+rstan_options(auto_write=TRUE)
+options(mc.cores=parallel::detectCores ())
+theme_set(theme_few())
+# if (!require(xaringanExtra)) {
+#   devtools::install_github("gadenbuie/xaringanExtra")
+# }
+```
+
+
+
+You can find more information about the NZAVS:[HERE](https://www.psych.auckland.ac.nz/en/about/new-zealand-attitudes-and-values-study.html)
+    
+
+## Data wrangling 
+
+
+```{r}
+# read data
+df <- readRDS(here::here("data", "df"))
+# data wrangling
+df <- df %>% filter(YearMeasured == 1)
+```
+
+
+Participants per wave
+
+```{r }
+#Participants per wave
+df %>%
+  filter(YearMeasured ==1) %>%
+  droplevels() %>%
+  arrange(Wave) %>%
+  group_by(Wave) %>%
+  count( )
+#glimpse(dt1) # inspect data
+```
+
+
+```{r}
+# NFD Dynamics
+# joseph.bulbulia@gmail.com
+# https://strengejacke.wordpress.com/2017/10/23/one-function-to-rule-them-all-visualization-of-regression-models-in-rstats-w-sjplot/
+
+# create denomination labels
+df1 <- df %>%
+  mutate(Census.Religion.L1 = as.factor(Census.Religion.L1)) %>%
+  mutate(Christian = as.factor(ifelse(
+    Census.Religion.L1 == 2 | Census.Religion.L1 == 6, 1, 0
+  ))) %>%
+  mutate(Christian_nfd = as.factor(ifelse(Census.Religion.L3 == 20000, 1, 0))) %>%
+  mutate(Catholic = as.factor(
+    ifelse(
+      Census.Religion.L3 == 20600 |
+        Census.Religion.L3 ==  20601 |
+        Census.Religion.L3 ==  20699,
+      1,
+      0
+    )
+  )) %>%
+  mutate(Anglican = as.factor(ifelse(Census.Religion.L3 == 20201, 1, 0))) %>%
+  # mutate(Methodist = as.factor(ifelse(Census.Religion.L3.T8 == 21299|Census.Religion.L3.T8 ==  21200| Census.Religion.L3.T8 ==  21201, 1,0)))%>%
+  mutate(PresbyCongReform = as.factor(
+    ifelse(
+      Census.Religion.L3 == 21501 |
+        Census.Religion.L3 == 21502 | Census.Religion.L3 == 21505,
+      1,
+      0
+    )
+  )) %>%
+  mutate(Pentecostals = as.factor(
+    ifelse(
+      Census.Religion.L3 == 21400 |
+        Census.Religion.L3 == 21401 |
+        Census.Religion.L3 == 21402 |
+        Census.Religion.L3 == 21403 |
+        Census.Religion.L3 == 21404 |
+        Census.Religion.L3 == 21405 |
+        Census.Religion.L3 == 21406 |
+        Census.Religion.L3 == 21408 |
+        Census.Religion.L3 == 21409 |
+        Census.Religion.L3 == 21410 |
+        Census.Religion.L3 == 21411 |
+        Census.Religion.L3 == 21412 | 
+        Census.Religion.L3 == 21499,
+      1,
+      0
+    )
+  )) %>%
+  mutate(Muslim = as.factor(
+    ifelse(Census.Religion.L1 == 40100 |
+             Census.Religion.L1 == 40199, 1, 0)
+  ))
+
+# create big denomination labels 
+df1$ChristianBigDoms <- factor(ifelse(
+  df1$Anglican == 1,
+  "Anglican",
+  ifelse(
+    df1$Catholic == 1,
+    "Catholic",
+    # ifelse(dat8.Chr.1$Methodist == 1, "Methodist",
+    ifelse(
+      df1$PresbyCongReform == 1,
+      "PresbyCongReform",
+      ifelse(df1$Christian_nfd ==
+               1, "Christian_nfd", "TheOthers")
+    )
+  )
+))
+
+
+
+# fix label names
+df1$Religious <-
+  factor(df1$Religious, labels = c("Not Religious", "Religious"))
+df1$Believe.God <-
+  factor(df1$Believe.God, labels = c("Not Believe God", "Believe God"))
+df1$Believe.Spirit <-
+  factor(df1$Believe.Spirit,
+         labels = c("Not Believe Spirit", "Believe Spirit"))
+df1$Anglican <-
+  factor(df1$Anglican , labels = c("Not Anglican", "Anglican"))
+df1$Christian_nfd <-
+  factor(df1$Christian_nfd ,
+         labels = c("Not ChristianNFD", "ChristianNFD"))
+df1$EthnicCats <-
+  factor(df1$EthnicCats,
+         labels = c("Eurpean", "Maori", "Pacific", "Asian"))
+df1$Male <- factor(df1$Male, labels = c("Female", "Male"))
+df1$Urban <- factor(df1$Urban, labels = c("Not Urban", "Urban"))
+```
+
+
+Create table for demographic variables and demographic table 
+
+```{r}
+# use dataset ####
+
+# old clunky code
+gt <- df1 %>%
+  dplyr::filter(Wave == "2018") %>%
+  dplyr::filter(Christian == 1) %>%
+  dplyr::select(
+    Id,
+    Partner,
+    Age,
+    Male,
+    Relid,
+    Urban,
+    Employed,
+    Edu,
+    Pol.Orient,
+    NZdep,
+    Religion.Prayer,
+    Religion.Scripture,
+    Religion.Church,
+    GenCohort,
+    Believe.God,
+    Believe.Spirit,
+    Spiritual.Identification,
+    Issue.ReligiousEd,
+    w.GendAgeEthnic,
+    ChristianBigDoms,
+    EthnicCats,
+    Edu,
+    ChildrenNum
+  ) %>%
+  dplyr::mutate(Edu = as.numeric(Edu)) %>%
+  dplyr::mutate(Age.C.decade = scale(Age, scale = FALSE, center = TRUE) /
+                  10) %>%
+  dplyr::mutate(Age = as.numeric(Age)) %>%
+  # dplyr::mutate(Year = as.numeric(Wave)-2018)%>%
+  dplyr::mutate(Pol.Orient = as.numeric(Pol.Orient)) %>%
+  dplyr::mutate(NZdep.S = scale(NZdep, scale = T, center = T)) %>%
+  dplyr::mutate(Age.S = scale(Age, scale = F, center = T)) %>%
+  dplyr::mutate(Edu.S = scale(Edu, scale = T, center = T)) %>%
+  dplyr::mutate(Relid.S = scale(Relid, scale = T, center = T)) %>%
+  dplyr::mutate(Spiritual.Identification.S = scale(
+    Spiritual.Identification,
+    scale = T,
+    center = T
+  )) %>%
+  dplyr::mutate(Pol.Orient.S = scale(Pol.Orient, scale = F, center = T)) %>%
+  dplyr::mutate(Church.S = scale((Religion.Church), scale = T, center =
+                                   T)) %>%
+  dplyr::mutate(Prayer.S = scale(Religion.Prayer, scale = T, center = T)) %>%
+  dplyr::mutate(Scripture.S = scale(Religion.Scripture, scale = F, center =T)) %>%
+  dplyr::mutate(ChildrenNum.C = scale(ChildrenNum, scale = F, center = T)) %>%
+  dplyr::mutate(Church.log.C = scale(log(Religion.Church + 1), scale =
+                                       F, center = T)) %>%
+  dplyr::mutate(Prayer.log.C = scale(log(Religion.Prayer + 1), scale =
+                                       F, center = T)) %>%
+  dplyr::mutate(Scripture.log.C = scale(
+    log(Religion.Scripture + 1),
+    scale = F,
+    center = T
+  )) %>%
+  dplyr::mutate(ChildrenNum.log.C = scale(log(ChildrenNum + 1), scale =
+                                            F, center = T)) %>%
+  dplyr::mutate(Male = factor(Male))
+
+# hist(gt$Church.log.C)
+# hist(gt$Scripture.log.C)
+
+gt1<-gt
+#fix lables
+#gt1$Religious <- factor(gt1$Religious, labels = c("Not Religious","Religious"))
+gt1$Believe.God <- factor(gt1$Believe.God, labels = c("Not Believe God","Believe God"))
+gt1$Believe.Spirit <- factor(gt1$Believe.Spirit, labels = c("Not Believe Spirit","Believe Spirit"))
+#gt1$Anglican <- factor(gt1$Anglican , labels = c("Not Anglican","Anglican"))
+gt1$EthnicCats <- factor(gt1$EthnicCats,labels = c("European","Maori","Pacific","Asian"))
+gt1$Male <- factor(gt1$Male,labels = c("Female","Male"))
+gt1$Urban <- factor(gt1$Urban,labels = c("Not Urban","Urban"))
+# clear labels
+gt1$PoliticsConservative <-gt1$Pol.Orient
+# clear
+gt1$WeeklyPrayer<-gt1$Religion.Prayer
+gt1$WeeklyScripture <-gt1$Religion.Scripture
+gt1$MonthlyChurch <-gt1$Religion.Church
+gt1$Children <-gt1$ChildrenNum
+
+
+
+
+# tables ####
+table1::table1(
+  ~ Age + Children  + Edu + EthnicCats + Male + NZdep  + Employed + Pol.Orient + Urban #
+  | ChristianBigDoms,
+  data = gt1,
+  overall = T,
+  transpose = F
+)
+```
+
+Table for religious "traits"
+
+```{r}
+table1::table1(
+  ~ MonthlyChurch + 
+    WeeklyScripture + 
+    WeeklyPrayer + 
+    Believe.God + 
+    Believe.Spirit + 
+    Relid + 
+    Spiritual.Identification |
+    ChristianBigDoms,
+  data = gt1,
+  overall = T,
+  transpose = F
+)
+```
+
+
+## Analysis
+
+
+
+
+### Religious change 
+
+We replicate the census New Zealand findings showing growth in Christian NFDs, and further we find evidence for switching ...
+
+
+```{r}
+library(tidyverse)
+g1 <- df %>%
+  filter(Christian == 1)
+  
+g2 <- df %>%
+  filter(Christian_nfd != 1)
+
+
+gu <- df %>%
+  mutate(Christian_nfd = as.factor(ifelse(Census.Religion.L3 == 20000, 1, 0))) %>%
+  mutate(Christian_nfd_3 = as.factor(ifelse(
+    Christian_nfd == 1,
+    "Christian_nfd",
+    ifelse(Christian == 1 &
+             Christian_nfd != 1, "Other_Religion", "Secular")
+  )))
+
+
+# #CHRISTIANS MOVING MORE TO NDF
+# msm::statetable.msm(Christian_nfd,Id,data=g1)
+# 
+# # IGNORING NFDS, LOSS OF CHRISTIAN TO SECULAR
+# msm::statetable.msm(Christian,Id,data=g2)
+
+# IGNORING non_NFD Christians, LOSS OF CHRISTIAN TO SECULAR
+
+msm::statetable.msm(Christian_nfd_3, Id, data = gu)
+```
+
+
+
+```{r eval=FALSE, include=FALSE}
+ 
+# This model is not stable
+
+
+# prepare data for HMM
+gu1 <- gu %>%
+  select(Id, Christian_nfd_3, Wave) %>%
+  group_by(Id) %>%
+  filter(n() > 2) %>%  # at least 2 x measuresments
+  ungroup()
+
+#length(unique(gu1$Id)) # 23438 individuals
+
+
+wide.CBD <- spread(gu1, Wave, Christian_nfd_3)
+#wide.CBD
+#head(wide.CBD)
+
+# Hidden Markov Model
+wide.CBD.s <-seqdef(wide.CBD[,2:10])
+wide.CBD.s
+sc_initmod_random <- build_hmm(
+  observations = wide.CBD.s, 
+  n_states = 3)
+str(sc_initmod_random)
+sc_initmod_random
+
+sc_initmod <- build_hmm(observations = wide.CBD.s, 
+                        initial_probs = sc_initmod_random$initial_probs, 
+                        transition_probs = sc_initmod_random$transition_probs, 
+                        emission_probs = sc_initmod_random$emission_probs)
+
+#sc_initmod
+#saveRDS(sc_initmod, here::here("models", "nfd_sc_initmod") )
+#sc_fit <- fit_model(sc_initmod)
+#nfd_1 <-sc_fit
+#saveRDS(nfd_1, here::here("models", "nfd_1") )
+
+nfd_1 <-readRDS( here::here("models", "nfd_1") )
+#print(nfd_1$model, conditional_se = T) 
+nfd_1$model
+
+#Hidden Markov Model Graph
+
+plot(nfd_1$model,
+     #   vertex.label =  c("OldChurches", "OtherChristians","Secular","Christian_NFD"),
+     #cex.edge.width = 4,
+     #cex.legend =1,
+     layout = layout_nicely,
+     #edge.arrow.size = 1,
+     vertex.label.dist = 1,
+     # combine.slices = .1,
+     with.legend	="bottom",
+     # hidden.states.labels =c("Hidden 1","Hidden 2"),
+     title ="Hidden Markov Model Christian NFD/ Christian / Secular Affiliation:2009-2018",
+    # loops=T,
+     vertex.size = 40,
+     legend.prop =.3,
+     ncol.legend = 2)
+dev.off()
+```
+
+
+Hidden Markov Model
+
+```{r}
+dat  <- gu %>%
+  filter(YearMeasured == 1) %>%
+  select(Id, Christian_nfd_3, Wave) %>%
+  dplyr::mutate(yearW  = as.numeric(Wave),
+                Christian_nfd_N = as.numeric(Christian_nfd_3)) %>%
+  filter(!is.na(Christian_nfd_3)) %>%
+  group_by(Id) %>%
+  filter(n() > 2) %>%  # at least 2 x measuresments
+  ungroup() %>%
+  arrange(Id,yearW,Christian_nfd_N)
+dat
+
+length(unique(dat$Id)) # 23196
+### MSN ANALYIS BELOW ###
+# commenting out model to save time (which I've saved in a file, below)
+# initial matrix for transitions
+Q0 <- rbind(c(.9,.1,.1),
+            c(.1,.9,.1),
+            c(.1,.1,.9))
+
+# 
+crudeinR <-
+  crudeinits.msm(Christian_nfd_N ~ yearW,
+                 Id,
+                 data = dat,
+                 qmatrix = Q0)
+# #  avoid running to save time
+# gh.mod.mnm  <- msm(
+#   Christian_nfd_N ~ yearW,
+#   Id,
+#   data = dat,
+#   qmatrix = crudeinR,
+#   ematrix = rbind(c(.1, .1, .1), c(.1, .1, .1),  c(.1, .1, .1)),
+#   est.initprobs = TRUE
+# )
+
+#saveRDS(gh.mod.mnm, here::here("models","gt_ndf_msm"))
+
+m1 <-readRDS(here::here("models","gt_ndf_msm"))
+m1
+```
+
+Probability matrix
+
+```{r}
+#probability matrix
+msm::pmatrix.msm(m1) # Th
+```
+
+
+Note that if we do not adjust for measurement error, we obtain different estimates, with more apparent movement. A Hidden Markov model deals with misclassification probabilities.
+
+```{r include = FALSE}
+m2  <- msm(
+  Christian_nfd_N ~ yearW,
+  Id,
+  data = dat,
+  qmatrix = crudeinR,
+  est.initprobs = TRUE,
+  exacttimes=TRUE ,
+  gen.inits=TRUE
+)
+
+
+msm::pmatrix.msm(m2)
+
+oz<- as.matrix( msm::pmatrix.msm(m1) )# Th
+oz <- round(oz, digits = 3)
+
+
+stateNames <- c("Christian NFD","Other Religions","Secular")
+row.names(oz) <- stateNames; colnames(oz) <- stateNames
+
+## need to transpose or else arrows go in the wrong direction
+toz <- t(oz) 
+
+library(markovchain)
+library(diagram)
+library(pracma)
+plotmat(toz,
+       # pos = c(1,2), 
+       # lwd = 1, 
+       # box.lwd = 2, 
+        cex.txt = 0.9, 
+        box.size = 0.09, 
+       # box.type = "circle", 
+        box.prop = 0.5,
+        arr.pos =  0.4, 
+        shadow.size = 0.001,
+        box.col = c("lightgreen","lightblue","orange"),
+       # arr.length=.1,
+       # arr.width=.1,
+        self.cex = .4,
+        self.shifty = -.01,
+        self.shiftx = .12,
+        main = "Hidden Markov Model reveals stability among Christian NFDs relative to other religions
+       New Zealand: years 2009-2020")
+
+```
+
+
+
+
+### We next attempt to describe the Christian NFDs
+
+#### Age
+
+```{r}
+# age
+library("easystats")
+m_age <- brm(
+  Age | weights(w.GendAgeEthnic)  ~ ChristianBigDoms,
+  data = gt1,
+  file = here::here("models", "nfd_age")
+)
+
+
+# graph 
+conditional_effects(m_age, c("ChristianBigDoms"),
+                        probs = c(0.11, 0.89),
+                        categorical = F)
+
+
+# pp checks
+pp.dommod<-pp_check(m_age, resp = "Age") + ylab("Age")
+pp.dommod # 1000 x 1000
+
+tidy_stan
+plot( 
+  parameters::model_parameters(m_age, test = "pd")
+)
+
+parameters::model_parameters(m_age, test = "pd")%>%
+  print_html
+
+```
+
+
+### Properties of the NFDs
+
+
+```{r}
+table1::table1(
+  ~ MonthlyChurch + 
+    WeeklyScripture + 
+    WeeklyPrayer + 
+    Believe.God + 
+    Believe.Spirit + 
+    Relid + 
+    Spiritual.Identification |
+    ChristianBigDoms,
+  data = gt1,
+  overall = T,
+  transpose = F
+)
+```
+
+
+### Monthly Church Attendance
+
+
+```{r}
+ # poisson models require rates to be integers
+
+gt1 <- gt1 %>%
+  mutate(MonthlyChurch = as.integer(MonthlyChurch),
+         WeeklyScripture = as.integer(WeeklyScripture),
+         WeeklyPrayer = as.integer(WeeklyPrayer))
+hist(gt1$MonthlyChurch, breaks =100)
+hist(gt1$WeeklyPrayer, breaks =100)
+
+
+m_church <- brm(
+  MonthlyChurch | weights(w.GendAgeEthnic)  ~ ChristianBigDoms,
+  data = gt1,
+  family = zero_inflated_negbinomial(),
+  file = here::here("models", "nfd_church")
+)
+
+m_scripture <- brm(
+  WeeklyScripture | weights(w.GendAgeEthnic)  ~ ChristianBigDoms,
+  family = zero_inflated_negbinomial(),
+  data = gt1,
+  file = here::here("models", "nfd_scripture")
+)
+
+m_prayer <- brm(
+  WeeklyPrayer | weights(w.GendAgeEthnic)  ~ ChristianBigDoms,
+  family = zero_inflated_negbinomial(),
+  data = gt1,
+  file = here::here("models", "nfd_prayer")
+)
+
+
+m_god <- brm(
+  Believe.God | weights(w.GendAgeEthnic)  ~ ChristianBigDoms,
+  family = bernoulli(link = "logit"),
+  data = gt1,
+  file = here::here("models", "nfd_god")
+)
+
+
+m_spirit <- brm(
+  Believe.Spirit | weights(w.GendAgeEthnic)  ~ ChristianBigDoms,
+  family = bernoulli(link = "logit"),
+  data = gt1,
+  file = here::here("models", "nfd_spirit")
+)
+
+m_spiritID <- brm(
+  Spiritual.Identification | weights(w.GendAgeEthnic)  ~ ChristianBigDoms,
+  data = gt1,
+  file = here::here("models", "nfd_spiritID")
+)
+
+
+m_relid <- brm(
+  Relid | weights(w.GendAgeEthnic)  ~ ChristianBigDoms,
+  data = gt1,
+  file = here::here("models", "nfd_relid")
+)
+
+
+# graph 
+# graph s
+
+ch <- conditional_effects(m_church, c("ChristianBigDoms"), prob =  0.89)
+
+plot(ch, points = TRUE, 
+     point_args = list(alpha =1/50,
+                       width = .1))[[1]] + 
+  scale_y_sqrt() 
+  
+
+
+
+
+p<-ggpredict(m_church, terms = "ChristianBigDoms")
+plot(p, 
+     add.data = TRUE,
+     dot.alpha =  0.035)
+
+conditional_effects(m_scripture, c("ChristianBigDoms"),
+                        prob = c(0.11, 0.89),
+                        categorical = F)
+
+
+conditional_effects(m_prayer, c("ChristianBigDoms"),
+                        probs = c(0.11, 0.89),
+                        categorical = F)
+
+
+conditional_effects(m_god, c("ChristianBigDoms"),
+                        probs = c(0.11, 0.89),
+                        categorical = F)
+
+conditional_effects(m_spirit, c("ChristianBigDoms"),
+                        probs = c(0.11, 0.89),
+                        categorical = F)
+
+
+conditional_effects(m_spiritID, c("ChristianBigDoms"),
+                        probs = c(0.11, 0.89),
+                        categorical = F)
+
+
+conditional_effects(m_relid, c("ChristianBigDoms"),
+                        probs = c(0.11, 0.89),
+                        categorical = F)
+
+
+
+
+# pp checks
+pp.dommod<-pp_check(m_age, resp = "Age") + ylab("Age")
+pp.dommod # 1000 x 1000
+
+tidy_stan
+plot( 
+  parameters::model_parameters(m_age, test = "pd")
+)
+
+parameters::model_parameters(m_age, test = "pd")%>%
+  print_html
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+g1<-plot(a1, plot = FALSE)[[1]]  + ylab("Probability of Group Membership")+ 
+  xlab("Age in Decades(centred: 51.24 y.o.)") +
+  scale_y_continuous(limits=c(0,.7)) #+ theme_solarized_2()
+g1 ## 12 x 8
+library(ggpubr)
+gt1<-ggpar(g1,  legend.title = "Christian Group") +  grids(linetype = "dashed")
+gt1 # 1000 X 1
+
+
+
+# predictive graph
+a2<-conditional_effects(fit.gt.ChristianBigDoms, c("EthnicCats"),
+                        # probs = c(0.11, 0.89),
+                        categorical = TRUE)
+
+# plot 2
+g2<-plot(a2, plot = FALSE)[[1]]  + ylab("Probability of Group Membership")+
+  xlab("Ethnicity") +
+  scale_y_continuous(limits=c(0,.7)) #+ theme_solarized_2()
+g2
+gt2<-ggpar(g2,  legend.title = "Christian Group") +  grids(linetype = "dashed")
+gt2
+
+# predictive graph
+a3<-conditional_effects(fit.gt.ChristianBigDoms, c("Edu.S"),
+                        # probs = c(0.11, 0.89),
+                        categorical = TRUE)
+
+# plot 3
+g3<-plot(a3, plot = FALSE)[[1]]  + ylab("Probability of Group Membership")+
+  xlab("Education(S)") +
+  scale_y_continuous(limits=c(0,.7)) #+ theme_solarized_2()
+gt3<-ggpar(g3,  legend.title = "Christian Group") +  grids(linetype = "dashed")
+gt3
+
+
+# predictive graph
+a4<-conditional_effects(fit.gt.ChristianBigDoms, c("NZdep.S"),
+                        # probs = c(0.11, 0.89),
+                        categorical = TRUE)
+
+# plot 4 ## nothing much
+g4<-plot(a4, plot = FALSE)[[1]]  + ylab("Probability of Group Membership")+
+  xlab("NZ Deprivation (S)") +
+  scale_y_continuous(limits=c(0,.7)) #+ theme_solarized_2()
+gt4<-ggpar(g4,  legend.title = "Christian Group") +  grids(linetype = "dashed")
+gt4
+
+# #####
+# # predictive graph 5 # nothing much
+# a5<-conditional_effects(fit.gt.ChristianBigDoms, c("ChildrenNum.log.C"),
+#                         # probs = c(0.11, 0.89),
+#                         categorical = TRUE)
+# a5
+# # plot 5 # no diff
+# g5<-plot(a5, plot = FALSE)[[1]]  + ylab("Probability of Group Membership")+
+#   xlab("ChildrenNumber.Log(4)") +
+#   scale_y_continuous(limits=c(0,1)) #+ theme_solarized_2()
+# gt5<-ggpar(g5,  legend.title = "Christian Group") +  grids(linetype = "dashed")
+# gt5
+
+
+# predictive graph 6
+a6<-conditional_effects(fit.gt.ChristianBigDoms, c("Pol.Orient.S"),
+                        # probs = c(0.11, 0.89),
+                        categorical = TRUE)
+
+# plot 6
+g6<-plot(a6, plot = FALSE)[[1]]  + ylab("Probability of Group Membership")+
+  xlab("Polical Conservitivism(S)") +
+  scale_y_continuous(limits=c(0,.7)) #+ theme_solarized_2()
+
+gt6<-ggpar(g6,  legend.title = "Christian Group") +  grids(linetype = "dashed")
+gt6
+
+# predictive graph 7
+a7<-conditional_effects(fit.gt.ChristianBigDoms, c("Urban"),
+                        # probs = c(0.11, 0.89),
+                        categorical = TRUE)
+a7
+# plot 7  #norhing
+g7<-plot(a7, plot = FALSE)[[1]]  + ylab("Probability of Group Membership")+
+  xlab("Urban") +
+  scale_y_continuous(limits=c(0,.7)) #+ theme_solarized_2()
+gt7<-ggpar(gt7,  legend.title = "Christian Group") +  grids(linetype = "dashed")
+
+gt7
+
+library(ggpubr)
+gt.nfd.classprob<-ggarrange(gt1,gt2,gt3,gt4,gt6,gt7,labels =c("a","b","c","d",'e',"f"),
+                            common.legend = T,legend = "top")
+
+gt.nfd.classprob# 1 x 1 
+ncol=4
+
+
+# # predictive graph 8 # NO DIFF PARNER OR MALE
+# a8<-conditional_effects(fit.gt.ChristianBigDoms, c("Male"),
+#                         # probs = c(0.11, 0.89),
+#                         categorical = TRUE)
+# g8<-plot(a8, plot = FALSE)[[1]]  + ylab("Probability of Group Membership")+
+#   xlab("Urban") +
+#   scale_y_continuous(limits=c(0,1)) #+ theme_solarized_2()
+# g8
+
+# labels for etas #### 
+lab.namesdomEta2<-c("Urban",
+                    "PoliticalConservative(S)",
+                    "Partner",
+                    "NZ Deprivation(S)",
+                    "Male",
+                    "Employed",
+                    "Education(S)",
+                    "Asian",
+                    "Pacific",
+                    "Maori",
+                    "AgeInDecades(C)",
+                    "The Others",
+                    "PresbyCongReform",
+                    "Christian_NFD",
+                    "Catholic",
+                    "Intercept")
+
+
+lab.namesdomEta1<-c("Urban",
+                    "Pol Conservative(S)",
+                    "Partner",
+                    "NZ Deprivation(S)",
+                    "Male",
+                    "Employed",
+                    "Education(S)",
+                    "Asian",
+                    "Pacific",
+                    "Maori",
+                    "Children.log(C)",
+                    "Age in Decades(C)",
+                    "Other Christians",
+                    "PresbyCongReform",
+                    "Christian NFD",
+                    "Catholic",
+                    "Intercept")
+
+tab.namesdomEta1<-c("Intercept",
+                    "Catholic",
+                    "Christian NFD",
+                    "PresbyCongReform",
+                    "Other Christians",
+                    "Age in Decades(C)",
+                    "Children.log(C)",
+                    "Maori",
+                    "Pacific",
+                    "Asian",
+                    "Education(S)",
+                    "Employed",
+                    "Male",
+                    "NZ Deprivation(S)",
+                    "Partner",
+                    "Pol Conservative(S)",
+                    "Urban")
+
+       
+
+
+# model 2 ####
+system.time(fit.gt.IssueRelEd<- brm(Issue.ReligiousEd|weights(w.GendAgeEthnic) ~
+                                      ChristianBigDoms +
+                                      Age.C.decade +
+                                      ChildrenNum.log.C +
+                                      EthnicCats +
+                                      Edu.S +
+                                      Employed +
+                                      Male +
+                                      NZdep.S +
+                                      Partner +
+                                      Pol.Orient.S  +
+                                      Urban,
+                                    chains = 2,
+                                    warmup =1000,
+                                    iter = 11000,
+                                    inits = 0,
+                                    data =gt))
+
+
+saveRDS(fit.gt.IssueRelEd,"fit.gt.IssueRelEd")
+fit.gt.IssueRelEd<-readRDS("fit.gt.IssueRelEd")
+summary(fit.gt.IssueRelEd)
+tab_model(fit.gt.IssueRelEd)
+
+gt2eduplot<-plot_model(fit.gt.IssueRelEd, axis.labels = lab.namesdomEta,
+                       title ="Christian Education in Schools")
+gt2eduplot # 12 x 8
+
+
+
+# predictive plot model 2 ####
+gt2<-conditional_effects(fit.gt.IssueRelEd, "ChristianBigDoms",
+                         # probs = c(0.11, 0.89),
+                         categorical = F)
+
+gt2p<-plot(gt2, plot = FALSE)[[1]]  + ylab("Christian Education in Schools: 1-7")+  xlab("Christian Groups")+ scale_y_continuous(limits=c(1,7)) #+ theme_solarized_2()
+gt2p # 1 x 1
+
+
+
+# model 3 ####
+hist(gt$ChildrenNum)#eroinflated, but density is at 2, not one
+system.time(fit.gt.ChildrenNum<- brm(bf(as.integer(ChildrenNum)|weights(w.GendAgeEthnic) ~ChristianBigDoms +
+                                          Age.C.decade +
+                                          EthnicCats +
+                                          Edu.S +
+                                          Employed +
+                                          Male +
+                                          NZdep.S +
+                                          Partner +
+                                          Pol.Orient.S  +
+                                          Urban),
+                                     #  zi ~ ChristianBigDoms),
+                                     chains = 2,
+                                     warmup =1000,
+                                     iter = 11000,
+                                     inits = 0,
+                                     family = negbinomial(),
+                                     data =gt))
+
+
+saveRDS(fit.gt.ChildrenNum,"fit.gt.ChildrenNum")
+fit.gt.ChildrenNum<-readRDS("fit.gt.ChildrenNum")
+summary(fit.gt.ChildrenNum)
+tab_model(fit.gt.ChildrenNum)
+
+# library(emmeans)
+# library(tidybayes)
+# 
+# model4b.model %>%
+#   emmeans( ~ noise_level * token) %>%
+#   contrast(method = "pairwise") %>%
+#   gather_emmeans_draws() %>%
+#   median_qi(.width = .90)
+
+nfd3child<-plot_model(fit.gt.ChildrenNum,
+                      axis.lim = c(.8,1.9),
+                      title = "Expected Number of Children",
+                      axis.labels = lab.namesdomEta2)
+summary(fit.gt.ChildrenNum)
+
+nfd3child # 12 x 8
+
+
+# predictive plot model 3 ####
+conditionsB <- make_conditions(fit.gt.ChildrenNum, "Partner")
+conditionsB
+conditionsC<-data.frame(Partner = 1,
+           cond__ = "Partner= 1")
+
+
+gt3<-conditional_effects(fit.gt.ChildrenNum, "ChristianBigDoms",
+                         # probs = c(0.11, 0.89),
+                         categorical = F,
+                         conditions = conditionsC)
+
+gt3p<-plot(gt3, plot = FALSE)[[1]]  + ylab("Children Counts")+  xlab("Christian Groups")+ scale_y_continuous(limits=c(0,2.5)) #+ theme_solarized_2()
+gt3p # 1 x 1
+
+
+
+
+# model 4 ####
+# 
+# system.time(fit.gt.Prayer<- brm(bf(as.integer(Religion.Prayer)|weights(w.GendAgeEthnic) ~ChristianBigDoms +
+#                                      Age.C.decade +
+#                                      ChildrenNum.log.C +
+#                                      EthnicCats +
+#                                      Edu.S +
+#                                      Employed +
+#                                      Male +
+#                                      NZdep.S +
+#                                      Partner +
+#                                      Pol.Orient.S  +
+#                                      Urban,
+#                                    zi ~ ChristianBigDoms),
+#                                 chains = 2,
+#                                 warmup =1000,
+#                                 iter = 11000,
+#                                 inits = 0,
+#                                 family = negbinomial(),
+#                                 data =gt))
+# # save
+# saveRDS(fit.gt.Prayer,"fit.gt.Prayer")
+# fit.gt.Prayer<-readRDS("fit.gt.Prayer")
+# summary(fit.gt.Prayer)
+# tab_model(fit.gt.Prayer)
+# plot_model(fit.gt.Prayer, axis.labels = lab.namesdomEta1, title = "Rate of Weekly Prayer"))
+# #pp
+# pp.pray.zi<-pp_check(fit.gt.Prayer) + ylab("Prayer Z.inflated poiss")
+# pp.pray.zi # 1000 x 1000
+
+
+system.time(fit.gt.Prayer.nb<- brm(bf(as.integer(Religion.Prayer)|weights(w.GendAgeEthnic) ~ChristianBigDoms +
+                                     Age.C.decade +
+                                     ChildrenNum.log.C +
+                                     EthnicCats +
+                                     Edu.S +
+                                     Employed +
+                                     Male +
+                                     NZdep.S +
+                                     Partner +
+                                     Pol.Orient.S  +
+                                     Urban),
+                                chains = 2,
+                                warmup =1000,
+                                iter = 11000,
+                                inits = 0,
+                                family = negbinomial(),
+                                data =gt))
+
+
+saveRDS(fit.gt.Prayer.nb,"fit.gt.Prayer.nb")
+fit.gt.Prayer.nb<-readRDS("fit.gt.Prayer.nb")
+summary(fit.gt.Prayer.nb)
+tab_model(fit.gt.Prayer.nb)
+
+# test
+# 
+#
+#
+coef4<-plot_model(fit.gt.Prayer.nb, axis.labels = lab.namesdomEta1, title = "Rate of Weekly Prayer")
+coef4# 12 x 8
+
+pp.pray.nb<-pp_check(fit.gt.Prayer.nb) + ylab("ChurchAttend poiss")
+pp.pray.nb # 1000 x 1000
+
+conditionsB <- make_conditions(fit.gt.Prayer.nb, "Male")
+conditionsB
+conditionsC<-data.frame(Partner = 1,
+                        cond__ = "Partner= 1")
+
+# predictive plot model 4 ####
+gt4<-conditional_effects(fit.gt.Prayer.nb, "ChristianBigDoms",
+                         # probs = c(0.11, 0.89),
+                         categorical = F)
+
+gt4p<-plot(gt4, plot = FALSE)[[1]] +ggtitle("Prayer") + ylab("Weekly Prayer Frequency")+  xlab("Christian Groups")+ scale_y_continuous(limits=c(0,15)) +  grids(linetype = "dashed") #+ theme_solarized_2()
+gt4p # 1 x 1
+
+coef4<-plot_model(fit.gt.Prayer.nb,axis.lim = c(.8,4.9),
+                  axis.labels = lab.namesdomEta1, title = "Weekly Prayer")+  grids(linetype = "dashed")
+coef4 # 12 X 8
+
+
+
+# model 5 ####
+
+# 
+# system.time(fit.gt.Scripture<- brm(bf(as.integer(Religion.Scripture)|weights(w.GendAgeEthnic) ~ChristianBigDoms +
+#                                         Age.C.decade +
+#                                         ChildrenNum.log.C +
+#                                         EthnicCats +
+#                                         Edu.S +
+#                                         Employed +
+#                                         Male +
+#                                         NZdep.S +
+#                                         Partner +
+#                                         Pol.Orient.S  +
+#                                         Urban,
+#                                       zi ~ ChristianBigDoms),
+#                                    chains = 2,
+#                                    warmup =1000,
+#                                    iter = 11000,
+#                                    inits = 0,
+#                                    family = zero_inflated_poisson(),
+#                                    data =gt))
+# 
+# saveRDS(fit.gt.Scripture,"fit.gt.Scripture")
+# summary(fit.gt.Scripture)
+# tab_model(fit.gt.Scripture)
+# plot_model(fit.gt.Scripture, axis.labels = lab.namesdomEta1, title = "Rate of Weekly Scripture Reading"))
+# #pp
+# pp.scrip.zi<-pp_check(fit.gt.Scripture) + ylab("Scripture Z.inflated poiss")
+# pp.scrip.zi # 1000 x 1000
+# 
+# 
+
+system.time(fit.gt.Scripture.nb<- brm(bf(as.integer(Religion.Scripture)|weights(w.GendAgeEthnic) ~ChristianBigDoms +
+                                        Age.C.decade +
+                                        ChildrenNum.log.C +
+                                        EthnicCats +
+                                        Edu.S +
+                                        Employed +
+                                        Male +
+                                        NZdep.S +
+                                        Partner +
+                                        Pol.Orient.S  +
+                                        Urban),
+                                   chains = 2,
+                                   warmup =1000,
+                                   iter = 11000,
+                                   inits = 0,
+                                   family = negbinomial(),
+                                   data =gt))
+
+#saveRDS(fit.gt.Scripture.nb,"fit.gt.Scripture.nb")
+fit.gt.Scripture.nb<-readRDS("fit.gt.Scripture.nb")
+summary(fit.gt.Scripture.nb)
+tab_model(fit.gt.Scripture.nb)
+coef5<-plot_model(fit.gt.Scripture.nb,axis.lim = c(.8,4.9),
+                  axis.labels = lab.namesdomEta1, title = "Weekly Scripture Reading")+  grids(linetype = "dashed")
+coef5 # 12 X 8
+#pp
+pp.scrip.zi<-pp_check(fit.gt.Scripture) + ylab("Scripture Z.inflated poiss")
+pp.scrip.zi # 1000 x 1000
+
+# predictive plot model 5 ####
+gt5<-conditional_effects(fit.gt.Scripture.nb, "ChristianBigDoms",
+                         # probs = c(0.11, 0.89),
+                         categorical = F)
+
+gt5p<-plot(gt5, plot = FALSE)[[1]] + ggtitle("Scripture Reading") + ylab("Weekly Scripture Reading Frequency")+  xlab("Christian Groups") + scale_y_continuous(limits=c(0,5)) +  grids(linetype = "dashed")
+ # scale_y_continuous(limits=c(0,5)) #+ theme_solarized_2()
+gt5p # 1 x 1
+
+
+
+
+# # model 6 ####
+# 
+# system.time(fit.gt.Church<- brm(bf(as.integer(round(Religion.Church))|weights(w.GendAgeEthnic) ~ChristianBigDoms +
+#                                      Age.C.decade +
+#                                      ChildrenNum.log.C +
+#                                      EthnicCats +
+#                                      Edu.S +
+#                                      Employed +
+#                                      Male +
+#                                      NZdep.S +
+#                                      Partner +
+#                                      Pol.Orient.S  +
+#                                      Urban,
+#                                    zi ~ ChristianBigDoms),
+#                                 chains = 2,
+#                                 warmup =1000,
+#                                 iter = 11000,
+#                                 inits = 0,
+#                                 family = zero_inflated_poisson(),
+#                                 data =gt))
+# fit.gt.Church<-readRDS("fit.gt.Church")
+# pp.church.zi<-pp_check(fit.gt.Church) + ylab("ChurchAttend Z.inflated poiss")+ scale_x_continuous(limits = c(0,10))
+# pp.church.zi # 1000 x 1000
+
+
+system.time(fit.gt.Church.nb<- brm(bf(as.integer(round(Religion.Church))|weights(w.GendAgeEthnic) ~ChristianBigDoms +
+                                        Age.C.decade +
+                                        ChildrenNum.log.C +
+                                        EthnicCats +
+                                        Edu.S +
+                                        Employed +
+                                        Male +
+                                        NZdep.S +
+                                        Partner +
+                                        Pol.Orient.S  +
+                                        Urban),
+                                   chains = 2,
+                                   warmup =1000,
+                                   iter = 11000,
+                                   inits = 0,
+                                   family = negbinomial(),
+                                   data =gt))
+#saveRDS(fit.gt.Church.nb,"fit.gt.Church.nb")
+fit.gt.Church.nb<-readRDS("fit.gt.Church.nb")
+summary(fit.gt.Church.nb)
+tab_model(fit.gt.Church.nb)
+coef6<-plot_model(fit.gt.Church.nb,axis.labels = lab.namesdomEta1, title = "Monthly Church Attendance", 
+                  axis.lim = c(.8,4.9))+  grids(linetype = "dashed")
+coef6# 12 x 8
+# pp checks
+pp.church.nb<-pp_check(fit.gt.Church.nb) + ylab("ChurchAttend Neg Bin") + scale_x_continuous(limits = c(0,10))
+pp.church.nb # 1000 x 1000
+
+# predictive plot model 6 ####
+gt6<-conditional_effects(fit.gt.Church.nb, "ChristianBigDoms",
+                         # probs = c(0.11, 0.89),
+                         categorical = F)
+
+
+gt6p<-plot(gt6, plot = FALSE)[[1]] + ggtitle("Church Attendance")  + ylab("Monthly Church Rate")+  xlab("Christian Groups")+
+  scale_y_continuous(limits=c(0,4))     +  grids(linetype = "dashed") #+ theme_solarized_2()
+
+#scale_y_continuous(limits=c(0,4)) #+ theme_solarized_2()
+gt6p # 1 x 1
+
+
+# Combined coef plot for practices ####
+tab_model(fit.gt.Church.nb,fit.gt.Scripture.nb,fit.gt.Prayer.nb,
+          pred.labels = tab.namesdomEta1)
+
+gt.beh.coefs<-ggarrange(coef6,coef4,coef5, 
+                        labels =c("a","b","c"),
+                      #  common.legend = T,legend = "top",
+                        ncol=1)
+
+gt.beh.coefs # 1000 x 1500
+
+
+# Combined predictive plot for practices ####
+gt.beh.pred<-ggarrange(gt6p,gt4p,gt5p, 
+                        labels =c("a","b","c"),
+                        #  common.legend = T,legend = "top",
+                        ncol=1)
+
+gt.beh.pred ## 1000 x 12 
+# beliefs ###
+# model 7####
+
+
+system.time(fit.gt.Believe.God<- brm(as.numeric(Believe.God)|weights(w.GendAgeEthnic) ~ ChristianBigDoms + 
+                                       Age.C.decade +
+                                       ChildrenNum.log.C + 
+                                       EthnicCats +
+                                       Edu.S +
+                                       Employed +
+                                       Male +
+                                       NZdep.S +
+                                       Partner +
+                                       Pol.Orient.S  +
+                                       Urban,
+                                     chains = 2,
+                                     warmup =1000,
+                                     iter = 11000,
+                                     inits = 0,
+                                     family = binomial(),
+                                     data =gt))
+
+#saveRDS(fit.gt.Believe.God,"fit.gt.Believe.God")
+fit.gt.Believe.God<-readRDS("fit.gt.Believe.God")
+
+
+summary(fit.gt.Believe.God)
+tab_model(fit.gt.Believe.God)
+
+
+coef7<-plot_model(fit.gt.Believe.God, axis.labels = lab.namesdomEta1, title = "Pr Belief in God")+  grids(linetype = "dashed") +  grids(linetype = "dashed")
+coef7
+# predictive plot model 7 ####
+gt7<-conditional_effects(fit.gt.Believe.God, "ChristianBigDoms",
+                         # probs = c(0.11, 0.89),
+                         categorical = F)
+
+gt7p<-plot(gt7, plot = FALSE)[[1]] + ggtitle("Belief in God")  + ylab("Pr Belief in God")+  xlab("")+ scale_y_continuous(limits=c(.8,1)) +  grids(linetype = "dashed")
+gt7p # 1 x 1
+
+# model 7.5 belief spirit ####
+plogis(2.96)
+system.time(fit.gt.Believe.Spirit<- brm(as.numeric(Believe.Spirit)|weights(w.GendAgeEthnic) ~ 
+                                       ChristianBigDoms + 
+                                       Age.C.decade +
+                                       ChildrenNum.log.C + 
+                                       EthnicCats +
+                                       Edu.S +
+                                       Employed +
+                                       Male +
+                                       NZdep.S +
+                                       Partner +
+                                       Pol.Orient.S  +
+                                       Urban,
+                                     chains = 2,
+                                     warmup =1000,
+                                     iter = 11000,
+                                     inits = 0,
+                                     family = binomial(),
+                                     data =gt))
+
+saveRDS(fit.gt.Believe.Spirit,"fit.gt.Believe.Spirit")
+fit.gt.Believe.Spirit<-readRDS("fit.gt.Believe.Spirit")
+
+
+summary(fit.gt.Believe.Spirit)
+
+
+
+coef7.5<-plot_model(fit.gt.Believe.Spirit, axis.labels = lab.namesdomEta1, title = "Pr of Belief in Spirit/Life Force")+  grids(linetype = "dashed")
+coef7.5# 12 x 8
+coef7
+
+# predictive plot model 7 ####
+gt7.5<-conditional_effects(fit.gt.Believe.Spirit, "ChristianBigDoms",
+                         # probs = c(0.11, 0.89),
+                         categorical = F)
+
+gt7.5p<-plot(gt7.5, plot = FALSE)[[1]] + ggtitle("Belief in Spirit/Life Force") + ylab("Pr Belief in Spirit or Life Force")+  xlab("")+ scale_y_continuous(limits=c(.8,1))+  grids(linetype = "dashed") #+ theme_solarized_2()
+gt7.5p # 12 x 12
+
+
+
+
+
+
+# model 8 ####
+
+system.time(fit.gt.Relid<- brm(Relid|weights(w.GendAgeEthnic) ~
+                                 ChristianBigDoms +
+                                 Age.C.decade +
+                                 ChildrenNum.log.C +
+                                 EthnicCats +
+                                 Edu.S +
+                                 Employed +
+                                 Male +
+                                 NZdep.S +
+                                 Partner +
+                                 Pol.Orient.S  +
+                                 Urban,
+                               chains = 2,
+                               warmup =1000,
+                               iter = 11000,
+                               inits = 0,
+                               # prior = prior,
+                               # family = cumulative(link ="probit"),
+                               data =gt))
+
+fit.gt.Relid<-readRDS("fit.gt.Relid")
+# conditionsB <- make_conditions(fit.gt.Relid, "ChristianBigDoms")
+gt8<-conditional_effects(fit.gt.Relid, "ChristianBigDoms",
+                         # probs = c(0.11, 0.89),
+                         categorical = F)
+gt8p<-plot(gt8, plot = FALSE)[[1]] +  ggtitle("Religious Identification") + ylab("Religious Identification: 1-7")+  xlab("")+ scale_y_continuous(limits=c(1,7)) +  grids(linetype = "dashed") #+ theme_solarized_2()
+gt8p # 1 x 1
+
+#saveRDS(fit.gt.Relid,"fit.gt.Relid")
+fit.gt.Relid<-readRDS("fit.gt.Relid")
+summary(fit.gt.Relid)
+
+
+gtrelid<-plot_model(fit.gt.Relid, axis.labels = lab.namesdomEta1, title = "Religious Indentification (1-7)",
+                    axis.lim = c(-1,2)) +   grids(linetype = "dashed")
+gtrelid # 12 X 8
+
+
+
+# model 8.5 #### spiritual identification
+system.time(fit.gt.Selid<- brm(Spiritual.Identification|weights(w.GendAgeEthnic) ~
+                                 ChristianBigDoms +
+                                 Age.C.decade +
+                                 ChildrenNum.log.C +
+                                 EthnicCats +
+                                 Edu.S +
+                                 Employed +
+                                 Male +
+                                 NZdep.S +
+                                 Partner +
+                                 Pol.Orient.S  +
+                                 Urban,
+                               chains = 2,
+                               warmup =1000,
+                               iter = 11000,
+                               inits = 0,
+                               # prior = prior,
+                               # family = cumulative(link ="probit"),
+                               data =gt))
+
+
+
+saveRDS(fit.gt.Selid,"fit.gt.Selid")
+
+
+fit.gt.Selid<-readRDS("fit.gt.Selid")
+summary(fit.gt.Selid)
+
+
+gtSelid<-plot_model(fit.gt.Selid, axis.labels = lab.namesdomEta1, title = "Spiritual Indentification (1-7)",
+                   axis.lim = c(-1,2)) +  grids(linetype = "dashed")
+gtSelid # 12 X 8
+
+# predictive plot model 8 ####
+gt8.5<-conditional_effects(fit.gt.Selid, "ChristianBigDoms",
+                         # probs = c(0.11, 0.89),
+                         categorical = F)
+gt8.5p<-plot(gt8.5, plot = FALSE)[[1]]  +   ggtitle("Spiritual Identification") + ylab("Spiritual Identification: 1-7")+  xlab("")+ scale_y_continuous(limits=c(1,7))+  grids(linetype = "dashed") #+ theme_solarized_2()
+gt8.5p # 1 x 1
+
+
+
+
+# conditionsB <- make_conditions(fit.gt.Relid, "ChristianBigDoms")
+gt8<-conditional_effects(fit.gt.Relid, "ChristianBigDoms",
+                         # probs = c(0.11, 0.89),
+                         categorical = F)
+gt8p<-plot(gt8, plot = FALSE)[[1]]  + ylab("Religious Identification: 1-7")+  xlab("")+ scale_y_continuous(limits=c(1,7)) #+ theme_solarized_2()
+gt8p # 1 x 1
+
+# tables for beliefs + identity  ####
+tab_model(fit.gt.Believe.God, fit.gt.Believe.Spirit, fit.gt.Relid, fit.gt.Selid, pred.labels = tab.namesdomEta1)
+
+coef7,
+coef7.5
+gtrelid
+gtSelid
+
+# plot coef beliefs /id
+coef.bel<-ggarrange(coef7, coef7.5,gtrelid,gtSelid, 
+                    labels =c("a","b","c","d"))
+
+coef.bel # 1x1 
+
+# pred plots beliefs/id
+pred.bel<-ggarrange(gt7p, gt7.5p,gt8p,gt8.5p, 
+                    labels =c("a","b","c","d"))
+pred.bel ## 12 x 12
+
+
+
+## MARKOV
+
+# markov model use 2 ####
+nrow(df1a)
+
+ldf.gts <- df1a%>%
+#  filter(Religious == 0 | Christian ==1)%>%
+  arrange(Id)
+nrow(ldf.gts)
+nrow(df1)-nrow(ldf.gts)
+table(df1$Religious)-table(ldf.gts$Religious)# 8521 measures  non religious  
+table(ldf.gts$ChristianBigDoms=="TheOthers")
+
+ldf.gts$ChristianBigDomsSec <- factor(ifelse(ldf.gts$Anglican==1|ldf.gts$Catholic==1|ldf.gts$PresbyCongReform==1,"OldChurch",ifelse(ldf.gts$Christian_nfd==1,"Christian_nfd",ifelse(ldf.gts$ChristianBigDoms=="TheOthers" & ldf.gts$Christian == 1, "OtherChristians", ifelse(ldf.gts$Religious==0,"Secular","OtherReligions")))))
+
+ldf.gts$ChristianBigDomsSecC <- factor(ifelse(ldf.gts$Anglican==1|ldf.gts$PresbyCongReform==1,"OldChurch",ifelse(ldf.gts$Christian_nfd==1,"Christian_nfd",ifelse(ldf.gts$Catholic==1, "Catholic", ifelse(ldf.gts$ChristianBigDoms=="TheOthers" & ldf.gts$Christian == 1, "OtherChristians", ifelse(ldf.gts$Religious==0,"Secular","OtherReligions"))))))
+
+table(gt$ChristianBigDoms)
+table(ldf.gts$ChristianBigDomsSec)
+# ldf.gts.Sub <- ldf.gts%>%
+#   filter(Christian ==1)
+
+head(ldf.gts)
+
+## CHECK: Looks good. 
+table(ldf.gts$ChristianBigDomsSec)  #  
+
+head(ldf.gts)
+
+
+ldf.gts<- ldf.gts%>%
+  mutate(ChristianBigDomsSecN =  as.numeric(ChristianBigDomsSec))
+head(ldf.gts)
+
+gts<- ldf.gts%>%
+  select(Id,years,ChristianBigDomsSec)
+head(gts)
+
+gts1<- ldf.gts%>%
+  select(Id,years,ChristianBigDomsSecC)
+head(gts1)
+
+
+library(msm)
+
+statetable.msm(ChristianBigDomsSec,Id,data=gts)
+statetable.msm(ChristianBigDomsSecC,Id,data=gts1)
+
+
+library(tidyr)
+wide.gts<-spread(gts, years, ChristianBigDomsSec)
+head(wide.gts)
+ 
+head(wide.gts[,2:10])
+
+wide.gts1<-spread(gts1, years, ChristianBigDomsSecC)
+head(wide.gts1)
+
+
+library(seqHMM) 
+library(igraph)
+gtall <-seqdef(wide.gts[,2:10])
+gtall1 <-seqdef(wide.gts1[,2:10])
+str(gtall1)
+
+# Starting values for the transition matrix
+
+tr <- matrix(
+  c(0.80, 0.10, 0.05, 0.05,
+    0.05, 0.80, 0.10, 0.05,
+    0.05, 0.05, 0.80, 0.10,
+    0.05, 0.05, 0.10, 0.80),
+  nrow=4, ncol=4, byrow=TRUE)
+
+# Starting values for initial state probabilities
+init <- c(0.15, 0.2, 0.15, 0.5)
+
+sc_initmod_random <- build_hmm(observations = gtall, n_states = 5)
+sc_initmod_random$emission_prob
+str(sc_initmod_random)
+
+sc_initmod <- build_hmm(observations = gtall, 
+                        initial_probs = init, 
+                        transition_probs = tr, 
+                        emission_probs = sc_initmod_random$emission_probs)
+
+sc_initmod
+sc_fit <- fit_model(sc_initmod)
+gtsmarkov<-sc_fit
+saveRDS(gtsmarkov,"gtsmarkov")
+#gtsmarkov<-readRDS("gtsmarkov")
+
+
+plot(gtsmarkov$model,
+  #   vertex.label =  c("OldChurches", "OtherChristians","Secular","Christian_NFD"),
+    # cex.edge.width = 4,
+     cex.legend =1,
+    layout = layout_nicely,
+     edge.arrow.size = 1,
+    vertex.label.dist = 1,
+    # combine.slices = .1,
+     with.legend	="bottom",
+     # hidden.states.labels =c("Hidden 1","Hidden 2"),
+    title ="Hidden Markov Model Christian/Secular Affiliation:2009-2018",
+ loops=T,
+ vertex.size = 40,
+ legend.prop =.3,
+ncol.legend = 2)
+dev.off()
+
+# really use ####
+head(gtall1)
+tr <- matrix(
+  c(0.75, 0.05, 0.05, 0.05, 0.05, 0.05,
+    0.05, 0.75, 0.05, 0.05, 0.05, 0.05,
+    0.05, 0.05, 0.75, 0.05, 0.05, 0.05,
+    0.05, 0.05, 0.05, 0.75, 0.05, 0.05,
+    0.05, 0.05, 0.05, 0.05, 0.75, 0.05,
+    0.05, 0.05, 0.05, 0.05, 0.05, 0.75),
+  nrow=6, ncol=6, byrow=TRUE)
+
+# Starting values for initial state probabilities
+init <- c(0.10, 0.10, 0.10, 0.10, 0.10, 0.50 )
+
+sc_initmod_random <- build_hmm(observations = gtall1, n_states = 6)
+sc_initmod_random$emission_prob
+str(sc_initmod_random)
+
+sc_initmod <- build_hmm(observations = gtall1, 
+                        initial_probs = init, 
+                        transition_probs = tr, 
+                        emission_probs = sc_initmod_random$emission_probs)
+
+sc_initmod
+sc_fit <- fit_model(sc_initmod)
+gtsmarkov1<-sc_fit
+saveRDS(gtsmarkov1,"gtsmarkov1")
+gtsmarkov1<-readRDS("gtsmarkov1")
+
+
+plot(gtsmarkov1$model,
+     #   vertex.label =  c("OldChurches", "OtherChristians","Secular","Christian_NFD"),
+    # cex.edge.width = 1,
+     cex.legend = .7,
+     layout = layout_nicely,
+     edge.arrow.size = 1,
+     vertex.label.dist = 1,
+     combine.slices = .15,
+    # vertex.label.dist = "auto",
+     with.legend	="bottom",
+  #  edge.label = NA,
+     # hidden.states.labels =c("Hidden 1","Hidden 2"),
+     title ="Hidden Markov Model Religious Group Change:2009-2018",
+     loops=F,
+     trim = .002,
+      vertex.size = 30,
+     legend.prop =.1,
+     ncol.legend = 7)
+dev.off()
+#markovplotGT # 1 x 1
+
+  
+##  MODEL STATE  CHANGE
+library(msm)
+library(msmtools)
+## Need  to pass a number
+
+gts.1<- ldf.gts%>%
+  select(Id,years,ChristianBigDomsSec)%>%
+  mutate(ChristianBigDomsSecN = as.numeric(ChristianBigDomsSec))
+head(gts$ChristianBigDomsSecN)
+summary(gts.1$ChristianBigDomsSec)#
+q0 <-rbind(c(.1,.1,.1,.1),c(.1,.1,.1,.1),c(.1,.1,.1,.1),c(.1,.1,.1,.1)) #  Allow permitted transitions
+crudeinR<-crudeinits.msm(ChristianBigDomsSecN ~ years, Id, data=gts.1, qmatrix=q0)
+crudeinR
+## 
+summary(ldf.gts$years)
+
+
+gt.mar  <- msm(ChristianBigDomsSecN ~ years,
+               Id,
+               data=ldf.gts,
+               covariates = ~Age,
+               est.initprobs = F,
+               qmatrix =crudeinR)
+
+#BFGS  Nelder-Mead control=list(fnscale = a
+control = list ( trace = 2, REPORT = 1 )  )
+library(minqa)
+library(expm)
+gt.mar  <- msm(ChristianBigDomsSecN ~ years,
+               Id,
+               data=ldf.gts,
+               misccovariates = ~Age,
+               est.initprobs = T,
+             #  gen.inits=TRUE,
+               qmatrix =crudeinR,
+                analyticp=FALSE,
+               # exacttimes=TRUE,
+               #  opt.method = "bobyqa",
+               opt.method = "fisher",
+              # use.expm	= TRUE,
+               na.action = na.omit)
+
+
+
+gt.mar  <- msm(ChristianBigDomsSecN ~ years,
+               Id,
+               data=ldf.gts,
+              # misccovariates = ~Age,
+               est.initprobs = T,
+               #gen.inits=TRUE,
+               qmatrix =crudeinR,
+              # analyticp=FALSE,
+              # exacttimes=TRUE,
+             #  opt.method = "bobyqa",
+               hessian = FALSE,
+              # opt.method = "nlm",
+            #   use.expm	= TRUE,
+               na.action = na.omit,
+               #analyticp = F,
+               ematrix = rbind(c(.1,.1,.1,.1),
+                                     c(.1,.1,.1,.1),
+                                     c(.1,.1,.1,.1),
+                                     c(.1,.1,.1,.1)))
+
+sojourn.msm(gt.mar)
+
+saveRDS(gt.mar,"gt.mar")
+qmatrix.msm(gt.mar)
+pmatrix.msm(gt.mar) # This worked
+#gh.mod.mnm.2<-readRDS("gt.mar")
+## Big and sharp shift at 50 
+#pmatrix.msm(gt.mar, covariates = list(Age =50))
+pmatrix.msm(gt.mar,covariates = "mean")
+
+
+
+# 
+# ldff <- ldf.4%>%
+#   mutate(ChurchAttendanceGroup = ifelse(Religion.Church>4,5,Religion.Church))%>%
+#   mutate(ChurchAttendanceGroup = ifelse(Religion.Church<1,0,ChurchAttendanceGroup))%>%
+#   mutate(ChurchAttendanceGroup = ifelse(Religion.Church >1 & Religion.Church <2 ,1,ChurchAttendanceGroup))%>%
+#   mutate(ChurchAttendanceGroup = ifelse(Religion.Church >2 & Religion.Church <3 ,2,ChurchAttendanceGroup))%>%
+#   mutate(ChurchAttendanceGroup = ifelse(Religion.Church >3 & Religion.Church<4 ,3,ChurchAttendanceGroup))%>%
+#   mutate(ChurchAttendanceGroup= factor(ChurchAttendanceGroup))%>%
+#   mutate(ChurchAttendanceGroup = recode_factor(ChurchAttendanceGroup,
+#                                                "0" = "LessthanOnce",
+#                                                "1" = "Once",
+#                                                "2" = "Twice",
+#                                                "3" = "ThreeTimes",
+#                                                "4" = "FourTimes",
+#                                                "5" =  "GreaterThanFour"))
+# 
+# head(ldff)
+# nrow(ldff)
+# 
+# str(ldff)
+# 
+# 
+# ldff<- ldff%>%
+#   mutate(ChurchAttendanceBinary = ifelse(Religion.Church>0,1,Religion.Church))%>%
+#   mutate(ChurchAttendanceBinaryF= factor(ChurchAttendanceBinary))%>%
+#   mutate(ChurchAttendanceBinaryF = recode_factor(ChurchAttendanceBinaryF,
+#                                                  "0" = "None",
+#                                                  "1" = "Some"))
+# 
+# 
+# 
+# ldff <- ldff%>%
+#   mutate(ChurchAttendanceThreeCats = ifelse(Religion.Church >=4,4,Religion.Church))%>%
+#   mutate(ChurchAttendanceThreeCats = ifelse(Religion.Church<1,0,ChurchAttendanceThreeCats))%>%
+#   mutate(ChurchAttendanceThreeCats = ifelse(Religion.Church <4 & Religion.Church >=1,1,ChurchAttendanceThreeCats))%>%
+#   mutate(ChurchAttendanceThreeCats= factor(ChurchAttendanceThreeCats))%>%
+#   mutate(ChurchAttendanceThreeCats = recode_factor(ChurchAttendanceThreeCats,
+#                                                    "0" = "LessthanOnce",
+#                                                    "1" = "Monthly",
+#                                                    "4" =  "Weekly"))
+# head(ldff)
+# 
+# rm(ldfff)
+# 
+# barplot(prop.table(table(ldff$ChurchAttendanceBinary)))
+# prop.table(table(ldff$ChurchAttendanceBinaryF))
+# 
+# str(ldff)
+# table(is.na(ldff$ChurchAttendanceBinary))
+# table(df)
+
+# head(df)
+# 
+# pdf  <- ldff%>%
+#   group_by(Wave)%>%
+#   summarise(mn = mean(Relid, na.rm = TRUE), sd= sd(Relid, na.rm = TRUE),  n=n())%>%
+#   mutate(se=sd/sqrt(n),LCI=mn+qnorm(0.025)*se,UCI=mn+qnorm(0.975)*se)#%>%filter(mn!=is.na(mn))
+# 
+# 
+# pdf
+# 
+# 
+# plot.1 <- ggplot(data=pdf, aes(x =as.factor(Wave), y=mn, group =1,fill=as.factor(Wave))) +
+#   geom_bar(stat="identity")+
+#   geom_errorbar(width=.1, aes(ymin=LCI, ymax=UCI)) +
+#   #  scale_y_continuous(limits=c(0,40))+
+#   #   geom_text(data = dat.Alles, aes(label = n, y=0.001),  size=5) +
+#   #   #theme(axis.title.x = element_blank()) +   # Remove x-axis label
+#   xlab("Years")    +
+#   ylab("Average Religious ID") +
+#   labs(title="") +
+#   #  # scale_fill_brewer(palette=3) +
+#   theme_bw()+ theme(legend.position="none")
+# 
+# 
+# plot.1
+# 
+# 
+# library(gmodels)
+# with(ldff, CrossTable(Wave, ChurchAttendanceThreeCats,
+#                       prop.chisq=F,
+#                       prop.r	=T,
+#                       prop.c = F,
+#                       prop.t	=F))
+# 
+# 
+# s# Get rid of 2014 where no data on belief god
+# levels(ldff$Wave)
+# df <- ldff%>%
+#   filter(Wave != "2014")
+# 
+# 
+# head(ldff)
+# p <-ggplot(df, aes(y=as.integer(ChurchAttendanceBinary), x= Relid)) +  facet_grid(.~Wave) 
+# +geom_point()+
+#   p2<- p +stat_smooth(method="glm",method.args = list(family = "binomial"),formula=y~x)
+# p2
+# #geom_bar(stat="bin")
+# xlab("Years 2013-2014")    +
+#   ylab("Proportion of Church Attendance") +
+#   labs(title="") +
+#   #  # scale_fill_brewer(palette=3) +
+#   theme_bw()+ theme(legend.position="none")
+# 
+# 
+# 
+# ldff.2 <-ldff%>%
+#   filter(Religion.Church <=8)
+# 
+# p <-ggplot(ldff.2, aes(y=Religion.Church, x= Relid)) + 
+#   xlab("Level of religious identification")  +
+#   ylab("Expected monthly Church attendance") +
+#   facet_grid(.~Wave) 
+# 
+# p2<- p +
+#   stat_smooth(method="glm",
+#               method.args = list(family = "poisson"),
+#               formula=y~x, se=TRUE, level = 0.95) +
+#   #vlabs(title=""Years 2013-2014"") +
+#   #  # scale_fill_brewer(palette=3) +
+#   geom_jitter(alpha=.01)+
+#   # geom_point(alpha=.01) +
+#   theme_bw()+ theme(legend.position="none")
+# 
+# p2
+# ??jitter
+# 
+# p <-ggplot(df, aes(y=as.integer(Believe.God), x= Relid)) +  facet_grid(.~Wave)
+# p2<- p +stat_smooth(method="glm",method.args = list(family = "binomial"),formula=y~x, se=TRUE, level = 0.95,na.rm=T)
+# p2.bg<-p2 +
+#   #geom_bar(stat="bin")
+#   xlab("Years 2013-2014")    +
+#   ylab("") +
+#   labs(title="") +
+#   geom_jitter(alpha=.005,width = 0.01,height = 0.01,na.rm=T)+
+#   #  # scale_fill_brewer(palette=3) +
+#   theme_bw()+ theme(legend.position="none")
+# p2.bg 
+# 
+# 
+# p <-ggplot(df, aes(y=as.integer(Believe.Spirit), x= Relid)) +  facet_grid(.~Wave)
+# p2<- p +stat_smooth(method="glm",method.args = list(family = "binomial"),formula=y~x, se=TRUE, level = 0.95,na.rm=T)
+# p2.bs<-p2 +
+#   #geom_bar(stat="bin")
+#   xlab("Years 2013-2014")    +
+#   ylab("") +
+#   labs(title="") +
+#   #  # scale_fill_brewer(palette=3) +
+#   geom_jitter(alpha=.005,width = 0.01,height = 0.01,na.rm=T)+
+#   theme_bw()+ theme(legend.position="none")
+# p2.bs
+# 
+# 
+# 
+# 
+# sjt.glmer(mod.spirit, show.se = TRUE, show.aic = TRUE)
+# sjp.int(mod.spirit, type = "eff", show.ci = TRUE, axis.lim =c(0,1))
+# 
+# 
+# mod.god <-glmer(Believe.God ~   Relid* Wave + (1|Wave:Id), data= df, family =binomial(link = "logit"),
+#                 na.action = na.omit)
+# summary(mod.god)
+# plogis( -1.18272 + (0*.77) - 0*(.074*0))
+# 
+# plogis( -1.18272 + (7*  0.77110) +  0    + (0))
+# plogis(-1.18272 + (7* 0.77110)  + 0.01926 +  (7* -0.03519  ))
+# plogis(-1.18272 + (7* 0.77110)   -0.08161   + (7*  -0.07444 ))
+# 
+# sjt.glmer(mod.god, show.se = TRUE, show.aic = TRUE)
+# sjp.int(mod.god, type = "eff", show.ci = TRUE)
+# 
+# sjp.int(mod.god, type = "eff", 
+#         show.ci = TRUE, axis.lim =c(0,1))
+# plogis(-1.18)
+# 
+# plogis(-1.18 + 7*0.77110)
+# 
+# 
+# mod.god <-glmer(Believe.God ~    Wave + (1|Wave:Id), data= df, family =binomial(link = "logit"),
+#                 na.action = na.omit)
+# summary(mod.god)
+# plogis( -1.18272)
+# set_theme("539w")
+# sjt.glmer(mod.god, show.se = TRUE, show.aic = TRUE)
+# sjp.glmer(mod.god, type = "eff", show.ci = TRUE,axis.lim =c(0,1))
+# sjp.int(mod.god, type = "eff", 
+#         show.ci = TRUE)
+# 
+# ### SIMPLE
+# 
+# mod.spirit <-glmer(Believe.Spirit ~ (Relid * Wave) + (1|Wave:Id), data= df, family =binomial(link = "logit"),
+#                    na.action = na.omit)
+# summary(mod.spirit)
+# 
+# sjt.glmer(mod.spirit, show.se = TRUE, show.aic = TRUE)
+# sjp.glmer(mod.spirit, type = "eff", show.ci = TRUE,axis.lim =c(0,1),geom.colors = "Set3")
+# sjp.int(mod.spirit, type = "eff", 
+#         show.ci = TRUE)
+# 
+# plogis(.62 + .03*7)
+# library(effects)
+# 
+# 
+# 
+# ## nort working mosaicplot
+# ##this <-mosaicplot(data = df.3, ChurchAttendanceBinaryF ~ wave, col = c(lightskyblue2', 'tomato'), na.action = stats::na.omit)
+# 
+# 
+# ### CHURCH ATTENDANCE
+
+# 
+# ### PLOTS
+# pdf9  <- ldf.8%>%
+#   group_by(Wave)%>%
+#   summarise(mn = mean(Relid, na.rm = TRUE), sd= sd(Relid, na.rm = TRUE),  n=n())%>%
+#   mutate(se=sd/sqrt(n),LCI=mn+qnorm(0.025)*se,UCI=mn+qnorm(0.975)*se)#%>%filter(mn!=is.na(mn))
+# 
+# 
+# pdf9
+# 
+# library(ggplot2)
+# 
+# plot.8 <- ggplot(data=pdf9, aes(x =as.factor(Wave), y=mn, group =1,fill=as.factor(Wave))) +
+#   geom_bar(stat="identity")+
+#   geom_errorbar(width=.1, aes(ymin=LCI, ymax=UCI)) +
+#   #  scale_y_continuous(limits=c(0,40))+
+#   #   geom_text(data = dat.Alles, aes(label = n, y=0.001),  size=5) +
+#   #   #theme(axis.title.x = element_blank()) +   # Remove x-axis label
+#   xlab("Years")    +
+#   ylab("Average Religious ID") +
+#   labs(title="") +
+#   #  # scale_fill_brewer(palette=3) +
+#   theme_bw()+ theme(legend.position="none")
+# 
+# plot.8
+
+# ldff.9 <-ldf.8%>%
+#   filter(Religion.Church <=8)
+# 
+# 
+# p9.1 <-ggplot(ldff.9, aes(y=Religion.Church, x= as.numeric(Wave))) + 
+#   xlab("Year")  +
+#   ylab("Expected monthly Church attendance") 
+# # facet_grid(.~Wave) 
+# 
+# 
+# 
+# p9.2<- p9.1 +
+#   stat_smooth(method="glm",
+#               method.args = list(family = "poisson"),
+#               formula=y~x, se=TRUE, level = 0.95) +
+#   #vlabs(title=""Years 2013-2014"") +
+#   #  # scale_fill_brewer(palette=3) +
+#   # geom_jitter(alpha=.01)+
+#   # geom_point(alpha=.01) +
+#   theme_bw()+ theme(legend.position="none")
+# 
+# p9.2
+# 
+
+# p9 <-ggplot(ldff.9, aes(y=Religion.Church, x= Relid)) + 
+#   xlab("Level of religious identification")  +
+#   ylab("Expected monthly Church attendance") +
+#   facet_grid(.~Wave) 
+#
+# p10<- p9 +
+#   stat_smooth(method="glm",
+#               method.args = list(family = "poisson"),
+#               formula=y~x, se=TRUE, level = 0.95) +
+#   #vlabs(title=""Years 2013-2014"") +
+#   #  # scale_fill_brewer(palette=3) +
+#   geom_jitter(alpha=.01)+
+#   # geom_point(alpha=.01) +
+#   theme_bw()+ theme(legend.position="none")
+# 
+# p10
+# 
+# p11 <-ggplot(ldff.9, aes(y=Relid, x= as.numeric(Wave))) + 
+#   xlab("Year")  +
+#   ylab("Expected religious identification")
+
+# p12<- p11 +
+#   stat_smooth(method="lm",
+#               formula=y~x, se=TRUE, level = 0.95) +
+#   #vlabs(title=""Years 2013-2014"") +
+#   #  # scale_fill_brewer(palette=3) +
+#   #geom_jitter(alpha=.01)+
+#   # geom_point(alpha=.01) +
+#   theme_bw()+ theme(legend.position="none")
+# 
+# p12
+```
+
+
+
+
+
+### Latent Profile Analysis
+
+```{r}
+# Tidy lpa
+library("tidyLPA") # latent profile analysis
+p <- 5 # max number of classes
+fit <- gt1 %>%
+  dplyr::select( MonthlyChurch , WeeklyScripture , WeeklyPrayer  , Relid , Spiritual.Identification)%>%
+  dplyr::mutate(MonthlyChurch_S = scale(MonthlyChurch),
+                WeeklyScripture_S = scale(WeeklyScripture),
+                WeeklyPrayer_S = scale(WeeklyPrayer),
+                Relid_S = scale(Relid),
+                SpiritID_S = scale(Spiritual.Identification)) %>%
+  dplyr::select(MonthlyChurch_S,WeeklyScripture_S,WeeklyPrayer_S,Relid_S,SpiritID_S) %>%
+  tidyLPA::single_imputation() %>%
+  tidyLPA::estimate_profiles( 2:p )
+
+p <- 5 # max number of classes
+
+
+```
+
+
+```{r  cache = TRUE}
+tidyLPA::get_fit( fit )
+```
+
+This is evident when we graph the fits 
+
+```{r cache = TRUE, layout="l-body-outset",  fig.height=12, fig.width=12}
+tidyLPA::plot_profiles( fit , add_line = TRUE)
+```
+
+
+### Fit with 4 classes 
+
+```{r cache = TRUE, layout="l-body-outset",  fig.height=8, fig.width=12}
+tidyLPA::plot_profiles( fit [[3]] , add_line = TRUE) ## note we are counting up from 2, hence `[[3]]`
+```
+
+
+### Get proportions of the sample in each class 
+
+We can obtain proportions of the sample that fit into the classes: 
+
+```{r}
+df_2 <- tidyLPA::get_data(fit[[3]] ) ## note we are counting up from three, hence `[[2]]`
+
+df_2 %>%
+  dplyr::select(Class) %>%
+  dplyr::mutate(class = as.factor(Class)) %>%
+  dplyr::group_by(class) %>%
+  dplyr::summarise(n = n()) %>%
+  dplyr::mutate(freq = n / sum(n))
+
+df_2
+
+```
+
+
+
+
+
+Notably, religious identification and spiritual identification are correlated:
+
+```{r}
+library(correlation)
+c1 <- correlation::correlation(dt1, select = "RelidS", select2 = "SpiritualIdentificationS") 
+  
+summary(c1) %>%
+  print_html()
+```
