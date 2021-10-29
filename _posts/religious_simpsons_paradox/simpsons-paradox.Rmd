@@ -45,7 +45,6 @@ library("table1") # tables
 library("msm") # alluvial graphs
 ```
 
-
 ## Religious change at a societial level indicates "clocklike" decline
 
 ```{r  poprelchange, fig.cap= "Clock-like Decline in Proportion of Christian Affiliation since 1966 at about 1%-2% per year", cache = TRUE, code_folding=TRUE, include = FALSE}
@@ -54,13 +53,19 @@ library("msm") # alluvial graphs
 
 # import census data
 declineUSE <-
-  as.data.frame(read.csv(here::here("data", "declineUSE.csv")))
+  as.data.frame(read.csv(
+    here::here("data", "declineUSE.csv")
+    ))
+# select only religious people
+
 decline <- declineUSE %>%
-  select(-"NoReligion")
-decline
+  select(-"NoReligion") 
+
+# decline  NZ census counts for Christians as a percentage of the total population
 
 
 library(ggplot2)
+
 pr <-
   ggplot(decline, aes(y = PercentagePopulation, x = Years)) + theme_bw() +
   geom_smooth(method = "glm") +
@@ -78,73 +83,85 @@ pr <-
 #plot
 ```
 
-Figure \@ref(fig:hmmchange) a. presents New Zealand Census data for
-society-level religious affiliation. The census data show a clock-like
-decline in religious affiliation at the level of the New Zealand
-population since 1966 of about 1% loss in religious affiliation per
-year, and more recently, closer to 2% loss. This suggests that people are becoming less religious over time.
-
+Figure \@ref(fig:hmmchange) a. presents New Zealand Census
+data for society-level religious affiliation. The census
+data show a clock-like decline in religious affiliation at
+the level of the New Zealand population since 1966 of about
+1% loss in religious affiliation per year, and more
+recently, closer to 2% loss. This suggests that people are
+becoming less religious over time.
 
 ## Religious change at the individual level consists of opposing processes
 
+However, society-level change is the average of two opposing
+processes that occur at the level of individuals:
 
-However, society-level change is the average of two opposing processes
-that occur at the level of individuals:
+-   **religious affiliation**: people might affiliate from a
+    position of no-affiliation.
+-   **religious disaffiliation**: people might disaffiliate
+    from a position of affiliation.
 
--   **religious affiliation**: people might affiliate from a position of
-    no-affiliation.
--   **religious disaffiliation**: people might disaffiliate from a
-    position of affiliation.
+These two opposing processes occur against a background of
+stability - most people remain constant in their religious
+affiliation or disaffiliation.
 
-These two opposing processes occur against a background of stability -
-most people remain constant in their religious affiliation or
-disaffiliation.
-
-Here, we use a Hidden Markov Model to estimate rates of religious
-affiliation and disaffiliation across the New Zealand population from
-2009/10 -- 2020 in a sample of respondents who completed at least two
-NZAVS waves ($N$ = 48272).
+Here, we use a Hidden Markov Model to estimate rates of
+religious affiliation and disaffiliation across the New
+Zealand population from 2009/10 -- 2020 in a sample of
+respondents who completed at least two NZAVS waves ($N$ =
+48272).
 
 We find that, annually, the society-level rate of religious
-disaffiliation in New Zealand is .02%. That is the difference between
-the disaffiliation rate (Pr = .03) and the religious affiliation rate
-(Pr = .01). NZAVS data do not capture fluctuations from migration,
-hence, the NZAVS closely approximates the national census estimate for
-net religious change at the society level.
+disaffiliation in New Zealand is .02%. That is the
+difference between the disaffiliation rate (Pr = .03) and
+the religious affiliation rate (Pr = .01). NZAVS data do not
+capture fluctuations from migration, hence, the NZAVS
+closely approximates the national census estimate for net
+religious change at the society level.
 
 ```{r  msm, cache = TRUE, include = TRUE}
 # Using markov models, show that change within people as they age differs from the society-wide trend
 df <- readRDS(here::here("data", "df"))
+
 #create dataframe
 dat  <- df %>%
-  dplyr::filter(YearMeasured ==1 )%>%
-  dplyr::select(Wave,Age,Wave,Religious1,Id, Relid, years)%>%
+  dplyr::filter(YearMeasured == 1 )%>% # filtering only people who have responded in a year
+  dplyr::select(Wave, Age, Wave, Religious1 ,Id, Relid, years)%>%
   dplyr::mutate(yearW  = as.numeric(Wave)) %>%
  # filter(!is.na(Religious1))%>%
-  group_by(Id) %>% filter(n() > 1)%>%
+  group_by(Id) %>% filter(n() > 1)%>% # have responded to at least 2 x waves
   filter(n() !=0)%>%
   ungroup(Id)%>%
+  group_by(Wave) %>%
+  filter(!is.na(Religious1)) %>%
+  ungroup()%>%
   arrange(Id,yearW)
 
 length(unique(dat$Id)) # 48272
 
-### MSN ANALYIS BELOW ###
+
+### MSM ANALYIS BELOW ###
 # commenting out model to save time (which I've saved in a file, below)
 # initial matrix for transitions
+library(msm)
+
 Q0 <- rbind(c(.9,.1),
             c(.1,.9))
 
+Q0
 # 
-crudeinR<-crudeinits.msm(Religious1 ~ yearW, Id, data=dat, qmatrix=Q0)
+crudeinR <- msm::crudeinits.msm(Religious1 ~ yearW, Id, data= dat, qmatrix=Q0)
+
+crudeinR
 #  avoid running to save time
 gh.mod.mnm  <- msm(Religious1 ~ yearW, Id,
                    data=dat,
-                   covariates =  ~Age,
+                   covariates =  ~ Age,
                    qmatrix = crudeinR,
                    ematrix = rbind(c(.1,.1),c(.1,.1)),
                    est.initprobs = TRUE)
 
-#saveRDS(gh.mod.mnm, here::here("models","gh.mod.mnm"))
+saveRDS(gh.mod.mnm, here::here("models","gh.mod.mnm"))
 
 gh.mod.mnm<-readRDS(here::here("models","gh.mod.mnm"))
 
@@ -157,7 +174,9 @@ msm::pmatrix.msm(gh.mod.mnm) # The probability matrix is the same
 ```
 
 <!-- ```{r  hmmchangeU, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from greater disaffiliation among young people than affiliation.", echo =FALSE} -->
+
 <!-- knitr::include_graphics(here::here("jpg", "simpar.jpg")) -->
+
 <!-- ``` -->
 
 ```{r  hmmchange, cache = TRUE, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from much greater disaffiliation among young people than affiliation.", include = TRUE, code_folding=TRUE}
@@ -358,6 +377,7 @@ plot.decon <-
   theme(legend.position = "bottom")
 
 library(gridExtra)
+
 #grid.arrange(plot.con,plot.decon, ncol=2)
 ### SUPERIMPOSE
 deconplot$Group <- as.factor(rep("Disaffiliation", nrow(deconplot)))
@@ -428,18 +448,20 @@ pr + plotindividual  +
 #tag_levels = "i")
 ```
 
-However, as evident in Figure \@ref(fig:hmmchange), individual-level
-NZAVS data reveal that as people age, the religious affiliation rate
-gradually increases. Likewise, as people age, the religious
-disaffiliation rate gradually decreases. The age at which religious
-affiliation exceeds disaffiliation is about 77 years old. The
-society-level trend and individual-level trends run in the opposite
-directions because there is higher relative religious disaffiliation
-among young people. This example illustrates what is called a "Simpson's
-Paradox." Wherever there is potential for switching between states at an
-individual level, there is on opportunity for a Simpson's Paradox. Most
-facts of interest about the role of religion in a persons life are
-subject to switching.
+However, as evident in Figure \@ref(fig:hmmchange),
+individual-level NZAVS data reveal that as people age, the
+religious affiliation rate gradually increases. Likewise, as
+people age, the religious disaffiliation rate gradually
+decreases. The age at which religious affiliation exceeds
+disaffiliation is about 77 years old. The society-level
+trend and individual-level trends run in the opposite
+directions because there is higher relative religious
+disaffiliation among young people. This example illustrates
+what is called a "Simpson's Paradox." Wherever there is
+potential for switching between states at an individual
+level, there is on opportunity for a Simpson's Paradox. Most
+facts of interest about the role of religion in a persons
+life are subject to switching.
 
 ## Religious change is a Simpson's Paradox
 
@@ -466,14 +488,15 @@ plotI <-
 plotI
 ```
 
-
-Appreciating that religious change is a Simpson's paradox helps to build
-an intuition for why panel data are so powerful. Sociologists have
-documented persistent declines in religious affiliation across western
-societies, a process Max Weber called "the disenchantment of the world"
-[@Weber1946-zp]. This disenchantment theory is a central dogma in the
-sociology of religion [@Norris2004-gu]. The theory is accurate for
-describing society-level dynamics. Indeed, NZAVS data confirm the
-society-level "disenchantment." However, this central dogma is poorly
-suited for understanding how religion and spirituality take shape within
-the lives of individuals.
+Appreciating that religious change is a Simpson's paradox
+helps to build an intuition for why panel data are so
+powerful. Sociologists have documented persistent declines
+in religious affiliation across western societies, a process
+Max Weber called "the disenchantment of the world"
+[@Weber1946-zp]. This disenchantment theory is a central
+dogma in the sociology of religion [@Norris2004-gu]. The
+theory is accurate for describing society-level dynamics.
+Indeed, NZAVS data confirm the society-level
+"disenchantment." However, this central dogma is poorly
+suited for understanding how religion and spirituality take
+shape within the lives of individuals.
