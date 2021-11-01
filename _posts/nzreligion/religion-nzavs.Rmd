@@ -79,7 +79,7 @@ Notably, religious identification and spiritual identification are correlated:
 
 ```{r}
 library(correlation)
-c1 <- correlation::correlation(dt1, select = "RelidS", select2 = "SpiritualIdentificationS") 
+c1 <- correlation::correlation(df, select = "RelidS", select2 = "SpiritualIdentificationS") 
   
 summary(c1) %>%
   print_html()
@@ -91,7 +91,10 @@ However, it is possible that within these populations of identification people d
 
 ```{r}
 #model 
-m1 <- glm(Issue.Euthanasia ~  SpiritualIdentificationS * RelidS  + AgeS + EduS + polS , data = dt1)
+m1 <- glm(Issue.Euthanasia ~  SpiritualIdentificationS * RelidS  + 
+            AgeS + 
+            EduS + 
+            polS, data = df)
 ```
 
 
