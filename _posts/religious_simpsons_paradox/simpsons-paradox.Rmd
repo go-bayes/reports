@@ -33,8 +33,8 @@ knitr::opts_chunk$set(
   fig.height = 9,
   collapse = TRUE,
   R.options = list(width = 60
-  )
 )
+  )
 
 # packages
 library("tidyverse") # data wrangling 
@@ -43,6 +43,11 @@ library("ggplot2") # graph
 library("ggthemes") # themes
 library("table1") # tables
 library("msm") # alluvial graphs
+library("markovchain") # Graphs
+library("diagram")# Graphs
+library("seqHMM")
+library("igraph")
+library("TraMineR")
 ```
 
 ## Religious change at a societial level indicates "clocklike" decline
@@ -66,8 +71,7 @@ decline <- declineUSE %>%
 
 library(ggplot2)
 
-pr <-
-  ggplot(decline, aes(y = PercentagePopulation, x = Years)) + theme_bw() +
+pr <- ggplot(decline, aes(y = PercentagePopulation, x = Years)) + theme_bw() +
   geom_smooth(method = "glm") +
   geom_point(
     stat = "identity",
@@ -79,8 +83,8 @@ pr <-
   labs(title = "Aggregate proportional decline in Christian affiliation: New Zealand years 1966-2018")  +
   scale_y_continuous(limits = c(0, 1)) +
   theme_bw()
-#pr
-#plot
+pr
+
 ```
 
 Figure \@ref(fig:hmmchange) a. presents New Zealand Census
@@ -124,10 +128,10 @@ religious change at the society level.
 df <- readRDS(here::here("data", "df"))
 
 #create dataframe
-dat  <- df %>%
   dplyr::filter(YearMeasured == 1 )%>% # filtering only people who have responded in a year
+dat  <- df %>%
   dplyr::select(Wave, Age, Wave, Religious1 ,Id, Relid, years)%>%
-  dplyr::mutate(yearW  = as.numeric(Wave)) %>%
+  dplyr::mutate(yearW  = as.numeric(Wave)-1) %>%
  # filter(!is.na(Religious1))%>%
   group_by(Id) %>% filter(n() > 1)%>% # have responded to at least 2 x waves
   filter(n() !=0)%>%
@@ -136,60 +140,145 @@ dat  <- df %>%
   filter(!is.na(Religious1)) %>%
   ungroup()%>%
   arrange(Id,yearW)
+#nrow(df)
 
-length(unique(dat$Id)) # 48272
-
-
-### MSM ANALYIS BELOW ###
-# commenting out model to save time (which I've saved in a file, below)
-# initial matrix for transitions
-library(msm)
-
-Q0 <- rbind(c(.9,.1),
-            c(.1,.9))
-
-Q0
-# 
-crudeinR <- msm::crudeinits.msm(Religious1 ~ yearW, Id, data= dat, qmatrix=Q0)
-
-crudeinR
-#  avoid running to save time
-gh.mod.mnm  <- msm(Religious1 ~ yearW, Id,
-                   data=dat,
-                   covariates =  ~ Age,
-                   qmatrix = crudeinR,
-                   ematrix = rbind(c(.1,.1),c(.1,.1)),
-                   est.initprobs = TRUE)
-
-saveRDS(gh.mod.mnm, here::here("models","gh.mod.mnm"))
-
-gh.mod.mnm<-readRDS(here::here("models","gh.mod.mnm"))
-
-#probability matrix
-msm::pmatrix.msm(gh.mod.mnm) # The probability matrix is the same
-
-# probabilities
-#print(gh.mod.mnm)
+# unique ids
+length(unique(dat$Id)) #48165
 
 ```
 
-<!-- ```{r  hmmchangeU, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from greater disaffiliation among young people than affiliation.", echo =FALSE} -->
+MSM Analysis
 
-<!-- knitr::include_graphics(here::here("jpg", "simpar.jpg")) -->
+```{r  msm2, cache = TRUE, eval = FALSE}
+### MSM ANALYIS BELOW ###
+# commenting out model to save time (which I've saved in a file, below)
+# initial matrix for transitions
+library("msm")
 
-<!-- ``` -->
+Q0 <- rbind(c(.9, .1),
+            c(.1, .9))
 
-```{r  hmmchange, cache = TRUE, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from much greater disaffiliation among young people than affiliation.", include = TRUE, code_folding=TRUE}
+# intensity matrix
+Q0
 
-#, fig.cap="Hidden markov model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from much greater disaffiliation among young people than affiliation.
-# Religious Affiliation (Innit Pr = .61);  Disaffiliation (Innit Pr = .39)
-# THIS GETS INITIAL PROBABILITIES
+# Initialise
+crudeinR <-
+  msm::crudeinits.msm(Religious1 ~ yearW, Id, # Id = identifier
+                      data = dat,
+                      qmatrix = Q0)
+
+m1a  <- msm(
+  Religious1 ~ yearW,
+  Id,
+  data = dat,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  ematrix = rbind(c(.1,.1),c(.1,.1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE,# Not running without this assumption.
+  gen.inits = TRUE
+)
+saveRDS(m1, here::here( "models","mnm-simpson-paradox-religious-change" ))
+
+# 
+m2  <- msm(
+  Religious1 ~ yearW,
+  Id,
+  data = dat,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  ematrix = rbind(c(.1,.1),c(.1,.1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE,# Not running without this assumption.
+  gen.inits = TRUE
+)
+saveRDS(m2, here::here( "models","mnm-simpson-paradox-religious-change-2" ))
+
+```
+
+
+```{r eval = FALSE}
+m1 <-readRDS(here::here( "models","mnm-simpson-paradox-religious-change" ))
+m2 <-readRDS(here::here( "models","mnm-simpson-paradox-religious-change-2" ))
+
+#probability matrix
+# m1
+msm::pmatrix.msm( m1a ) 
+msm::pmatrix.msm( m1 ) 
+msm::pmatrix.msm( m2 ) # Matches 1
+```
+
+
+We can compare this with the raw (un-modelled) state transition, which overstates overall change.
+
+```{r}
+
+# example change in wave 2018/ wave 2019
+dat2 <- dat %>%
+  filter(yearW == 11 | yearW == 10)
+
+raw <- msm::statetable.msm(Religious1, Id, data = dat2)
+
+# calculates proportions by rows
+prop.table(raw, 1)
+
+
+```
+
+
+
+```{r  hmmchange, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from greater disaffiliation among young people than affiliation.", echo =FALSE}
+
+
+#m1 <-readRDS(here::here( "models","mnm-simpson-paradox-religious-change" ))
+
+# Graph
+oz<- as.matrix( msm::pmatrix.msm( m1 ) )
+oz <- round(oz, digits = 3)
+
+
+stateNames <- c("Secular (.63)","Religious (.37)")
+row.names(oz) <- stateNames; colnames(oz) <- stateNames
+oz
+## need to transpose or else arrows go in the wrong direction
+toz <- t(oz) 
+
+#library(pracma)
+plotmat(toz,
+       # pos = c(1,2), 
+       # lwd = 1, 
+       # box.lwd = 2, 
+        cex.txt = 0.9, 
+        box.size = 0.09, 
+       # box.type = "circle", 
+        box.prop = 0.5,
+        arr.pos =  0.4, 
+        shadow.size = 0.001,
+        box.col = c("lightgreen","lightblue","orange"),
+       # arr.length=.1,
+       # arr.width=.1,
+        self.cex = .4,
+        self.shifty = -.01,
+        self.shiftx = .12,
+        main = "Hidden Markov Model reveals religious switching
+       New Zealand: years 2009-2020")
+
+```
+
+
+## Graph 
+
+
+```{r  hmmchange2, cache = TRUE, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from much greater disaffiliation among young people than affiliation.", include = TRUE, code_folding=TRUE}
 
 # note to self, this code can be improved
 ### CREATE PLOT  ###  CONVERSION AGE PLOT
 ## 20 year olds
+
+#m1 <-readRDS(here::here( "models","mnm-simpson-paradox-religious-change" ))
+
 p20 <-
-  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 20), ci = "normal")
+  pmatrix.msm(m1, covariates = list(Age = 20), ci = "normal")
 p20.Convert <- p20$estimates[1, 2]
 p20.Convert.L <- p20$L[1, 2]
 # get upper bound
@@ -197,7 +286,7 @@ p20.Convert.U <- p20$U[1, 2]
 con.20 <- c(20, p20.Convert, p20.Convert.L, p20.Convert.U)
 ## 30 year olds
 p30 <-
-  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 30), ci = "normal")
+  pmatrix.msm(m1, covariates = list(Age = 30), ci = "normal")
 p30.Convert <- p30$estimates[1, 2]
 # set lower bound
 p30.Convert.L <- p30$L[1, 2]
@@ -207,7 +296,7 @@ p30.Convert.U <- p30$U[1, 2]
 con.30 <- c(30, p30.Convert, p30.Convert.L, p30.Convert.U)
 ## 40 year old
 p40 <-
-  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 40), ci = "normal")
+  pmatrix.msm(m1, covariates = list(Age = 40), ci = "normal")
 # Get Transition to Relid Estimate
 p40.Convert <- p40$estimates[1, 2]
 # set lower bound
@@ -217,7 +306,7 @@ p40.Convert.U <- p40$U[1, 2]
 con.40 <- c(40, p40.Convert, p40.Convert.L, p40.Convert.U)
 ## 50 year old
 p50 <-
-  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 50), ci = "normal")
+  pmatrix.msm(m1, covariates = list(Age = 50), ci = "normal")
 # Get Transition to Relid Estimate
 p50.Convert <- p50$estimates[1, 2]
 # set lower bound
@@ -227,7 +316,7 @@ p50.Convert.U <- p50$U[1, 2]
 con.50 <- c(50, p50.Convert, p50.Convert.L, p50.Convert.U)
 ## 60 year olds
 p60 <-
-  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 60), ci = "normal")
+  pmatrix.msm(m1, covariates = list(Age = 60), ci = "normal")
 # Get Transition to Relid Estimate
 p60.Convert <- p60$estimates[1, 2]
 # set lower bound
@@ -237,7 +326,7 @@ p60.Convert.U <- p60$U[1, 2]
 con.60 <- c(60, p60.Convert, p60.Convert.L, p60.Convert.U)
 ## 70 year olds
 p70 <-
-  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 70), ci = "normal")
+  pmatrix.msm(m1, covariates = list(Age = 70), ci = "normal")
 # Get Transition to Relid Estimate
 p70.Convert <- p70$estimates[1, 2]
 # set lower bound
@@ -247,7 +336,7 @@ p70.Convert.U <- p70$U[1, 2]
 con.70 <- c(70, p70.Convert, p70.Convert.L, p70.Convert.U)
 ### ## 80 year olds
 p80 <-
-  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 80), ci = "normal")
+  pmatrix.msm(m1, covariates = list(Age = 80), ci = "normal")
 # Get Transition to Relid Estimate
 p80.Convert <- p80$estimates[1, 2]
 # set lower bound
@@ -257,7 +346,7 @@ p80.Convert.U <- p80$U[1, 2]
 con.80 <- c(80, p80.Convert, p80.Convert.L, p80.Convert.U)
 # ### ## 90 year olds
 p90 <-
-  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 90), ci = "normal")
+  pmatrix.msm(m1, covariates = list(Age = 90), ci = "normal")
 # # Get Transition to Relid Estimate
 p90.Convert <- p90$estimates[1, 2]
 # # set lower bound
@@ -273,6 +362,7 @@ library(ggplot2)
 #library(wesanderson)
 #wes_palette("Zissou1", type = c("discrete"))
 #library("ggsci")
+
 plot.con <-
   ggplot(aes(
     x = age,
@@ -286,58 +376,58 @@ plot.con <-
               method = "loess",
               se = FALSE)  +
   scale_y_continuous(limits = c(0, .1)) +
-  labs(x = "Age", y = "Religious Affiliation Transition Probability w/ 95% CI") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2010-2020")
+  labs(x = "Age", y = "Religious Affiliation Transition Probability w/ 95% CI") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2009-2020")
 
 #plot.con
-#gh.mod.mnm
+#m1
 
 ##### CREAT PLOT FOR DECONVERSION
 ## 20 year olds
 p20 <-
-  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 20), ci = "normal")
+  pmatrix.msm(m1, covariates = list(Age = 20), ci = "normal")
 # Get Transition to Relid Estimate
 p20.decon <- p20$estimates[2, 1]
 p20.decon.L <- p20$L[2, 1]
 p20.decon.U <- p20$U[2, 1]
 decon.20 <- c(20, p20.decon, p20.decon.L, p20.decon.U)
 p30 <-
-  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 30), ci = "normal")
+  pmatrix.msm(m1, covariates = list(Age = 30), ci = "normal")
 p30.decon <- p30$estimates[2, 1]
 p30.decon.L <- p30$L[2, 1]
 p30.decon.U <- p30$U[2, 1]
 decon.30 <- c(30, p30.decon, p30.decon.L, p30.decon.U)
 p40 <-
-  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 40), ci = "normal")
+  pmatrix.msm(m1, covariates = list(Age = 40), ci = "normal")
 p40.decon <- p40$estimates[2, 1]
 p40.decon.L <- p40$L[2, 1]
 p40.decon.U <- p40$U[2, 1]
 decon.40 <- c(40, p40.decon, p40.decon.L, p40.decon.U)
 p50 <-
-  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 50), ci = "normal")
+  pmatrix.msm(m1, covariates = list(Age = 50), ci = "normal")
 p50.decon <- p50$estimates[2, 1]
 p50.decon.L <- p50$L[2, 1]
 p50.decon.U <- p50$U[2, 1]
 decon.50 <- c(50, p50.decon, p50.decon.L, p50.decon.U)
 p60 <-
-  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 60), ci = "normal")
+  pmatrix.msm(m1, covariates = list(Age = 60), ci = "normal")
 p60.decon <- p60$estimates[2, 1]
 p60.decon.L <- p60$L[2, 1]
 p60.decon.U <- p60$U[2, 1]
 decon.60 <- c(60, p60.decon, p60.decon.L, p60.decon.U)
 p70 <-
-  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 70), ci = "normal")
+  pmatrix.msm(m1, covariates = list(Age = 70), ci = "normal")
 p70.decon <- p70$estimates[2, 1]
 p70.decon.L <- p70$L[2, 1]
 p70.decon.U <- p70$U[2, 1]
 decon.70 <- c(70, p70.decon, p70.decon.L, p70.decon.U)
 p80 <-
-  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 80), ci = "normal")
+  pmatrix.msm(m1, covariates = list(Age = 80), ci = "normal")
 p80.decon <- p80$estimates[2, 1]
 p80.decon.L <- p80$L[2, 1]
 p80.decon.U <- p80$U[2, 1]
 decon.80 <- c(80, p80.decon, p80.decon.L, p80.decon.U)
 p90 <-
-  pmatrix.msm(gh.mod.mnm, covariates = list(Age = 90), ci = "normal")
+  pmatrix.msm(m1, covariates = list(Age = 90), ci = "normal")
 p90.decon <- p90$estimates[2, 1]
 p90.decon.L <- p90$L[2, 1]
 p90.decon.U <- p90$U[2, 1]
@@ -393,9 +483,10 @@ deconplot2 <- deconplot %>%
 comboplot <- rbind(conplot, deconplot2)
 #comboplot
 # get initial probabilities for title label
-#pmatrix.msm(gh.mod.mnm)
+#pmatrix.msm(m1)
 
 library(ggplot2)
+
 # plot.combo <-
 #   ggplot(
 #     aes(
@@ -411,7 +502,7 @@ library(ggplot2)
 #   geom_linerange(alpha = 1) +
 #   geom_smooth(se = F) +
 #   scale_y_continuous(limits = c(0, .96))  +
-#   labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI: range: Pr = 0 to Pr = 1 ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2010 -- 2020") +
+#   labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI: range: Pr = 0 to Pr = 1 ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2020 -- 2020") +
 #   #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
 #   scale_colour_manual(values = c("#d1495b", "#00798c")) +
 #   theme(legend.position = "bottom")
@@ -433,7 +524,7 @@ plotindividual <-
   geom_linerange(alpha = 1) +
   geom_smooth(se = F) +
   scale_y_continuous(limits = c(0, 1))  +
-  labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2010-2020") +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2009-2020") +
   #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
   scale_colour_manual(values = c("#d1495b", "#00798c")) +
   theme(legend.position = "bottom")
@@ -453,7 +544,7 @@ individual-level NZAVS data reveal that as people age, the
 religious affiliation rate gradually increases. Likewise, as
 people age, the religious disaffiliation rate gradually
 decreases. The age at which religious affiliation exceeds
-disaffiliation is about 77 years old. The society-level
+disaffiliation is about 70 years old. The society-level
 trend and individual-level trends run in the opposite
 directions because there is higher relative religious
 disaffiliation among young people. This example illustrates
@@ -481,7 +572,7 @@ plotI <-
   geom_linerange(alpha = 1) +
   geom_smooth(se = F) +
   scale_y_continuous(limits = c(0, .1))  +
-  labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI: range: Pr = 0 to Pr = 1 ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2010 -- 2020") +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI: range: Pr = 0 to Pr = 1 ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2020 -- 2020") +
   #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
   scale_colour_manual(values = c("#d1495b", "#00798c")) +
   theme(legend.position = "bottom")
@@ -500,3 +591,1143 @@ Indeed, NZAVS data confirm the society-level
 "disenchantment." However, this central dogma is poorly
 suited for understanding how religion and spirituality take
 shape within the lives of individuals.
+
+
+## Appendix
+
+## Raw Trajectories
+
+```{r}
+library(LMest)
+relwidelong<-  df %>%
+  dplyr::mutate(Religious = Religious1-1)%>%
+  dplyr::select(Id,Religious,Wave)
+
+##THIS HANGS
+#out <- with(relwidelong, long2matrices(id = Id, X = Age, Y = Religious))
+
+relwide<- spread(relwidelong,Wave,Religious)
+head(relwide)
+
+#relwide<-relwide[complete.cases(relwide), ]
+
+
+Relidwide<-  df %>%
+  dplyr::filter(YearMeasured==1)%>%
+  dplyr::select(Id,Relid,Wave)%>%
+  group_by(Id) %>% filter(n() > 5)%>%
+  filter(n() !=0)%>% 
+  ungroup(Id)%>%
+  spread(Wave,Relid)
+
+Relidwide<-Relidwide[complete.cases(Relidwide), ]
+head(Relidwide)
+
+x_var_list<-names(relwide[,2:11])
+x_var_list
+library(lcsm)
+plot_trajectories(data = relwide,
+                 id_var = "Id", 
+                 var_list = x_var_list,
+                 xlab = "Time", ylab = "Value",
+                 connect_missing = F, 
+                 random_sample_frac = 0.1, 
+                 title_n = TRUE)  +
+  facet_wrap(~Id)
+
+plot_trajectories(data = Relidwide,
+                  id_var = "Id", 
+                  var_list = x_var_list,
+                  xlab = "Time", ylab = "Value",
+                  connect_missing = F, 
+                  random_sample_frac = 0., 
+                  title_n = TRUE)  +
+  facet_wrap(~Id)
+# SAVED random_selection_RELID 2k x 2k
+```
+
+
+
+
+# Notes
+
+### Graph of states 
+
+```{r}
+
+# Graph
+oz_20<- as.matrix( msm::pmatrix.msm(m1, covariates = list(Age = 30)))
+oz_20 <- round(oz_20, digits = 3)
+
+
+stateNames <- c("Secular ","Religious")
+row.names(oz_20) <- stateNames; colnames(oz_20) <- stateNames
+oz_20
+## need to transpose or else arrows go in the wrong direction
+toz_20 <- t(oz_20) 
+
+#library(pracma)
+plotmat(toz_20,
+       # pos = c(1,2), 
+       # lwd = 1, 
+       # box.lwd = 2, 
+        cex.txt = 0.9, 
+        box.size = 0.09, 
+       # box.type = "circle", 
+        box.prop = 0.5,
+        arr.pos =  0.4, 
+        shadow.size = 0.001,
+        box.col = c("lightgreen","lightblue","orange"),
+       # arr.length=.1,
+       # arr.width=.1,
+        self.cex = .4,
+        self.shifty = -.01,
+        self.shiftx = .12,
+        main = "Hidden Markov Model reveals religious switching
+       New Zealand: years 2009-2020, Age = 20")
+
+
+
+# Graph
+oz_70<- as.matrix( msm::pmatrix.msm(m1, covariates = list(Age = 70)))
+oz_70 <- round(oz_70, digits = 3)
+oz_70
+
+stateNames <- c("Secular ","Religious")
+row.names(oz_70) <- stateNames; colnames(oz_70) <- stateNames
+oz_70
+## need to transpose or else arrows go in the wrong direction
+toz_70 <- t(oz_70) 
+
+#library(pracma)
+dev.off()
+par(mfrow=c(1,2))
+
+plotmat(toz_20,
+       # pos = c(1,2), 
+       # lwd = 1, 
+       # box.lwd = 2, 
+        cex.txt = 0.9, 
+        box.size = 0.09, 
+       # box.type = "circle", 
+        box.prop = 0.5,
+        arr.pos =  0.4, 
+        shadow.size = 0.001,
+        box.col = c("lightgreen","lightblue","orange"),
+       # arr.length=.1,
+       # arr.width=.1,
+        self.cex = .4,
+        self.shifty = -.01,
+        self.shiftx = .12,
+        main = "Hidden Markov Model reveals religious switching
+       New Zealand: years 2009-2020, Age = 20")
+
+
+plotmat(toz_70,
+       # pos = c(1,2), 
+       # lwd = 1, 
+       # box.lwd = 2, 
+        cex.txt = 0.9, 
+        box.size = 0.09, 
+       # box.type = "circle", 
+        box.prop = 0.5,
+        arr.pos =  0.4, 
+        shadow.size = 0.001,
+        box.col = c("lightgreen","lightblue","orange"),
+       # arr.length=.1,
+       # arr.width=.1,
+        self.cex = .4,
+        self.shifty = -.01,
+        self.shiftx = .12,
+        main = "Hidden Markov Model reveals religious switching
+       New Zealand: years 2009-2020, Age = 70")
+
+```
+
+
+
+
+
+### Three state model 
+
+
+```{r}
+q3 <-rbind(c(.1,.1,.1),
+           c(.1,.1,.1),
+           c(.1,.1,.1)) #  Allow permitted transitions
+
+
+# standardise age
+# dat2 <- dat %>%
+#   mutate(age_s = scale(Age))
+
+#three state emissions model
+m3  <- msm(
+  Religious1 ~ yearW,
+  Id,
+  data = dat,
+  covariates = ~ Age,
+  est.initprobs = TRUE,
+  exacttimes = TRUE,# Not running without this assumption.
+  gen.inits = TRUE,
+  qmatrix = q3,
+  ematrix = rbind(c(.1, .1, .1),
+                  c(.1, .1, .1),
+                  c(.1, .1, .1)
+))
+
+
+saveRDS(m3, here::here("models","simpsons-paradox-religion-three-state"))
+
+# saved to save time
+
+m3 <- readRDS(here::here("models", "simpsons-paradox-religion-three-state"))
+
+qmatrix.msm(m3)
+pmatrix.msm(m3) # works
+
+
+## 
+options(scipen = 100)
+pmatrix.msm(m3, covariates = list(Age = 30))
+pmatrix.msm(m3, covariates = list(Age = 60))
+pmatrix.piecewise.msm(m3)
+round( pmatrix.msm(m3, covariates = list(Age = 20)), 2)
+pmatrix.msm(m3, covariates = "mean" )
+
+
+
+
+# Graph
+hoz_70<- as.matrix( msm::pmatrix.msm(m3, covariates = list(Age = 70)))
+hoz_70 <- round(hoz_70, digits = 2)
+hoz_70
+
+stateNames <- c("Secular ","Religious")
+row.names(oz_70) <- stateNames; colnames(oz_70) <- stateNames
+oz_70
+## need to transpose or else arrows go in the wrong direction
+toz_70 <- t(oz_70) 
+
+#library(pracma)
+dev.off()
+par(mfrow=c(1,2))
+
+plotmat(toz_20,
+       # pos = c(1,2), 
+       # lwd = 1, 
+       # box.lwd = 2, 
+        cex.txt = 0.9, 
+        box.size = 0.09, 
+       # box.type = "circle", 
+        box.prop = 0.5,
+        arr.pos =  0.4, 
+        shadow.size = 0.001,
+        box.col = c("lightgreen","lightblue","orange"),
+       # arr.length=.1,
+       # arr.width=.1,
+        self.cex = .4,
+        self.shifty = -.01,
+        self.shiftx = .12,
+        main = "Hidden Markov Model reveals religious switching
+       New Zealand: years 2009-2020, Age = 20")
+
+# 
+# 
+# # Reduce data
+# 
+# dat2  <- df %>%
+#   dplyr::filter(YearMeasured == 1 )%>% # filtering only people who have responded in a year
+#   dplyr::select(Wave, Age, Wave, Religious1 ,Id, Relid, years)%>%
+#   dplyr::mutate(yearW  = as.numeric(Wave)-1) %>%
+#  # filter(!is.na(Religious1))%>%
+#   group_by(Id) %>% filter(n() > 3)%>% # have responded to at least 4 x waves
+#   filter(n() !=0)%>%
+#   ungroup(Id)%>%
+#   group_by(Wave) %>%
+#   filter(!is.na(Religious1)) %>%
+#   ungroup()%>%
+#   arrange(Id,yearW)
+# 
+# # # 19,486
+# 
+# length(unique(dat2$Id))
+# 
+
+# standardise 
+summary(df$Cohort)
+dat2 <- df %>%
+  dplyr::filter(YearMeasured == 1 )%>% # filtering only people who have responded in a year
+  dplyr::select(Wave, Age, Wave, Religious1 ,Id, Relid, years, Cohort.WideBand,GenCohort, Cohort)%>%
+  dplyr::mutate(yearW  = as.numeric(Wave)-1) %>%
+ # filter(!is.na(Religious1))%>%
+  group_by(Id) %>% filter(n() > 1)%>% # have responded to at least 2 x waves
+  filter(n() !=0)%>%
+  ungroup(Id)%>%
+  group_by(Wave) %>%
+  filter(!is.na(Religious1)) %>%
+  filter(!is.na(GenCohort)) %>%
+  ungroup()%>%
+ mutate(age2009 = 2019 - Cohort) %>%
+mutate(Cohort_WideBand = as.numeric(Cohort.WideBand)) %>%
+  arrange(Id,yearW)
+
+relwidelong<-  df %>%
+  dplyr::mutate(Religious = Religious1-1)%>%
+  dplyr::select(Id,Religious,Wave)
+
+
+GenCohortwidelong<-  df %>%
+  dplyr::select(Id,GenCohort,Wave)
+##THIS HANGS
+#out <- with(relwidelong, long2matrices(id = Id, X = Age, Y = Religious))
+
+relwide<- spread(relwidelong,Wave,Religious)
+relwide
+genwide<- spread(GenCohortwidelong,Wave,GenCohort)
+
+Genwide = as.data.frame(genwide$`2019`)
+head(Genwide)
+
+colnames(Genwide)<-"GenCohort"
+
+str(Genwide$GenCohort)
+
+
+
+
+m3b  <- msm(
+  Religious1 ~ yearW,
+  Id,
+  data = dat2,
+  covariates = ~ Cohort_WideBand,
+  est.initprobs = TRUE,
+  exacttimes = TRUE,# Not running without this assumption.
+ # gen.inits = TRUE,
+  qmatrix = q3,
+  ematrix = rbind(c(.1, .1, .1),
+                  c(.1, .1, .1),
+                  c(.1, .1, .1))
+)
+
+# saveRDS(m3b, here::here("models","simpsons-paradox-religion-three-state-cohortwide"))
+
+
+# options(scipen = 100)
+m3b
+covariates=list(sex=0))
+
+pmatrix.msm(m3b)
+pmatrix.msm(m3b, covariates = list(Cohort_WideBand = 1))
+pmatrix.msm(m3b, covariates = list(Cohort_WideBand = 5))
+
+m1
+str(m3b)
+
+m3b$hmodel$initprobs  
+
+
+# 
+# round( pmatrix.msm(m3b, covariates = list(Age = 20)), 2)
+# rouncd( pmatrix.msm(m3b, covariates = list(Age = 40)), 2)
+# 
+# pmatrix.msm(m3, covariates = "mean" )
+# 
+# 
+# 
+saveRDS(m3b, here::here("models","simpsons-paradox-religion-three-state-cohortwide"))
+
+
+# Graph
+hoz_70<- as.matrix( msm::pmatrix.msm(m3b, covariates = list(Cohort_WideBand = 8)))
+hoz_70 <- round(hoz_70, digits = 2)
+hoz_70
+
+stateNames <- c("Secular ","Religious", "Liminal")
+row.names(hoz_70) <- stateNames; colnames(hoz_70) <- stateNames
+hoz_70
+## need to transpose or else arrows go in the wrong direction
+hoz_70 <- t(hoz_70) 
+
+
+plotmat(hoz_70,
+       # pos = c(1,2), 
+       # lwd = 1, 
+       # box.lwd = 2, 
+        cex.txt = 0.9, 
+        box.size = 0.09, 
+       # box.type = "circle", 
+        box.prop = 0.5,
+        arr.pos =  0.4, 
+        shadow.size = 0.001,
+        box.col = c("lightgreen","lightblue","orange"),
+       # arr.length=.1,
+       # arr.width=.1,
+        self.cex = .4,
+        self.shifty = -.01,
+        self.shiftx = .12,
+        main = "Hidden Markov Model reveals religious switching
+       New Zealand: years 2009-2020, Age = 70")
+
+```
+
+
+```{r}
+# Graph
+table(dat2$Cohort_WideBand)
+hoz_20<- as.matrix( msm::pmatrix.msm(m3b, covariates = list(Cohort_WideBand = 3)))
+hoz_20 <- round(hoz_20, digits = 2)
+hoz_20
+
+stateNames <- c("Secular ","Religious", "Liminal")
+row.names(hoz_20) <- stateNames; colnames(hoz_20) <- stateNames
+hoz_20
+## need to transpose or else arrows go in the wrong direction
+hoz_20 <- t(hoz_20) 
+
+
+plotmat(hoz_20,
+       # pos = c(1,2), 
+       # lwd = 1, 
+       # box.lwd = 2, 
+        cex.txt = 0.9, 
+        box.size = 0.09, 
+       # box.type = "circle", 
+        box.prop = 0.5,
+        arr.pos =  0.4, 
+        shadow.size = 0.001,
+        box.col = c("lightgreen","lightblue","orange"),
+       # arr.length=.1,
+       # arr.width=.1,
+        self.cex = .4,
+        self.shifty = -.01,
+        self.shiftx = .12,
+        main = "Hidden Markov Model reveals religious switching
+       New Zealand: years 2009-2020, Cohort = 3")
+
+```
+
+
+```{r}
+# Graph
+table(dat2$Cohort_WideBand)
+hoz_90<- as.matrix( msm::pmatrix.msm(m3b, covariates = list(Cohort_WideBand = 9)))
+hoz_90 <- round(hoz_90, digits = 2)
+hoz_90
+
+stateNames <- c("Secular ","Religious", "Liminal")
+row.names(hoz_90) <- stateNames; colnames(hoz_90) <- stateNames
+hoz_90
+## need to transpose or else arrows go in the wrong direction
+hoz_90 <- t(hoz_90) 
+
+
+plotmat(hoz_90,
+       # pos = c(1,2), 
+       # lwd = 1, 
+       # box.lwd = 2, 
+        cex.txt = 0.9, 
+        box.size = 0.09, 
+       # box.type = "circle", 
+        box.prop = 0.5,
+        arr.pos =  0.4, 
+        shadow.size = 0.001,
+        box.col = c("lightgreen","lightblue","orange"),
+       # arr.length=.1,
+       # arr.width=.1,
+        self.cex = .4,
+        self.shifty = -.01,
+        self.shiftx = .12,
+        main = "Hidden Markov Model reveals religious switching
+       New Zealand: years 2009-2020, Cohort = 9")
+
+```
+
+
+
+```{r}
+# Graph
+table(dat2$Cohort_WideBand)
+hoz_50<- as.matrix( msm::pmatrix.msm(m3b, covariates = list(Cohort_WideBand = 5)))
+hoz_50 <- round(hoz_50, digits = 2)
+hoz_50
+
+stateNames <- c("Secular ","Religious", "Liminal")
+row.names(hoz_50) <- stateNames; colnames(hoz_50) <- stateNames
+hoz_50
+## need to transpose or else arrows go in the wrong direction
+hoz_50 <- t(hoz_50) 
+
+
+plotmat(hoz_50,
+       # pos = c(1,2), 
+       # lwd = 1, 
+       # box.lwd = 2, 
+        cex.txt = 0.9, 
+        box.size = 0.09, 
+       # box.type = "circle", 
+        box.prop = 0.5,
+        arr.pos =  0.4, 
+        shadow.size = 0.001,
+        box.col = c("lightgreen","lightblue","orange"),
+       # arr.length=.1,
+       # arr.width=.1,
+        self.cex = .4,
+        self.shifty = -.01,
+        self.shiftx = .12,
+        main = "Hidden Markov Model reveals religious switching
+       New Zealand: years 2009-2020, Cohort = 5")
+
+```
+
+
+```{r}
+ Graph
+table(dat2$Cohort_WideBand)
+hoz_m<- as.matrix( msm::pmatrix.msm(m3b, covariates = "mean"))
+hoz_m <- round(hoz_m, digits = 2)
+hoz_m
+
+stateNames <- c("Secular ","Religious", "Liminal")
+row.names(hoz_m) <- stateNames; colnames(hoz_m) <- stateNames
+hoz_m
+## need to transpose or else arrows go in the wrong direction
+hoz_m <- t(hoz_m) 
+
+
+plotmat(hoz_m,
+       # pos = c(1,2), 
+       # lwd = 1, 
+       # box.lwd = 2, 
+        cex.txt = 0.9, 
+        box.size = 0.09, 
+       # box.type = "circle", 
+        box.prop = 0.5,
+        arr.pos =  0.4, 
+        shadow.size = 0.001,
+        box.col = c("lightgreen","lightblue","orange"),
+       # arr.length=.1,
+       # arr.width=.1,
+        self.cex = .4,
+        self.shifty = -.01,
+        self.shiftx = .12,
+        main = "Hidden Markov Model reveals religious switching
+       New Zealand: years 2009-2020, Cohort = average")
+
+```
+
+
+```{r}
+# Graph
+table(dat2$Cohort_WideBand)
+hoz_70<- as.matrix( msm::pmatrix.msm(m3b, covariates = list(Cohort_WideBand = 7)))
+hoz_70 <- round(hoz_70, digits = 2)
+hoz_70
+
+stateNames <- c("Secular ","Religious", "Liminal")
+row.names(hoz_70) <- stateNames; colnames(hoz_70) <- stateNames
+hoz_70
+## need to transpose or else arrows go in the wrong direction
+hoz_70 <- t(hoz_70) 
+
+
+plotmat(hoz_70,
+       # pos = c(1,2), 
+       # lwd = 1, 
+       # box.lwd = 2, 
+        cex.txt = 0.9, 
+        box.size = 0.09, 
+       # box.type = "circle", 
+        box.prop = 0.5,
+        arr.pos =  0.4, 
+        shadow.size = 0.001,
+        box.col = c("lightgreen","lightblue","orange"),
+       # arr.length=.1,
+       # arr.width=.1,
+        self.cex = .4,
+        self.shifty = -.01,
+        self.shiftx = .12,
+        main = "Hidden Markov Model reveals religious switching
+       New Zealand: years 2009-2020, Cohort = 7")
+
+```
+
+We can estimate a Hidden Markov Model using the seqHMM package.  
+
+```{r}
+# 
+# library(seqHMM)
+# #check to pull right data
+# library(LMest)
+# relwidelong<-  df %>%
+#   dplyr::mutate(Religious = Religious1-1)%>%
+#   dplyr::select(Id,Religious,Wave)
+# 
+# 
+# GenCohortwidelong<-  df %>%
+#   dplyr::select(Id,GenCohort,Wave)
+# ##THIS HANGS
+# #out <- with(relwidelong, long2matrices(id = Id, X = Age, Y = Religious))
+# 
+# relwide<- spread(relwidelong,Wave,Religious)
+# relwide
+# genwide<- spread(GenCohortwidelong,Wave,GenCohort)
+# 
+# Genwide = as.data.frame(genwide$`2019`)
+# head(Genwide)
+# 
+# colnames(Genwide)<-"GenCohort"
+# 
+# str(Genwide$GenCohort)
+# 
+# #cohort_wideband = as.numeric(df$Cohort.WideBand)
+# cohort_wideband = as.numeric(df$Cohort.WideBand)
+# 
+# 
+# relwide2 = cbind(relwide, Genwide)
+# head(relwide2)
+# 
+# #relwide<-relwide[complete.cases(relwide), ]
+# 
+# 
+# 
+# relw <- relwide2[, 2:12]
+# relw
+# #####
+# relseq2 <- seqdef(relw,label = c("Rel-","Rel+"))
+# relseq2
+# nrow(relseq2)
+# 
+# 
+# ## 2 state model in  this package
+# sc_initmod_random <- build_hmm(observations = relseq2, n_states = 3)
+# sc_initmod_random
+# 
+# 
+# nrow(GenCohort)
+# listdat<-list(relwide2)
+# 
+# listdat$covariates$cohort<-factor(Genwide$GenCohort, labels = c("silent","boomers","genx","geny","genz"))
+# 
+# listdat$covariates$cohort
+# # 
+# 
+# 
+# 
+# sc_initmod <- build_hmm(
+#   observations = relseq2,
+#   initial_probs = sc_initmod_random$initial_probs,
+#   transition_probs = sc_initmod_random$transition_probs,
+#   emission_probs = sc_initmod_random$emission_probs,
+#   formula = ~ cohort, 
+#   data = listdat$covariates
+# )
+# 
+# sc_initmod
+# 
+# sc_fit <- fit_model(sc_initmod)
+# 
+# #saveRDS(sc_fit, here::here("models","hmm_threestate_cohort"))
+# 
+# sc_fit<- readRDS(here::here("models","hmm_threestate_cohort"))
+# fm<- sc_fit$model
+# 
+# 
+# summary(fm, conditional_se = FALSE)
+# str(fm)
+# fm
+# 
+# library(igraph)
+# plot(sc_fit$model,
+#      layout = layout_nicely, 
+#      # vertex.label = "names"
+#      title ="Hidtden States Religious Identification",
+#     legend.prop =.3)
+# dev.off()
+# 
+# transprob<-as.matrix(
+#   fm$transition_probs
+#   )
+# transprob
+
+```
+
+
+
+```{r}
+library(seqHMM)
+####  ## Mixed clusters ### THIS WORKS AS FOLLOWS...  
+dat2 <- df %>%
+  dplyr::filter(YearMeasured == 1 )%>% # filtering only people who have responded in a year
+  dplyr::select(Wave, Age, Wave, Religious1 ,Id, Relid, years, Cohort.WideBand,GenCohort, Cohort)%>%
+  dplyr::mutate(yearW  = as.numeric(Wave)-1) %>%
+ # filter(!is.na(Religious1))%>%
+  group_by(Id) %>% filter(n() > 1)%>% # have responded to at least 2 x waves
+  filter(n() !=0)%>%
+  ungroup(Id)%>%
+  group_by(Wave) %>%
+  filter(!is.na(Religious1)) %>%
+  filter(!is.na(Cohort.WideBand)) %>%
+  ungroup()%>%
+  tidyr::fill(Cohort.WideBand) %>%
+ mutate(age2009 = 2019 - Cohort) %>%
+mutate(Cohort_WideBand = as.factor(Cohort.WideBand)) %>%
+  arrange(Id,yearW)
+
+relwidelong<-  dat2 %>%
+  dplyr::mutate(Religious = Religious1-1)%>%
+  dplyr::select(Id,Religious,Wave)
+
+
+
+
+GenCohortwidelong<-  dat2 %>%
+  dplyr::select(Id,GenCohort,Wave) 
+
+
+
+#out <- with(relwidelong, long2matrices(id = Id, X = Age, Y = Religious))
+GenCohortwidelong
+relwide<- spread(relwidelong,Wave,Religious)
+relwide
+nrow(relwide)
+
+genwide<- spread(GenCohortwidelong,Wave,GenCohort) %>%
+  gather(key, val, -Id) %>%
+    group_by(Id) %>% 
+    fill(val) %>% 
+    spread(key, val)
+
+
+length(unique(genwide$Id))
+
+Genwide<- as.data.frame(as.factor(genwide$`2019`))
+Genwide
+
+colnames(Genwide)<-"GenCohort"
+
+str(Genwide$GenCohort)
+
+listdat <-list(relwide)
+
+str(listdat )
+
+listdat$covariates$GenCohort <- factor(Genwide$GenCohort, labels = c("silent","boomers","genx","geny","genz"))
+
+length(listdat$covariates$GenCohort)
+
+relw <- relwide[, 2:12]
+relw
+#####
+relseq <- seqdef(relw,label = c("Rel-","Rel+"))
+relseq
+
+# check rows same
+nrow(relseq)== nrow(Genwide)
+
+
+
+# Plotting state distribution plots of observations
+ssplot(mc_obs, title = "State distribution plots")
+
+
+#
+hmm_initmod <- build_hmm(observations = relseq, n_states = 3)
+hmm_initmod
+
+## 3 states 2 clusters
+initial_probs<-hmm_initmod$initial_probs
+
+initial_probs
+transition_probs<-hmm_initmod$transition_probs
+transition_probs
+em_probs<-hmm_initmod$emission_probs
+em_probs
+
+mhmm_init <- list(initial_probs,initial_probs)
+mhmm_init
+
+mhmm_trans <- list(transition_probs,transition_probs)
+mhmm_trans
+
+mhmm_em <- list(em_probs,em_probs)
+mc_obs<- list(relseq)
+mc_obs
+
+mhmm_trans
+mhmm_init
+mhmm_em
+
+
+
+init_mhmm<-build_mhmm(observations = mc_obs, 
+                      initial_probs = mhmm_init,
+                      transition_probs = mhmm_trans, 
+                      emission_probs = mhmm_em, 
+                      formula = ~ GenCohort, 
+                      data = listdat$covariates,
+                      n=3,
+                      n_clusters=2)
+
+str(init_mhmm)
+
+
+
+
+
+# Run 3 times
+
+#mhmm_fit <- fit_model(init_mhmm, threads = 4)
+
+saveRDS(mhmm_fit,"mhmm_fit")
+
+#saveRDS(mhmm_fit, here::here( "mhmm_fit_relid_cohort"))
+
+# 
+# # control_em = list(restart = list(times = 10)))
+# 
+# mhmm_fit.v3 <- fit_model(init_mhmm, threads = 4)
+# saveRDS(mhmm_fit.v3,"mhmm_fit")
+
+options(scipen=999)
+
+mhmm <- mhmm_fit$model
+# mhmm <- mhmm_fit.run2$model
+# mhmm <- mhmm_fit.v3$model
+
+Summary
+mhmm 
+
+require("igraph")
+require(TraMineR)
+
+mhmm
+
+plogis(0.0123 -2.3053)
+
+plot(mhmm,interactive = F, ask = FALSE,
+    # layout = layout_nicely,
+     legend.prop =.4,
+     ncol.legend = 6,
+    label.max.length = 15,
+    vertex.size = 40)
+
+
+
+dev.off()
+plogis( 1.8009 +(-0.0201)*60)
+
+
+
+
+dev.off()
+str(mhmm)
+plot(mhmm,
+     interact = F,
+   #  layout = layout_nicely,
+     # vertex.label = c("ReligiousZeroVolunteer","ReligiousVolunteeer","ZeroReligiousZeroVolunteer","ZeroReligiousVolunteer"),
+     main ="Hidden States Religious Change",
+     legend.prop =.2,
+     ncol.legend = 3)
+
+sep_hmm <- separate_mhmm(mhmm)
+plot(sep_hmm[[1]], 
+     loops=T, 
+     layout =layout_nicely, 
+     legend.prop =.1,
+     ncol.legend = 3)
+dev.off()
+plot(sep_hmm[[2]], 
+    loops=T, 
+     layout =layout_nicely, 
+     #layout =layout_nicely, 
+     legend.prop =.2,
+     ncol.legend = 3,sortv = "mds.hidden")
+
+
+str(sc_hmm)
+sc_hmm <- mc_to_sc(mhmm)
+
+dev.off()  
+png(file=here::here("figs", "test_hmm.png"), width = 500, height = 500, units = "px", pointsize = 12)
+
+ssplot(sep_hmm[[2]], type = "I", sortv = "from.end", sort.channel = 0, 
+    legend.prop = 0.5)
+dev.off()  
+
+
+ssplot(
+  mhmm, 
+#  type = "I", 
+ # plots = "both",
+  # Sorting subjects according to multidimensional
+  # scaling scores of the most probable hidden state paths
+  #sortv = "mds.hidden", 
+  # Naming the channels
+#  ylab = c("Religious", "Secular", "Mixed"), 
+  # Title for the plot
+  title = "Observed sequences and the 
+most probable paths of hidden states",
+  # Labels for hidden states (most common states)
+#  hidden.states.labels = c("1: Childless single, with parents", 
+ #                          "2: Childless single, left home",
+ #                          "3: Married without children"),
+  # Colours for hidden states
+#  hidden.states.colors = c("olivedrab", "bisque", "indianred"),
+  # Labels for x axis
+ # xtlab = 15:30,   
+  xlab = "Age",
+  # Proportion for legends
+  legend.prop = 0.45)
+```
+
+
+```{r}
+######### Next with just two states and two clust 
+
+#
+hmm_initmod <- build_hmm(observations = relseq, n_states = 2)
+hmm_initmod
+
+## 2 states 2 clusters
+initial_probs<-hmm_initmod$initial_probs
+
+initial_probs
+transition_probs<-hmm_initmod$transition_probs
+transition_probs
+em_probs<-hmm_initmod$emission_probs
+em_probs
+
+mhmm_init <- list(initial_probs,initial_probs)
+mhmm_init
+
+mhmm_trans <- list(transition_probs,transition_probs)
+mhmm_trans
+
+mhmm_em <- list(em_probs,em_probs)
+mc_obs<- list(relseq)
+
+
+
+init_mhmm_2 <-build_mhmm(observations = mc_obs, 
+                      initial_probs = mhmm_init,
+                      transition_probs = mhmm_trans, 
+                      emission_probs = mhmm_em, 
+                      formula = ~ GenCohort, 
+                      data = listdat$covariates,
+                      n = 2,
+                      n_clusters = 2)
+
+init_mhmm_2
+
+# Run 3 times
+
+mhmm_fit_2 <- fit_model(init_mhmm_2)
+
+
+saveRDS(mhmm_fit_2, here::here( "mhmm_fit_relid_cohort-2"))
+
+# 
+# # control_em = list(restart = list(times = 10)))
+# 
+# mhmm_fit.v3 <- fit_model(init_mhmm, threads = 4)
+# saveRDS(mhmm_fit.v3,"mhmm_fit")
+
+options(scipen=999)
+
+mhmm2 <- mhmm_fit_2$model
+
+mhmm2
+
+
+plot(mhmm2,interactive = F, ask = FALSE,
+    # layout = layout_nicely,
+     legend.prop =.4,
+     ncol.legend = 6,
+    label.max.length = 15,
+    vertex.size = 40)
+
+
+
+
+
+
+dev.off()
+
+plot(mhmm2,
+     interact = F,
+   #  layout = layout_nicely,
+     # vertex.label = c("ReligiousZeroVolunteer","ReligiousVolunteeer","ZeroReligiousZeroVolunteer","ZeroReligiousVolunteer"),
+     main ="Hidden States Religious Change",
+     legend.prop =.2,
+     ncol.legend = 3)
+
+sep_hmm <- separate_mhmm(mhmm2)
+plot(sep_hmm[[1]], 
+     loops=T, 
+     layout =layout_nicely, 
+     legend.prop =.1,
+     ncol.legend = 3)
+dev.off()
+plot(sep_hmm[[2]], 
+    loops=T, 
+     layout =layout_nicely, 
+     #layout =layout_nicely, 
+     legend.prop =.2,
+     ncol.legend = 3,sortv = "mds.hidden")
+
+
+# 
+# 
+# png(file=here::here("figs", "test_hmm.png"), width = 500, height = 500, units = "px", pointsize = 12)
+# 
+# ssplot(sep_hmm[[2]], type = "I", sortv = "from.end", sort.channel = 0, 
+#     legend.prop = 0.5)
+# dev.off()  
+
+
+ssplot(
+  mhmm, 
+#  type = "I", 
+ # plots = "both",
+  # Sorting subjects according to multidimensional
+  # scaling scores of the most probable hidden state paths
+  #sortv = "mds.hidden", 
+  # Naming the channels
+#  ylab = c("Religious", "Secular", "Mixed"), 
+  # Title for the plot
+  title = "Observed sequences and the 
+most probable paths of hidden states",
+  # Labels for hidden states (most common states)
+#  hidden.states.labels = c("1: Childless single, with parents", 
+ #                          "2: Childless single, left home",
+ #                          "3: Married without children"),
+  # Colours for hidden states
+#  hidden.states.colors = c("olivedrab", "bisque", "indianred"),
+  # Labels for x axis
+ # xtlab = 15:30,   
+  xlab = "Age",
+  # Proportion for legends
+  legend.prop = 0.45)
+
+
+## One chanel
+
+
+hmm_initmod <- build_hmm(observations = relseq, n_states = 2)
+hmm_initmod
+
+## 2 states 2 clusters
+initial_probs<-hmm_initmod$initial_probs
+
+initial_probs
+transition_probs<-hmm_initmod$transition_probs
+transition_probs
+em_probs<-hmm_initmod$emission_probs
+em_probs
+
+
+## 2 state model in  this package
+sc_initmod_random <- build_hmm(observations = relseq, n_states = 2)
+sc_initmod_random
+
+
+listdat$covariates$cohort<-factor(Genwide$GenCohort, labels = c("silent","boomers","genx","geny","genz"))
+
+length(listdat$covariates$cohort)
+nrow(relseq)
+
+
+
+sc_initmod <- build_hmm(
+  observations = relseq,
+  initial_probs = initial_probs,
+  transition_probs = transition_probs,
+  emission_probs = em_probs,
+  formula = ~ cohort, # won't work
+  data = listdat$covariates
+)
+
+
+#sc_fit <- fit_model(sc_initmod)
+
+#saveRDS(sc_fit, here::here("models","hmm_twostate_cohort"))
+
+sc_fit<- readRDS(here::here("models","hmm_twostate_cohort"))
+fm<- sc_fit$model
+
+
+summary(fm, conditional_se = FALSE)
+str(fm)
+fm
+
+library(igraph)
+plot(sc_fit$model,
+     layout = layout_nicely,
+     # vertex.label = "names"
+     title ="Hidtden States Religious Identification",
+    legend.prop =.3)
+dev.off()
+
+transprob<-as.matrix(
+  fm$transition_probs
+  )
+transprob
+
+
+```
+
+
+```{r}
+##### MSM
+
+#
+q0
+q0 <-rbind(c(.1,.1,.1),c(.1,.1,.1),c(.1,.1,.1)) #  Allow permitted transitions
+
+## THIS WORKED! :)c 
+gh.mod.mnm.2  <- msm(Religious1 ~ years,
+                     Id,
+                     data=ldf.5,
+                     covariates = ~Age,
+                     est.initprobs = TRUE,
+                     qmatrix =q0,
+                     ematrix = rbind(c(.1,.1,.1),
+                                      c(.1,.1,.1),
+                                      c(.1,.1,.1)))
+
+
+qmatrix.msm(gh.mod.mnm.2)
+
+pmatrix.msm(gh.mod.mnm.2) # This worked!
+#saveRDS(gh.mod.mnm.2,"gh.mod.mnm.2")
+gh.mod.mnm.2<-readRDS("gh.mod.mnm.2")
+## Big and sharp shift at 50 
+pmatrix.msm(gh.mod.mnm.2, covariates = list(Age =50))
+pmatrix.msm(gh.mod.mnm.2,covariates = "mean")
+
+
+q0 <-rbind(c(1,1,1),c(1,1,1),c(1,1,1)) #  Allow permitted transitions
+
+#### nonsense
+# gh.mod.mnm.3  <- msm(Religious1 ~ years,
+#                       Id,
+#                       data=ldf.5,
+#                       covariates = ~Age,
+#                       qmatrix =q0,
+#                       ematrix = rbind(c(.1,.1,.1),
+#                                       c(.1,.1,.1),
+#                                       c(.1,.1,.1)),
+#                      est.initprobs=TRUE)
+#  
+# 
+# pmatrix.msm(gh.mod.mnm.3)
+# ppass.msm(gh.mod.mnm.3)
+# odds.msm(gh.mod.mnm.3)
+# plot(gh.mod.mnm.3)
+# saveRDS(gh.mod.mnm.3,"gh.mod.mnm.3")
+
+
+
+```
+
