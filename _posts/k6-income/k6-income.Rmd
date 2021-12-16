@@ -97,7 +97,8 @@ dt <- df %>%
     EthnicCats,
     Urban,
     Wave,
-    Employed
+    Employed,
+    Partner
   ) %>%
   dplyr::mutate(
     k6 = as.numeric(KESSLER6sum),
@@ -108,7 +109,8 @@ dt <- df %>%
   #  pray_l = log(Religion.Prayer + 1),
   #  script_l = log(Religion.Scripture + 1),
     church_l = log(Religion.Church + 1),
-    edu = scale(as.numeric(Edu)),
+    edu = as.numeric(Edu),
+    partner = as.numeric(Partner),
     male = as.factor(Male),
     eth = EthnicCats,
     nzdep = as.numeric(NZdep),
@@ -126,7 +128,8 @@ dt <- df %>%
       inc_l,
       edu,
       church_l,
-      nzdep
+      nzdep,
+      partner
     ),
     list(lag = lag)
   )) %>%
@@ -138,7 +141,8 @@ dt <- df %>%
                 !is.na(inc_l_lag),
                 !is.na(urban_lag),
                 !is.na(emp_lag),
-                !is.na(nzdep))%>%
+                !is.na(nzdep),
+                !is.na(partner_lag))%>%
   arrange(Wave,Id)
                 
  #)%>%  # lots of missingness on edu, so might leave this out
@@ -176,31 +180,38 @@ dt <- cbind(dt,
 ```
 
 
-## Within and between person regression 
+## Within and between person mixed effects regression: IPW
 
 ```{r}
 # ip weights
 
-dt_weights_1 <- ipw::ipwpoint(
-  exposure = k6,
-  family = "gaussian", 
-  numerator = ~ k6_lag  + inc_l_between  + age_within + age_between_c +
-             male + emp + eth + emp_lag + nzdep + urban_lag, 
-  denominator = ~ k6_lag  + inc_l_within + inc_l_between  + age_within + age_between_c +
-             male + emp + eth + emp_lag + nzdep + urban_lag , 
-  data = as.data.frame(dt))
 
-df_weights_use_1 <- dt %>% 
+dt_weights_1 <- ipw::ipwtm(
+  exposure = k6,
+  family = "gaussian",
+  type = "all",
+  corstr = "ar1",
+  id = "Id",
+  timevar = "Wave",
+  numerator = ~ k6_lag  + inc_l_between  + age_within + age_between_c +
+    male + emp + eth + emp_lag + nzdep + partner_lag + urban_lag,
+  denominator = ~ k6_lag  + inc_l_within + inc_l_between  + age_within + age_between_c +
+    male + emp + eth + emp_lag + nzdep + partner_lag + urban_lag ,
+  data = as.data.frame(dt)
+)
+
+df_weights_use_1 <- dt %>%
   mutate(ipw = dt_weights_1$ipw.weights)
+
 
 
 # possion because k6 behaves as a rate parameter. but takes too long to run for this simple demonstration
 m1 <-
   lmer(
     k6  ~ k6_lag  + inc_l_within + inc_l_between  + age_within + age_between_c +
-      male + eth + emp_lag +  urban_lag + nzdep + (1 | Id),
+      male + eth + emp_lag + partner_lag  + nzdep_lag + urban_lag + (1 | Id),
     weights = df_weights_use_1$ipw,
-    data = df_weights_use_1,
+    data = df_weights_use_1
     # family = "poisson"
   )
 
@@ -213,7 +224,7 @@ We do not find reliable (or large)  within-person effects:
 
 ```{r}
 # graph
-p <- plot( ggeffects::ggpredict(m1, terms = "inc_l_within"),  add.data = TRUE, dot.alpha = 0.05)   # 
+p <- plot( ggeffects::ggpredict(m1, terms = "inc_l_within [0,15]"),  add.data = TRUE, dot.alpha = 0.05)   # 
 p #+ scale_y_continuous(limits= c(0,15)) # nothing
 ```
 
@@ -224,24 +235,7 @@ p2 <-plot(ggeffects::ggpredict(m1, terms = "inc_l_between [0,15]"),  add.data = 
 p2# + scale_y_continuous(limits= c(0,15)) # nothing
 ```
 
-## Gee within/between
-
-```{r}
-m1b <- geeglm( k6  ~ k6_lag  + inc_l_within + inc_l_between  + age_within + as.numeric(age_between_c) +
-      male + eth + emp_lag +nzdep +  urban_lag , id = Id, weights = ipw, data = df_weights_use_1)
-
-parameters::model_parameters(m1b) %>%
-  print_html()
-
-
-p2b <-plot(ggeffects::ggpredict(m1b, terms = "inc_l_within"), add.data = TRUE, dot.alpha = 0.1)   #
-p2b #+ scale_y_continuous(limits= c(0,15)) # nothing
-```
-
-Nothing here.
-
-
-## Marginal Structural model approach
+## Marginal Structural model approach: IPW
 
 Here we will used lagged values of the exposure to adjust for confounders and IP weights.
 
@@ -249,13 +243,17 @@ Here we will used lagged values of the exposure to adjust for confounders and IP
 
 # calculate weights
 
-dt_weights_2 <- ipw::ipwpoint(
+dt_weights_2 <- ipw::ipwtm(
   exposure = k6,
   family = "gaussian",
+  type = "all",
+  corstr = "ar1",
+  id = "Id",
+  timevar = "Wave", 
   numerator = ~ k6_lag  + age_c +
-    male + eth +  emp_lag + nzdep +  urban_lag ,
+    male + eth +  emp_lag + nzdep + partner_lag  +  urban_lag ,
   denominator = ~ k6_lag  + inc_l_lag  + age_c +
-    male + eth + emp_lag + nzdep + urban_lag,
+    male + eth + emp_lag + nzdep + partner_lag + urban_lag,
   data = as.data.frame(dt)
 )
 dt_weights_use_2 <- dt %>% 
@@ -263,13 +261,15 @@ dt_weights_use_2 <- dt %>%
 
 
 
-# no effect of income when we use an appropriate weighting strategy
+# 
 m2 <- geeglm(
   k6  ~ k6_lag  + inc_l  + as.numeric(age_c) +
-    male + eth + emp_lag + nzdep + urban_lag ,
+    male + eth + emp_lag + nzdep + partner_lag +  urban_lag ,
   data = dt_weights_use_2,
   id = Id,
   weights = ipw,
+  waves = Wave,
+  corstr = "ar1",
 )
 
 parameters::model_parameters(m2) %>%
@@ -280,7 +280,7 @@ p2 #+ scale_y_continuous(limits= c(0,15)) # nothing
 
 ```
 
-No causal effect.
+Causal effect
 
 
 ##  What would happen if we did not use IPW? 
@@ -290,9 +290,11 @@ We find income very strongly related to Kessler 6 distress!
 ```{r}
 m2_no_weights <- geeglm(
   k6  ~ k6_lag  + inc_l  + as.numeric(age_c) +
-    male + eth + emp_lag  + nzdep + urban_lag ,
+    male + eth + emp_lag  + nzdep + partner_lag +  urban_lag ,
   data = dt_weights_use_2,
-  id = Id
+  id = Id,
+  waves = Wave,
+  corstr = "ar1",
 )
 
 
@@ -301,22 +303,22 @@ parameters::model_parameters(m2_no_weights) %>%
 
 
 p2_n <-plot( ggeffects::ggpredict(m2_no_weights, terms = "inc_l"),add.data = TRUE, dot.alpha = 0.1) #
-p2_n #+ scale_y_continuous(limits= c(0,15)) # nothing
+p2_n #+ scale_y_continuous(limits= c(0,15)) # 
 
 ```
 
-Without IP weights we find a strong causal effect!
+Without IP weights the model estimates a stronger causal effect!
 
 This suggests the importance of specifying correct IP weights.
 
 
-# Multimodelling approach
+## Mixed effects approach: IPW and GAMM
 
 This recovers the same estimate
 
 ```{r}
 library(gamm4)
-#library(splines)
+library(splines)
 
 m2_lmer <- lmer(
   k6  ~ k6_lag  + bs(inc_l)  + as.numeric(age_c) +
@@ -333,14 +335,14 @@ p2m2_lmer <- plot( ggeffects::ggpredict(m2_lmer, terms = "inc_l [all]"),add.data
 p2m2_lmer # + scale_y_continuous(limits= c(0,15)) 
 ```
 
-This reveals the possible problems in the distribution of values across the sample. 
+This reveals the possible problems in the distribution of values across the sample. Although pretheoretically we would expect the effect to be linear. 
 
-What if we assume linear effects? 
+## Mixed effects approach: Linear IPW
 
 ```{r}
 m2_lmer2 <- lmer(
   k6  ~ k6_lag  + inc_l  + as.numeric(age_c) +
-    male + eth + nzdep +  urban_lag + (1|Id),
+    male + eth + nzdep + partner_lag +  urban_lag + (1|Id),
   data = dt_weights_use_2,
   weights = dt_weights_use_2$ipw
 )
@@ -354,17 +356,20 @@ p3 <- plot( ggeffects::ggpredict(m2_lmer2, terms = "inc_l"), add.data = TRUE, do
 p3
 ```
 
-Here we find support for a linear relationship. 
+Here we find support for a linear relationship which is slightly stronger than the GEE estimate (with weights)
 
 ## Questions
 
-The question arises, which model to prefer? 
+The question arises, which model to prefer? I think probably GEE.
 
 Key points:
-  - Sensitivity to IP weighting = important. 
-  - Model spefication = important.
-  - handling of zero income? 
-  - Need to handle missingness. 
+
+  - Sensitivity to IP weighting = important.
+  - Model specification = important.
+  - Handling of zero income? 
+  - Need to handle missingness! 
   - Need to include more confounders, probably.
-  - looks as though the within/between multi-level model and the GEE model give the same result -- no causal effect detected.
+  - Draw a DAG!
+  - All sorts of reasons people change in househould income. 
+  - Probably go with GEE. 
 
