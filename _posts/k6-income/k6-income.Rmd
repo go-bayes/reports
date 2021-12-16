@@ -141,7 +141,7 @@ dt <- df %>%
                 !is.na(inc_l_lag),
                 !is.na(urban_lag),
                 !is.na(emp_lag),
-                !is.na(nzdep),
+                !is.na(nzdep_lag),
                 !is.na(partner_lag))%>%
   arrange(Wave,Id)
                 
@@ -161,18 +161,18 @@ dt <- df %>%
 
 # see https://easystats.github.io/datawizard/articles/demean.html
 # we want to deal with *Heterogeneity bias *
-dt <- cbind(dt,
-            demean(
-              dt,
-              select = c("inc_l",
-                         "k6",
-                         "age",
-                         "church_l"),
-              group = "Id"
-            )) %>%
-  mutate(
-    age_between_c = scale(age_between, scale = FALSE),
-    inc_l_between_c = scale(inc_l_between, scale = FALSE)
+# dt <- cbind(dt,
+#             demean(
+#               dt,
+#               select = c("inc_l",
+#                          "k6",
+#                          "age",
+#                          "church_l"),
+#               group = "Id"
+#             )) %>%
+#   mutate(
+#     age_between_c = scale(age_between, scale = FALSE),
+#     inc_l_between_c = scale(inc_l_between, scale = FALSE)
   )
 
 
@@ -180,67 +180,99 @@ dt <- cbind(dt,
 ```
 
 
-## Within and between person mixed effects regression: IPW
+<!-- ## Within and between person mixed effects regression: IPW -->
+<!-- ```{r} -->
+<!-- # ip weights -->
+
+
+<!-- dt_weights_1 <- ipw::ipwtm( -->
+<!--   exposure = k6, -->
+<!--   family = "gaussian", -->
+<!--   type = "all", -->
+<!--   corstr = "ar1", -->
+<!--   id = "Id", -->
+<!--   timevar = "Wave", -->
+<!--   numerator = ~ k6_lag  + inc_l_between  + age_within + age_between_c + -->
+<!--     male + emp + eth + emp_lag + nzdep + partner_lag + urban_lag, -->
+<!--   denominator = ~ k6_lag  + inc_l_within + inc_l_between  + age_within + age_between_c + -->
+<!--     male + emp + eth + emp_lag + nzdep + partner_lag + urban_lag , -->
+<!--   data = as.data.frame(dt) -->
+<!-- ) -->
+
+<!-- df_weights_use_1 <- dt %>% -->
+<!--   mutate(ipw = dt_weights_1$ipw.weights) -->
+
+
+
+<!-- # possion because k6 behaves as a rate parameter. but takes too long to run for this simple demonstration -->
+<!-- m1 <- -->
+<!--   lmer( -->
+<!--     k6  ~ k6_lag  + inc_l_within + inc_l_between  + age_within + age_between_c + -->
+<!--       male + eth + emp_lag + partner_lag  + nzdep_lag + urban_lag + (1 | Id), -->
+<!--     weights = df_weights_use_1$ipw, -->
+<!--     data = df_weights_use_1 -->
+<!--     # family = "poisson" -->
+<!--   ) -->
+
+
+<!-- parameters::model_parameters(m1) %>% -->
+<!--   print_html() -->
+<!-- ``` -->
+
+<!-- We do not find reliable (or large)  within-person effects: -->
+
+<!-- ```{r} -->
+<!-- # graph -->
+<!-- p <- plot( ggeffects::ggpredict(m1, terms = "inc_l_within [0,15]"),  add.data = TRUE, dot.alpha = 0.05)   #  -->
+<!-- p #+ scale_y_continuous(limits= c(0,15)) # nothing -->
+<!-- ``` -->
+
+<!-- There are between person associations between income and distress, although we do not estimate this as a causal effect.  -->
+
+<!-- ```{r} -->
+<!-- p2 <-plot(ggeffects::ggpredict(m1, terms = "inc_l_between [0,15]"),  add.data = TRUE, dot.alpha = 0.05) #  -->
+<!-- p2# + scale_y_continuous(limits= c(0,15)) # nothing -->
+<!-- ``` -->
+
+## Draw your assumptions
+
+
+# Dag
+
+This isn't quite right. We need lag2 variables. But it is useful for illustration.
 
 ```{r}
-# ip weights
+# Create Dags
 
+library(ggdag)
+dg <- ggdag::dagify(
+  k6  ~ k6_lag  + inc_l_lag + age +
+    male + eth + emp_lag + nzdep_lag + partner_lag +  urban_lag + U,
+  emp_lag ~ male + eth + age,
+  inc_l_lag ~ age + male + eth + emp_lag + nzdep_lag  + partner_lag+ urban_lag,
+  k6_lag ~   age + male + eth + emp_lag + nzdep_lag + partner_lag +  urban_lag + U,
+  exposure = "inc_l_lag",
+  outcome = "k6",
+  latent = "U"
+) %>%
+  control_for("k6_lag")
 
-dt_weights_1 <- ipw::ipwtm(
-  exposure = k6,
-  family = "gaussian",
-  type = "all",
-  corstr = "ar1",
-  id = "Id",
-  timevar = "Wave",
-  numerator = ~ k6_lag  + inc_l_between  + age_within + age_between_c +
-    male + emp + eth + emp_lag + nzdep + partner_lag + urban_lag,
-  denominator = ~ k6_lag  + inc_l_within + inc_l_between  + age_within + age_between_c +
-    male + emp + eth + emp_lag + nzdep + partner_lag + urban_lag ,
-  data = as.data.frame(dt)
-)
+ 
+#Check backdoor paths
+#p1 <-ggdag(dg) + theme_dag_blank() + labs(title = "confounding control")
+#p1
+ggdag::ggdag_adjustment_set(dg)
 
-df_weights_use_1 <- dt %>%
-  mutate(ipw = dt_weights_1$ipw.weights)
-
-
-
-# possion because k6 behaves as a rate parameter. but takes too long to run for this simple demonstration
-m1 <-
-  lmer(
-    k6  ~ k6_lag  + inc_l_within + inc_l_between  + age_within + age_between_c +
-      male + eth + emp_lag + partner_lag  + nzdep_lag + urban_lag + (1 | Id),
-    weights = df_weights_use_1$ipw,
-    data = df_weights_use_1
-    # family = "poisson"
-  )
-
-
-parameters::model_parameters(m1) %>%
-  print_html()
-```
-
-We do not find reliable (or large)  within-person effects:
-
-```{r}
-# graph
-p <- plot( ggeffects::ggpredict(m1, terms = "inc_l_within [0,15]"),  add.data = TRUE, dot.alpha = 0.05)   # 
-p #+ scale_y_continuous(limits= c(0,15)) # nothing
-```
-
-There are between person associations between income and distress, although we do not estimate this as a causal effect. 
-
-```{r}
-p2 <-plot(ggeffects::ggpredict(m1, terms = "inc_l_between [0,15]"),  add.data = TRUE, dot.alpha = 0.05) # 
-p2# + scale_y_continuous(limits= c(0,15)) # nothing
 ```
 
 ## Marginal Structural model approach: IPW
 
 Here we will used lagged values of the exposure to adjust for confounders and IP weights.
 
-```{r}
 
+First we calculate weights for the exposure 
+
+```{r}
 # calculate weights
 
 dt_weights_2 <- ipw::ipwtm(
@@ -251,20 +283,27 @@ dt_weights_2 <- ipw::ipwtm(
   id = "Id",
   timevar = "Wave", 
   numerator = ~ k6_lag  + age_c +
-    male + eth +  emp_lag + nzdep + partner_lag  +  urban_lag ,
+    male + eth +  emp_lag + nzdep_lag + partner_lag  +  urban_lag ,
   denominator = ~ k6_lag  + inc_l_lag  + age_c +
-    male + eth + emp_lag + nzdep + partner_lag + urban_lag,
+    male + eth + emp_lag + nzdep_lag + partner_lag + urban_lag,
   data = as.data.frame(dt)
 )
 dt_weights_use_2 <- dt %>% 
   mutate(ipw = dt_weights_2$ipw.weights)
 
+#length(unique(dt_weights_use_2$Id))
+
+```
 
 
+
+Next we run a model, including lagged K6 and lagged confounders (unless time invariant). Note that we could take the lag of the exposure and the lag2 of the confounders.  Additionally, this model does not handle missing data. Finally, we would want a richer set of baseline confounders. That aside, we find: 
+
+```{r}
 # 
 m2 <- geeglm(
   k6  ~ k6_lag  + inc_l  + as.numeric(age_c) +
-    male + eth + emp_lag + nzdep + partner_lag +  urban_lag ,
+    male + eth + emp_lag + nzdep_lag + partner_lag +  urban_lag ,
   data = dt_weights_use_2,
   id = Id,
   weights = ipw,
@@ -280,17 +319,17 @@ p2 #+ scale_y_continuous(limits= c(0,15)) # nothing
 
 ```
 
-Causal effect
+So we find a causal effect.
 
 
 ##  What would happen if we did not use IPW? 
 
-We find income very strongly related to Kessler 6 distress!
+We find income more strongly related to Kessler 6 distress!
 
 ```{r}
 m2_no_weights <- geeglm(
   k6  ~ k6_lag  + inc_l  + as.numeric(age_c) +
-    male + eth + emp_lag  + nzdep + partner_lag +  urban_lag ,
+    male + eth + emp_lag  + nzdep_lag + partner_lag +  urban_lag ,
   data = dt_weights_use_2,
   id = Id,
   waves = Wave,
@@ -307,14 +346,13 @@ p2_n #+ scale_y_continuous(limits= c(0,15)) #
 
 ```
 
-Without IP weights the model estimates a stronger causal effect!
 
-This suggests the importance of specifying correct IP weights.
+This suggests the importance of using, and correctly specifying correct IP weights.
 
 
 ## Mixed effects approach: IPW and GAMM
 
-This recovers the same estimate
+What if we were to use a mixed effects model? 
 
 ```{r}
 library(gamm4)
@@ -322,7 +360,7 @@ library(splines)
 
 m2_lmer <- lmer(
   k6  ~ k6_lag  + bs(inc_l)  + as.numeric(age_c) +
-    male + eth +  emp_lag  + nzdep +  urban_lag + (1|Id),
+    male + eth +  emp_lag  + nzdep_lag +  urban_lag + (1|Id),
   data = dt_weights_use_2,
   weights = dt_weights_use_2$ipw
 )
@@ -331,18 +369,18 @@ parameters::model_parameters(m2_lmer) %>%
   print_html()
 
 # unclear
-p2m2_lmer <- plot( ggeffects::ggpredict(m2_lmer, terms = "inc_l [all]"),add.data = TRUE, dot.alpha = 0.1)   
-p2m2_lmer # + scale_y_continuous(limits= c(0,15)) 
+p2m2_lmer <- plot( ggeffects::ggpredict(m2_lmer, terms = "inc_l [all]"),add.data = TRUE, dot.alpha = 0.1)
+p2m2_lmer # + scale_y_continuous(limits= c(0,15))
 ```
 
-This reveals the possible problems in the distribution of values across the sample. Although pretheoretically we would expect the effect to be linear. 
+This reveals the possible problems in the distribution of values across the sample. Although pre-theoretically we would expect the effect to be linear.
 
 ## Mixed effects approach: Linear IPW
 
 ```{r}
 m2_lmer2 <- lmer(
   k6  ~ k6_lag  + inc_l  + as.numeric(age_c) +
-    male + eth + nzdep + partner_lag +  urban_lag + (1|Id),
+    male + eth + nzdep_lag + partner_lag +  urban_lag + (1|Id),
   data = dt_weights_use_2,
   weights = dt_weights_use_2$ipw
 )
@@ -356,20 +394,18 @@ p3 <- plot( ggeffects::ggpredict(m2_lmer2, terms = "inc_l"), add.data = TRUE, do
 p3
 ```
 
-Here we find support for a linear relationship which is slightly stronger than the GEE estimate (with weights)
+Here we find support for a linear relationship that is slightly stronger than the GEE estimate (with weights).
 
 ## Questions
 
-The question arises, which model to prefer? I think probably GEE.
 
 Key points:
 
+  - Use GEE
   - Sensitivity to IP weighting = important.
   - Model specification = important.
   - Handling of zero income? 
-  - Need to handle missingness! 
-  - Need to include more confounders, probably.
-  - Draw a DAG!
-  - All sorts of reasons people change in househould income. 
-  - Probably go with GEE. 
+  - Need to handle missingness at the next iteration.
+  - Need to adjust for more confounders at the next iteration.  
+  - Sensitivity tests.
 
