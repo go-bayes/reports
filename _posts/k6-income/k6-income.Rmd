@@ -1,0 +1,370 @@
+---
+title: "Does income affect psychological distress?"
+description: |
+author:
+  - name: Joseph Bulbulia
+    url: https://josephbulbulia.netlify.app
+    affiliation: Victoria University of Wellington
+    affiliation_url: https://www.wgtn.ac.nz
+    orcid_id: 0000-0002-5861-2056
+date: 2021-DEC-02
+output:
+  distill::distill_article:
+    self_contained: false
+    toc: true
+    code_folding: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  layout = "l-body-outset",
+  fig.width = 12,
+  fig.height = 15,
+  collapse = TRUE,
+  R.options = list(width = 60
+  )
+)
+```
+
+```{r libs, include=FALSE}
+library("tidyverse")
+library("easystats")
+library("here")
+library("equatiomatic")
+library("lubridate")
+library("ggplot2")
+library("ggthemes") #themes
+library("ggpubr")
+library("viridis")
+library("patchwork")
+library("ggforce")
+library("kableExtra")
+library("lme4")
+library("brms")
+library("rstan")
+library("rstanarm")
+library("bayesplot")
+library("kableExtra")
+library("broom")
+library("tidybayes")
+library("bmlm")
+library("gfoRmula")
+library("ipw")
+library("geepack")
+# rstan options
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores ())
+theme_set(theme_classic())
+```
+
+```{r data, cache = TRUE}
+#import data
+# long data
+df <- readRDS(here::here("data", "df"))
+```
+
+Does money make people happy?
+
+
+## Data preparation 
+
+```{r dataprep, cache=TRUE}
+# comparative analysis
+
+# prepare data
+# note, still need to do IPW and multiply impute missing data
+
+dt <- df %>%
+  dplyr::filter(YearMeasured == 1)  %>%
+ dplyr::filter(Wave != 2009) %>% # no k6 measure
+  dplyr::filter(!is.na(KESSLER6sum), !is.na(Household.INC),!is.na(EthnicCats),!is.na(Male),!is.na(Urban), !is.na(Employed)) %>%
+  dplyr::select(
+    Id,
+    Household.INC,
+    KESSLER6sum,
+    NZdep,
+    Wave,
+    TSCORE,
+    Age,
+    Religion.Prayer,
+    Religion.Scripture,
+    Religion.Church,
+    Male,
+    Edu,
+    EthnicCats,
+    Urban,
+    Wave,
+    Employed
+  ) %>%
+  dplyr::mutate(
+    k6 = as.numeric(KESSLER6sum),
+    age = (Age),
+    inc_l = log(Household.INC + 1),
+    emp = as.numeric(Employed),
+    age_c = scale(Age, scale = F),
+  #  pray_l = log(Religion.Prayer + 1),
+  #  script_l = log(Religion.Scripture + 1),
+    church_l = log(Religion.Church + 1),
+    edu = scale(as.numeric(Edu)),
+    male = as.factor(Male),
+    eth = EthnicCats,
+    nzdep = as.numeric(NZdep),
+    urban = Urban
+  ) %>%
+  dplyr::group_by(Id) %>% filter(n() > 2) %>%
+  dplyr::mutate(across(
+    c(
+      age_c,
+      male,
+      eth,
+      emp,
+      urban,
+      k6,
+      inc_l,
+      edu,
+      church_l,
+      nzdep
+    ),
+    list(lag = lag)
+  )) %>%
+  dplyr::mutate(k6_lag = as.numeric(k6_lag),
+                inc_l_lag = as.numeric(inc_l_lag),
+                church_l_lag = as.numeric(church_l_lag) ) %>%
+  dplyr::ungroup(Id) %>%
+  dplyr::filter(!is.na(k6_lag),
+                !is.na(inc_l_lag),
+                !is.na(urban_lag),
+                !is.na(emp_lag),
+                !is.na(nzdep))%>%
+  arrange(Wave,Id)
+                
+ #)%>%  # lots of missingness on edu, so might leave this out
+    #   dplyr::mutate(across(c(male_lag, age_s_lag, eth_lag, urban_lag, # lage 2
+    #                      church_l_lag), list(lag = lag))) %>%
+    # dplyr::mutate(k6_s_lag = as.numeric(inc_l_lag),
+    #             inc_s_lag = as.numeric(inc_s_lag) )%>%  # lots of missingness on edu, so might leave this out or better multiply impute
+
+
+# cound id's
+#length(unique(dt$Id))
+
+# demean data to obtain within/between individual predictors
+# we'll be looking at church attendance and scripture reading in other work 
+
+
+# see https://easystats.github.io/datawizard/articles/demean.html
+# we want to deal with *Heterogeneity bias *
+dt <- cbind(dt,
+            demean(
+              dt,
+              select = c("inc_l",
+                         "k6",
+                         "age",
+                         "church_l"),
+              group = "Id"
+            )) %>%
+  mutate(
+    age_between_c = scale(age_between, scale = FALSE),
+    inc_l_between_c = scale(inc_l_between, scale = FALSE)
+  )
+
+
+
+```
+
+
+## Within and between person regression 
+
+```{r}
+# ip weights
+
+dt_weights_1 <- ipw::ipwpoint(
+  exposure = k6,
+  family = "gaussian", 
+  numerator = ~ k6_lag  + inc_l_between  + age_within + age_between_c +
+             male + emp + eth + emp_lag + nzdep + urban_lag, 
+  denominator = ~ k6_lag  + inc_l_within + inc_l_between  + age_within + age_between_c +
+             male + emp + eth + emp_lag + nzdep + urban_lag , 
+  data = as.data.frame(dt))
+
+df_weights_use_1 <- dt %>% 
+  mutate(ipw = dt_weights_1$ipw.weights)
+
+
+# possion because k6 behaves as a rate parameter. but takes too long to run for this simple demonstration
+m1 <-
+  lmer(
+    k6  ~ k6_lag  + inc_l_within + inc_l_between  + age_within + age_between_c +
+      male + eth + emp_lag +  urban_lag + nzdep + (1 | Id),
+    weights = df_weights_use_1$ipw,
+    data = df_weights_use_1,
+    # family = "poisson"
+  )
+
+
+parameters::model_parameters(m1) %>%
+  print_html()
+```
+
+We do not find reliable (or large)  within-person effects:
+
+```{r}
+# graph
+p <- plot( ggeffects::ggpredict(m1, terms = "inc_l_within"),  add.data = TRUE, dot.alpha = 0.05)   # 
+p #+ scale_y_continuous(limits= c(0,15)) # nothing
+```
+
+There are between person associations between income and distress, although we do not estimate this as a causal effect. 
+
+```{r}
+p2 <-plot(ggeffects::ggpredict(m1, terms = "inc_l_between [0,15]"),  add.data = TRUE, dot.alpha = 0.05) # 
+p2# + scale_y_continuous(limits= c(0,15)) # nothing
+```
+
+## Gee within/between
+
+```{r}
+m1b <- geeglm( k6  ~ k6_lag  + inc_l_within + inc_l_between  + age_within + as.numeric(age_between_c) +
+      male + eth + emp_lag +nzdep +  urban_lag , id = Id, weights = ipw, data = df_weights_use_1)
+
+parameters::model_parameters(m1b) %>%
+  print_html()
+
+
+p2b <-plot(ggeffects::ggpredict(m1b, terms = "inc_l_within"), add.data = TRUE, dot.alpha = 0.1)   #
+p2b #+ scale_y_continuous(limits= c(0,15)) # nothing
+```
+
+Nothing here.
+
+
+## Marginal Structural model approach
+
+Here we will used lagged values of the exposure to adjust for confounders and IP weights.
+
+```{r}
+
+# calculate weights
+
+dt_weights_2 <- ipw::ipwpoint(
+  exposure = k6,
+  family = "gaussian",
+  numerator = ~ k6_lag  + age_c +
+    male + eth +  emp_lag + nzdep +  urban_lag ,
+  denominator = ~ k6_lag  + inc_l_lag  + age_c +
+    male + eth + emp_lag + nzdep + urban_lag,
+  data = as.data.frame(dt)
+)
+dt_weights_use_2 <- dt %>% 
+  mutate(ipw = dt_weights_2$ipw.weights)
+
+
+
+# no effect of income when we use an appropriate weighting strategy
+m2 <- geeglm(
+  k6  ~ k6_lag  + inc_l  + as.numeric(age_c) +
+    male + eth + emp_lag + nzdep + urban_lag ,
+  data = dt_weights_use_2,
+  id = Id,
+  weights = ipw,
+)
+
+parameters::model_parameters(m2) %>%
+  print_html()
+
+p2 <- plot(ggeffects::ggpredict(m2, terms = "inc_l"),add.data = TRUE, dot.alpha = 0.1)    # 2 x standard deviations
+p2 #+ scale_y_continuous(limits= c(0,15)) # nothing
+
+```
+
+No causal effect.
+
+
+##  What would happen if we did not use IPW? 
+
+We find income very strongly related to Kessler 6 distress!
+
+```{r}
+m2_no_weights <- geeglm(
+  k6  ~ k6_lag  + inc_l  + as.numeric(age_c) +
+    male + eth + emp_lag  + nzdep + urban_lag ,
+  data = dt_weights_use_2,
+  id = Id
+)
+
+
+parameters::model_parameters(m2_no_weights) %>%
+  print_html()
+
+
+p2_n <-plot( ggeffects::ggpredict(m2_no_weights, terms = "inc_l"),add.data = TRUE, dot.alpha = 0.1) #
+p2_n #+ scale_y_continuous(limits= c(0,15)) # nothing
+
+```
+
+Without IP weights we find a strong causal effect!
+
+This suggests the importance of specifying correct IP weights.
+
+
+# Multimodelling approach
+
+This recovers the same estimate
+
+```{r}
+library(gamm4)
+#library(splines)
+
+m2_lmer <- lmer(
+  k6  ~ k6_lag  + bs(inc_l)  + as.numeric(age_c) +
+    male + eth +  emp_lag  + nzdep +  urban_lag + (1|Id),
+  data = dt_weights_use_2,
+  weights = dt_weights_use_2$ipw
+)
+
+parameters::model_parameters(m2_lmer) %>%
+  print_html()
+
+# unclear
+p2m2_lmer <- plot( ggeffects::ggpredict(m2_lmer, terms = "inc_l [all]"),add.data = TRUE, dot.alpha = 0.1)   
+p2m2_lmer # + scale_y_continuous(limits= c(0,15)) 
+```
+
+This reveals the possible problems in the distribution of values across the sample. 
+
+What if we assume linear effects? 
+
+```{r}
+m2_lmer2 <- lmer(
+  k6  ~ k6_lag  + inc_l  + as.numeric(age_c) +
+    male + eth + nzdep +  urban_lag + (1|Id),
+  data = dt_weights_use_2,
+  weights = dt_weights_use_2$ipw
+)
+
+
+parameters::model_parameters(m2_lmer2) %>%
+  print_html()
+
+# then it looks as though more income = lower distress. 
+p3 <- plot( ggeffects::ggpredict(m2_lmer2, terms = "inc_l"), add.data = TRUE, dot.alpha = 0.1)     # 
+p3
+```
+
+Here we find support for a linear relationship. 
+
+## Questions
+
+The question arises, which model to prefer? 
+
+Key points:
+  - Sensitivity to IP weighting = important. 
+  - Model spefication = important.
+  - handling of zero income? 
+  - Need to handle missingness. 
+  - Need to include more confounders, probably.
+  - looks as though the within/between multi-level model and the GEE model give the same result -- no causal effect detected.
+

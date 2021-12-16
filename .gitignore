@@ -45,3 +45,6 @@ docs/templates/**/*.html
 _posts/**/*_files/
 _posts/*.pdf
 docs/posts/**/*.pdf
+
+# full nzavs
+data-full

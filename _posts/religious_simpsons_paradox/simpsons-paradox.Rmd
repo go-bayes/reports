@@ -48,6 +48,7 @@ library("diagram")# Graphs
 library("seqHMM")
 library("igraph")
 library("TraMineR")
+library("xtable")
 ```
 
 ## Religious change at a societial level indicates "clocklike" decline
@@ -127,19 +128,27 @@ religious change at the society level.
 # Using markov models, show that change within people as they age differs from the society-wide trend
 df <- readRDS(here::here("data", "df"))
 
+te <- df %>%
+  filter (Wave == 2019) %>%
+  filter(YearMeasured==1)
+
+
+
+  length(unique(te$Id))
+
 #create dataframe
-  dplyr::filter(YearMeasured == 1 )%>% # filtering only people who have responded in a year
 dat  <- df %>%
-  dplyr::select(Wave, Age, Wave, Religious1 ,Id, Relid, years)%>%
-  dplyr::mutate(yearW  = as.numeric(Wave)-1) %>%
- # filter(!is.na(Religious1))%>%
-  group_by(Id) %>% filter(n() > 1)%>% # have responded to at least 2 x waves
-  filter(n() !=0)%>%
-  ungroup(Id)%>%
+  dplyr::filter(YearMeasured == 1) %>% # filtering only people who have responded in a year
+  dplyr::select(Wave, Age, Wave, Religious1 , Id, Relid, years) %>%
+  dplyr::mutate(yearW  = as.numeric(Wave) - 1) %>%
+  # filter(!is.na(Religious1))%>%
+  group_by(Id) %>% filter(n() > 1) %>% # have responded to at least 2 x waves
+  filter(n() != 0) %>%
+  ungroup(Id) %>%
   group_by(Wave) %>%
   filter(!is.na(Religious1)) %>%
-  ungroup()%>%
-  arrange(Id,yearW)
+  ungroup() %>%
+  arrange(Id, yearW)
 #nrow(df)
 
 # unique ids
@@ -178,7 +187,7 @@ m1a  <- msm(
   exacttimes = TRUE,# Not running without this assumption.
   gen.inits = TRUE
 )
-saveRDS(m1, here::here( "models","mnm-simpson-paradox-religious-change" ))
+#saveRDS(m1, here::here( "models","mnm-simpson-paradox-religious-change" ))
 
 # 
 m2  <- msm(
@@ -192,7 +201,7 @@ m2  <- msm(
   exacttimes = TRUE,# Not running without this assumption.
   gen.inits = TRUE
 )
-saveRDS(m2, here::here( "models","mnm-simpson-paradox-religious-change-2" ))
+#saveRDS(m2, here::here( "models","mnm-simpson-paradox-religious-change-2" ))
 
 ```
 
@@ -214,14 +223,23 @@ We can compare this with the raw (un-modelled) state transition, which overstate
 ```{r}
 
 # example change in wave 2018/ wave 2019
+dat$yearW
 dat2 <- dat %>%
-  filter(yearW == 11 | yearW == 10)
+  filter(yearW == 09 | yearW == 10)
 
-raw <- msm::statetable.msm(Religious1, Id, data = dat2)
-
+raw <-msm::statetable.msm(Religious1, Id, data = dat2)
 # calculates proportions by rows
-prop.table(raw, 1)
+out<- prop.table(raw, 1)
 
+
+# latex
+xtable(out)
+
+
+
+raw2 <- msm::statetable.msm(Religious1, Id, data = dat)
+out2 <- prop.table(raw2, 1)
+xtable(out2)
 
 ```
 

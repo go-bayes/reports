@@ -74,6 +74,218 @@ The New Zealand Attitudes and Values Study (NZAVS) is a national panel study lau
 
 Here, using responses within the same individuals, we investigate whether, and how, attitudes to the vaccination of children changed after 29 February 2020 when New Zealand experienced its first case of community Covid transmission.   
 
+
+## Matts paper
+
+```{r dagg}
+# urban? 
+library(ggdag)
+dg <- dagify(
+   vax ~ age + male + eth + nzdep + edu + parent + partner + rel + hoursint + hoursoc + hlthac +  gphas + gpres + gpsat + sfhealth + sensecommunity + belonging + satgov + poltrust + policetrust + 
+    meaning + lifesat + polidentity + poleff + polorient + sciencetrust + personality +
+    CovLab + CovTrust + disgust + healthcontrol + conspiracy,
+  parent ~ age + partner,
+  edu ~ nzdep + U,
+  rel  ~ age + eth  + male, 
+  hoursint ~ age + age + nzdep + male + U,
+  hoursoc ~ hoursint + age + nzdep + male + U, 
+  hlthac ~ eth + nzdep + U,
+  gphas ~ age + eth + edu + nzdep + U, 
+  gpres ~ gphas + eth + edu + nzdep + personality, 
+  gpsat ~ age + eth + personality, 
+  sfhealth ~ gphas + age + eth + edu + male + personality + U,
+  lifesat ~ sfhealth + meaning + rel + eth + age + male + partner, 
+  parent  ~ partner + age + eth,
+  sensecommunity ~ rel + belonging + polorient + nzdep + eth + male + age + personality + U,
+  belonging ~ age + eth + edu + male + personality + U, 
+  satgov ~ polidentity + poleff + polorient,
+  poltrust ~ age + male + eth + nzdep + polorient +  edu + personality + U,
+  policetrust ~ age +  male + nzdep + eth +  edu + personality + U + U2,
+  poleff ~ polorient + age + male + personality + edu + U + U2,
+  polorient ~ age + male + personality + edu + U + U2,
+  sciencetrust ~ U2,
+  CovLab ~ U2 + edu, 
+  CovTrust ~ male + U2 + edu, 
+  healthcontrol ~ age + eth + nzdep + male +    personality, 
+  conspiracy ~ U2,
+  exposure =  "poltrust",
+  outcome =   "vax",
+  latent = c("U","U2"),
+  labels = c(
+    "vax" = "vaccination",
+    "eth" = "ethnicity",
+    "age" = "age",
+    "male" = "male",
+    "nzdep" = "nz dep",
+    "edu" = "education",
+    "parent" = "parent",
+    "partner" = "partner",
+    "rel" = "religious",
+    "hoursint" = "hours internet",
+    "hoursoc" = "hours social media",
+    "hlthac" = "healthcare access",
+    "gphas" = "has GP",
+    "gpres" = "respects gp",
+    "gpsat" = "gp satisfaction",
+    "sfhealth" = "subjective health",
+    "sensecommunity" = "sense community",
+    "belonging" = "soc belonging",
+    "meaning" = "life meaning",
+    "lifesat" = "life satisfaction",
+    "polidentity" = "political identity",
+    "poleff" = "political efficacy",
+    "polorient" = "political orientation",
+    "satgov" = "satisfied with government",
+    "poltrust" = "trust in politicians",
+    "policetrust" = "trust in police",
+    "sciencetrust" = "trust in science",
+    "personality" = "personality",
+    "CovLab" = "Covid made in a lab",
+    "CovTrust" = "trust gov covid",
+    "disgust" = "disgust sensitivity",
+    "healthcontrol" = "health locus control",
+    "conspiracy" = "conspiracy beliefs",
+    "U" = "Unmeasured Priviledge",
+    "U2" = "Unmeasured Conspiratorial Personality"
+  )
+) %>%
+  # control_for(c( "hoursint",
+  #   "hoursoc",
+  #   "hlthac",
+  #   "gphas",
+  #   "gpres",
+  #   "gpsat",
+  #   "sfhealth",
+  #   "sensecommunity",
+  #   "belonging",
+  #   "meaning",
+  #   "lifesat",
+  #   "polidentity",
+  #   "poleff",
+  #   "polorient",
+  #   "satgov",
+  #   "policetrust",
+  #   "sciencetrust",
+  #   "personality",
+  #   "CovLab",
+  #   "CovTrust",
+  #   "healthcontrol",
+  #   "conspiracy") )%>%
+  tidy_dagitty() 
+
+dplot1 <-
+  ggdag::ggdag_collider(dg, use_labels = "label", text = FALSE) + theme_dag_blank() +
+  labs(title = "An abundance of collider confounders reveals risks of an overparameterised model")
+dplot1
+
+
+ggdag::ggdag_adjustment_set(dg, use_labels = "label", text = FALSE) + theme_dag_blank() +
+  labs(title = "Adjustment set for variables needed to obtain an unbaiased causal estimate of trust in government on vacciation status")
+
+
+# Diff exposure
+dg1 <- dagify(
+   vax ~ age + male + eth + nzdep + edu + parent + partner + rel + hoursint + hoursoc + hlthac +  gphas + gpres + gpsat + sfhealth + sensecommunity + belonging + satgov + poltrust + policetrust + 
+    meaning + lifesat + polidentity + poleff + polorient + sciencetrust + personality +
+    CovLab + CovTrust + disgust + healthcontrol + conspiracy + urban,
+  parent ~ age + partner,
+  edu ~ nzdep + U,
+  rel  ~ age + eth  + male, 
+  hoursint ~ age + age + nzdep + male + U,
+  hoursoc ~ hoursint + age + nzdep + male + U, 
+  hlthac ~ eth + nzdep + U,
+  gphas ~ age + eth + edu + nzdep + U, 
+  gpres ~ gphas + eth + edu + nzdep + personality, 
+  gpsat ~ age + eth + personality, 
+  sfhealth ~ gphas + age + eth + edu + male + personality,
+  lifesat ~ sfhealth + meaning + rel + eth + age + male + partner, 
+  parent  ~ partner + age + eth,
+  sensecommunity ~ rel + belonging + polorient + nzdep + eth + male + age + personality + U,
+  belonging ~ age + eth + edu + male + personality + U, 
+  satgov ~ polidentity + poleff + polorient,
+  poltrust ~ age + male + eth + nzdep + polorient +  edu + personality + U,
+  policetrust ~ age +  male + nzdep + eth +  edu + personality + U + U2,
+  poleff ~ polorient + age + male + personality + edu + U + U2,
+  polorient ~ age + male + personality + edu + U + U2,
+  sciencetrust ~ U2,
+  CovLab ~ U2 + edu, 
+  CovTrust ~ male + U2 + edu, 
+  healthcontrol ~ age + eth + nzdep + male +    personality, 
+  conspiracy ~ U2,
+  exposure =  "age",
+  outcome =   "vax",
+  latent = c("U","U2"),
+  labels = c(
+    "vax" = "vaccination",
+    "eth" = "ethnicity",
+    "age" = "age",
+    "male" = "male",
+    "nzdep" = "nz dep",
+    "edu" = "education",
+    "parent" = "parent",
+    "partner" = "partner",
+    "rel" = "religious",
+    "hoursint" = "hours internet",
+    "hoursoc" = "hours social media",
+    "hlthac" = "healthcare access",
+    "gphas" = "has GP",
+    "gpres" = "respects gp",
+    "gpsat" = "gp satisfaction",
+    "sfhealth" = "subjective health",
+    "sensecommunity" = "sense community",
+    "belonging" = "soc belonging",
+    "meaning" = "life meaning",
+    "lifesat" = "life satisfaction",
+    "polidentity" = "political identity",
+    "poleff" = "political efficacy",
+    "polorient" = "political orientation",
+    "satgov" = "satisfied with government",
+    "poltrust" = "trust in politicians",
+    "policetrust" = "trust in police",
+    "sciencetrust" = "trust in science",
+    "personality" = "personality",
+    "CovLab" = "Covid made in a lab",
+    "CovTrust" = "trust gov covid",
+    "disgust" = "disgust sensitivity",
+    "healthcontrol" = "health locus control",
+    "conspiracy" = "conspiracy beliefs",
+    "U" = "Unmeasured Priviledge",
+    "U2" = "Unmeasured Conspiratorial Personality"
+  )
+) %>%
+  # control_for(c( "hoursint",
+  #   "hoursoc",
+  #   "hlthac",
+  #   "gphas",
+  #   "gpres",
+  #   "gpsat",
+  #   "sfhealth",
+  #   "sensecommunity",
+  #   "belonging",
+  #   "meaning",
+  #   "lifesat",
+  #   "polidentity",
+  #   "poleff",
+  #   "polorient",
+  #   "satgov",
+  #   "policetrust",
+  #   "sciencetrust",
+  #   "personality",
+  #   "CovLab",
+  #   "CovTrust",
+  #   "healthcontrol",
+  #   "conspiracy") )%>%
+  tidy_dagitty() 
+
+
+ggdag::ggdag_adjustment_set(dg1, use_labels = "label", text = FALSE) + theme_dag_blank() +
+  labs(title = "Adjustment set for variables needed to obtain an unbaiased causal estimate of social media use vacciation status")
+
+```
+
+
+
+
 ## Method
 
 
