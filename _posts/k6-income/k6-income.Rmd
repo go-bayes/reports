@@ -161,19 +161,19 @@ dt <- df %>%
 
 # see https://easystats.github.io/datawizard/articles/demean.html
 # we want to deal with *Heterogeneity bias *
-# dt <- cbind(dt,
-#             demean(
-#               dt,
-#               select = c("inc_l",
-#                          "k6",
-#                          "age",
-#                          "church_l"),
-#               group = "Id"
-#             )) %>%
-#   mutate(
-#     age_between_c = scale(age_between, scale = FALSE),
-#     inc_l_between_c = scale(inc_l_between, scale = FALSE)
-  )
+# # dt <- cbind(dt,
+# #             demean(
+# #               dt,
+# #               select = c("inc_l",
+# #                          "k6",
+# #                          "age",
+# #                          "church_l"),
+# #               group = "Id"
+# #             )) %>%
+# #   mutate(
+# #     age_between_c = scale(age_between, scale = FALSE),
+# #     inc_l_between_c = scale(inc_l_between, scale = FALSE)
+#   )
 
 
 
@@ -302,7 +302,7 @@ Next we run a model, including lagged K6 and lagged confounders (unless time inv
 ```{r}
 # 
 m2 <- geeglm(
-  k6  ~ k6_lag  + inc_l  + as.numeric(age_c) +
+  k6  ~ k6_lag  + inc_l_lag  + as.numeric(age_c) +
     male + eth + emp_lag + nzdep_lag + partner_lag +  urban_lag ,
   data = dt_weights_use_2,
   id = Id,
@@ -314,12 +314,12 @@ m2 <- geeglm(
 parameters::model_parameters(m2) %>%
   print_html()
 
-p2 <- plot(ggeffects::ggpredict(m2, terms = "inc_l"),add.data = TRUE, dot.alpha = 0.1)    # 2 x standard deviations
+p2 <- plot(ggeffects::ggpredict(m2, terms = "inc_l_lag"),add.data = TRUE, dot.alpha = 0.1)    # 2 x standard deviations
 p2 #+ scale_y_continuous(limits= c(0,15)) # nothing
 
 ```
 
-So we find a causal effect.
+So we do not find a causal effect.
 
 
 ##  What would happen if we did not use IPW? 
@@ -327,23 +327,27 @@ So we find a causal effect.
 We find income more strongly related to Kessler 6 distress!
 
 ```{r}
-m2_no_weights <- geeglm(
-  k6  ~ k6_lag  + inc_l  + as.numeric(age_c) +
-    male + eth + emp_lag  + nzdep_lag + partner_lag +  urban_lag ,
-  data = dt_weights_use_2,
+
+m3 <- geeglm(
+  k6  ~ k6_lag  + 
+    inc_l_lag  + 
+    as.numeric(age_c) +
+    male + eth + 
+    emp_lag + 
+    nzdep_lag + 
+    partner_lag + 
+    urban_lag,
   id = Id,
+  # weights = ipw,
   waves = Wave,
   corstr = "ar1",
+  data = dt_weights_use_2
 )
 
 
-parameters::model_parameters(m2_no_weights) %>%
+parameters::model_parameters(m3) %>%
   print_html()
-
-
-p2_n <-plot( ggeffects::ggpredict(m2_no_weights, terms = "inc_l"),add.data = TRUE, dot.alpha = 0.1) #
-p2_n #+ scale_y_continuous(limits= c(0,15)) # 
-
+#plot(ggeffects::ggpredict(m3, terms = "inc_l_lag [all]"), add.data = TRUE, dot.alpha = 0.1)    
 ```
 
 
@@ -359,8 +363,9 @@ library(gamm4)
 library(splines)
 
 m2_lmer <- lmer(
-  k6  ~ k6_lag  + bs(inc_l)  + as.numeric(age_c) +
-    male + eth +  emp_lag  + nzdep_lag +  urban_lag + (1|Id),
+  k6  ~ k6_lag  + bs(inc_l_lag)  + as.numeric(age_c) +
+    male + eth +  emp_lag  + nzdep_lag + partner_lag + 
+ urban_lag + (1|Id),
   data = dt_weights_use_2,
   weights = dt_weights_use_2$ipw
 )
@@ -369,8 +374,7 @@ parameters::model_parameters(m2_lmer) %>%
   print_html()
 
 # unclear
-p2m2_lmer <- plot( ggeffects::ggpredict(m2_lmer, terms = "inc_l [all]"),add.data = TRUE, dot.alpha = 0.1)
-p2m2_lmer # + scale_y_continuous(limits= c(0,15))
+plot( ggeffects::ggpredict(m2_lmer, terms = "inc_l_lag [all]"), add.data = TRUE, dot.alpha = 0.1)
 ```
 
 This reveals the possible problems in the distribution of values across the sample. Although pre-theoretically we would expect the effect to be linear.
@@ -379,7 +383,7 @@ This reveals the possible problems in the distribution of values across the samp
 
 ```{r}
 m2_lmer2 <- lmer(
-  k6  ~ k6_lag  + inc_l  + as.numeric(age_c) +
+  k6  ~ k6_lag  + inc_l_lag  + as.numeric(age_c) +
     male + eth + nzdep_lag + partner_lag +  urban_lag + (1|Id),
   data = dt_weights_use_2,
   weights = dt_weights_use_2$ipw
@@ -390,18 +394,19 @@ parameters::model_parameters(m2_lmer2) %>%
   print_html()
 
 # then it looks as though more income = lower distress. 
-p3 <- plot( ggeffects::ggpredict(m2_lmer2, terms = "inc_l"), add.data = TRUE, dot.alpha = 0.1)     # 
-p3
+plot( ggeffects::ggpredict(m2_lmer2, terms = "inc_l_lag"), add.data = TRUE, dot.alpha = 0.1)     # 
+
 ```
 
-Here we find support for a linear relationship that is slightly stronger than the GEE estimate (with weights).
+Here we find support for a slight linear relationship.
+
 
 ## Questions
-
 
 Key points:
 
   - Use GEE
+  - Negative binomial? 
   - Sensitivity to IP weighting = important.
   - Model specification = important.
   - Handling of zero income? 
