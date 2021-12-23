@@ -629,11 +629,11 @@ Relidwide <-  df %>%
   spread(Wave, Religious)
 
 Relidwide <- Relidwide[complete.cases(Relidwide),]
+dim(Relidwide)
 
+x_var_list <- names(Relidwide[, 2:12])
 
-x_var_list <- names(relwide[, 2:11])
-
-
+Relidwide
 
 library(lcsm)
 
