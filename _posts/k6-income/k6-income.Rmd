@@ -56,6 +56,7 @@ library("ipw")
 library("geepack")
 library("gesttools")
 library("lcsm")
+library("patchwork")
 
 # rstan options
 rstan_options(auto_write = TRUE)
@@ -158,14 +159,14 @@ dt <- df %>%
                  ))%>%
   dplyr::ungroup(Id) %>%
   dplyr::select(id, k6, k6_lag, inc_l_lag, age_lag_lag, eth_lag_lag,urban_lag_lag,edu_lag_lag,
-                church_l_lag_lag,nzdep_lag_lag,partner_lag_lag,emp_lag_lag,time,male_lag_lag,mxtime) %>%
+                church_l_lag_lag,nzdep_lag_lag,partner_lag_lag,emp_lag_lag,time,male_lag_lag,mxtime, inc_l, age_lag, emp_lag, partner_lag,male_lag, edu_lag, eth_lag, church_l_lag, urban_lag, religious_lag, nzdep_lag, Id) %>%
   drop_na() %>%
   dplyr::mutate(age_c_lag_lag = scale(age_lag_lag, scale = F)) %>%
     dplyr::arrange(id,time)
 
   
-dt<- dt %>%
-  mutate_all(~as.numeric(.))
+#dt<- dt %>%
+ # mutate_all(~as.numeric(.))
 
 
 dt<-as.data.frame(dt)
@@ -177,23 +178,6 @@ dt<-as.data.frame(dt)
 # we'll be looking at church attendance and scripture reading in other work 
 # 
 # 
-# #see https://easystats.github.io/datawizard/articles/demean.html
-# #we want to deal with *Heterogeneity bias *
-# dt <- cbind(dt,
-#             demean(
-#               dt,
-#               select = c("inc_l",
-#                          "k6",
-#                          "age",
-#                          "church_l"),
-#               group = "Id"
-#             )) %>%
-#   mutate(
-#     age_between_c = scale(age_between, scale = FALSE),
-#     inc_l_between_c = scale(inc_l_between, scale = FALSE)
-#   )
-
-
 ```
 
 
@@ -222,29 +206,26 @@ dt<-as.data.frame(dt)
 
 # Dag
 
-This isn't quite right. We need lag2 variables. But it is useful for illustration.
+We adjust for the effects of unmeasured confounders (U) by conditioning on the lag of the exposure, the lag of the outcome, and the lag2 of measured confounders (L):  
 
 ```{r}
 # Create Dags
-
 library(ggdag)
 dg <- ggdag::dagify(
-  k6  ~ k6_lag  + inc_l_lag + age +
-    male + eth + emp_lag + nzdep_lag + partner_lag +  urban_lag + U,
-  emp_lag ~ male + eth + age,
-  inc_l_lag ~ age + male + eth + emp_lag + nzdep_lag  + partner_lag+ urban_lag,
-  k6_lag ~   age + male + eth + emp_lag + nzdep_lag + partner_lag +  urban_lag + U,
-  exposure = "inc_l_lag",
+  k6  ~ k6_lag  + inc_lag  + L,
+  inc_lag ~ L + U,
+  k6_lag  ~   L + U,
+  L ~ U,
+  exposure = "inc_lag",
   outcome = "k6",
   latent = "U"
 ) %>%
   control_for("k6_lag")
 
- 
 #Check backdoor paths
 #p1 <-ggdag(dg) + theme_dag_blank() + labs(title = "confounding control")
 #p1
-ggdag::ggdag_adjustment_set(dg)
+ggdag::ggdag_adjustment_set(dg) + theme_dag_blank()
 
 ```
 
@@ -396,6 +377,66 @@ plot_trajectories(
 ```
 
 
+## So called "Fixed Effects Models"
+
+Some worry about "heterogeneity bias."  Can separate within and between participant features of change? It seems that we should do so, for example, to avoid Simpson's Paradoxes. 
+
+See: https://easystats.github.io/datawizard/articles/demean.html
+
+
+
+```{r}
+# see https://easystats.github.io/datawizard/articles/demean.html
+# we want to deal with *Heterogeneity bias *
+# prepare data
+dt2 <- cbind(dt,
+             demean(dt,
+                    select = c("inc_l"),
+                    group = "Id")) %>%
+  mutate(
+    inc_l_between_c = scale(inc_l_between, scale = FALSE)
+  )
+
+
+
+m1 <- lmer(
+  k6 ~ 
+    inc_l_within + inc_l_between_c  +
+    as.numeric(k6_lag) +
+    as.numeric(age_lag) +
+    male_lag +
+    eth_lag +
+    emp_lag +
+    nzdep_lag +
+    partner_lag +
+    religious_lag + 
+    church_l_lag + 
+    urban_lag + (1 | Id),
+  data = dt2
+)
+
+
+parameters::model_parameters(m1) %>%
+  print_html()
+
+library(ggeffects)
+p0 <- plot(ggeffects::ggpredict(m1, terms = "inc_l_within[all]"), add.data = TRUE, dot.alpha = 0.1) + labs(title = "Within-person association of log income change on K6 distress")   
+
+p1 <- plot(ggeffects::ggpredict(m1, terms = "inc_l_between_c[all]"), add.data = TRUE, dot.alpha = 0.1)    + labs(title = "Between-person association of log income on K6 distress")   # 2 x standard deviations
+
+library(patchwork)
+p0 + p1
+
+```
+
+We find no evidence for a within-person association with k6 
+
+We find strong btween person association on income on k6. 
+
+A causal interpretation does not seem legitimate here. The within and between person averages do not reflect a temporal ordering in which causes precede effects. Both the within-person and between person "effects" average over the entire time series.  To investigate within persona affects we perhaps want to assess gains in income during the previous year. However, there might be other ways to think about this. For example, perhaps the inference using "fixed" effects can view the world *sub species aeternitatis*.
+
+
+## GEE
 
 Here we will used lagged values of the exposure to adjust for confounders and IP weights.
 
@@ -439,11 +480,7 @@ dt_weights_2 <- ipw::ipwtm(
 )
 dt_weights_use_2 <- dt %>% 
   mutate(ipw = dt_weights_2$ipw.weights)
-
-#length(unique(dt_weights_use_2$Id))
-
 ```
-
 
 
 Next we run a model, including lagged K6 and lagged confounders (unless time invariant). Note that we could take the lag of the exposure and the lag2 of the confounders.  Additionally, this model does not handle missing data. Finally, we would want a richer set of baseline confounders. That aside, we find: 
@@ -471,9 +508,8 @@ parameters::model_parameters(m2) %>%
   print_html()
 
 library(ggeffects)
-p2 <- plot(ggeffects::ggpredict(m2, terms = "inc_l_lag[all]"), add.data = TRUE, dot.alpha = 0.1)    # 2 x standard deviations
+p2 <- plot(ggeffects::ggemmeans(m2, terms = "inc_l_lag[all]"), add.data = TRUE, dot.alpha = 0.1)    # 2 x standard deviations
 p2 #+ scale_y_continuous(limits= c(0,15)) # nothing
-
 ```
 
 So we do not find a causal effect.
@@ -484,21 +520,27 @@ So we do not find a causal effect.
 We find income more strongly related to Kessler 6 distress!
 
 ```{r}
+library(effects)
+
+# cannot plot without weights. so we add very small amount of noise
+dt_weights_use_2$nullwts  <- rnorm(nrow(dt_weights_use_2), 1,.001)
+
 
 m3 <- geeglm(
-  k6  ~ k6_lag  + 
-    inc_l_lag  + 
+  k6  ~ k6_lag  +
+    inc_l_lag  +
     as.numeric(age_c_lag_lag) +
-    male_lag_lag + 
-    eth_lag_lag + 
-    emp_lag_lag + 
-    nzdep_lag_lag + 
-    partner_lag_lag+  
+    male_lag_lag +
+    eth_lag_lag +
+    emp_lag_lag +
+    nzdep_lag_lag +
+    partner_lag_lag +
     urban_lag_lag,
+  data = dt_weights_use_2,
   id = id,
   waves = time,
   corstr = "ar1",
-  data = dt_weights_use_2
+  weights = nullwts
 )
 
 
@@ -506,7 +548,7 @@ parameters::model_parameters(m3) %>%
   print_html()
 
 # cannot graph GEE with
-# plot(ggeffects::ggpredict(m3, terms = "inc_l_lag"), add.data = TRUE, dot.alpha = 0.1)    
+plot(ggeffects::ggemmeans(m3, terms = "inc_l_lag"), add.data = TRUE, dot.alpha = 0.1)    
 ```
 
 
