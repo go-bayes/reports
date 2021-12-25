@@ -21,7 +21,7 @@ show_unique_id <- function(x){
 
 # Function to tally number of responses for the ids
 count_waves_participants <- function(x){
-  out<-dplyr::count(tally(group_by(x, Id), sort = TRUE, name="number_waves"), number_waves)
+  out<-dplyr::count(tally(group_by(x, id), sort = TRUE, name="number_waves"), number_waves)
   print(out)
 }
 

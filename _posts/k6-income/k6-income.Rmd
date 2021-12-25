@@ -401,7 +401,8 @@ dt2 <- cbind(dt,
 
 m1 <- lmer(
   k6 ~ 
-    inc_l_within + inc_l_between_c  +
+    inc_l_within + 
+    inc_l_between_c  +
     as.numeric(k6_lag) +
     as.numeric(age_lag) +
     male_lag +
@@ -426,7 +427,6 @@ p1 <- plot(ggeffects::ggpredict(m1, terms = "inc_l_between_c[all]"), add.data = 
 
 library(patchwork)
 p0 + p1
-
 ```
 
 We find no evidence for a within-person association with k6 
@@ -450,7 +450,6 @@ First we calculate weights for the exposure
 
 ```{r}
 # calculate weights
-
 dt_weights_2 <- ipw::ipwtm(
   exposure = k6,
   family = "gaussian",
@@ -476,9 +475,9 @@ dt_weights_2 <- ipw::ipwtm(
     nzdep_lag_lag + 
     partner_lag_lag+  
     urban_lag_lag,
-  data = as.data.frame(dt)
+  data = as.data.frame(dt2)
 )
-dt_weights_use_2 <- dt %>% 
+dt_weights_use_2 <- dt2 %>% 
   mutate(ipw = dt_weights_2$ipw.weights)
 ```
 
@@ -512,6 +511,48 @@ p2 <- plot(ggeffects::ggemmeans(m2, terms = "inc_l_lag[all]"), add.data = TRUE, 
 p2 #+ scale_y_continuous(limits= c(0,15)) # nothing
 ```
 
+
+## Weights within/between (No  difference)
+
+We can try within/between model with weights. (We can, but we probably shouldn't)
+
+```{r}
+head(dt_weights_use_2)
+m1b <- lmer(
+  k6 ~ 
+    inc_l_within + 
+    inc_l_between_c  +
+    as.numeric(k6_lag) +
+    as.numeric(age_lag) +
+    male_lag +
+    eth_lag +
+    emp_lag +
+    nzdep_lag +
+    partner_lag +
+    religious_lag + 
+    church_l_lag + 
+    urban_lag + (1 | Id),
+   weights = dt_weights_use_2$ipw,
+   data =  dt_weights_use_2
+)
+
+
+parameters::model_parameters(m1b) %>%
+  print_html()
+
+library(ggeffects)
+p0b <- plot(ggeffects::ggpredict(m1b, terms = "inc_l_within[sd]"), add.data = TRUE, dot.alpha = 0.1) + labs(title = "Within-person association of log income change on K6 distress (ipw)")   
+
+p1b <- plot(ggeffects::ggpredict(m1b, terms = "inc_l_between_c[sd]"), add.data = TRUE, dot.alpha = 0.1)    + labs(title = "Between-person association of log income on K6 distress (ipw")   # 2 x standard deviations
+
+library(patchwork)
+p0b + p1b
+```
+
+
+
+
+
 So we do not find a causal effect.
 
 
@@ -521,11 +562,10 @@ We find income more strongly related to Kessler 6 distress!
 
 ```{r}
 library(effects)
-
 # cannot plot without weights. so we add very small amount of noise
 dt_weights_use_2$nullwts  <- rnorm(nrow(dt_weights_use_2), 1,.001)
 
-
+library(splines)
 m3 <- geeglm(
   k6  ~ k6_lag  +
     inc_l_lag  +
@@ -548,7 +588,7 @@ parameters::model_parameters(m3) %>%
   print_html()
 
 # cannot graph GEE with
-plot(ggeffects::ggemmeans(m3, terms = "inc_l_lag"), add.data = TRUE, dot.alpha = 0.1)    
+plot(ggeffects::ggemmeans(m3, terms = "inc_l_lag[all]"), add.data = TRUE, dot.alpha = 0.1)    
 ```
 
 
@@ -668,6 +708,7 @@ This is possibly not the right approach to our question. Notably, however, the m
 
 We must handle attrition. There is likely to be selection on those who remain in the study. 
 
+Note: the model below won't run because time (k) needs to be ordered k...K+1 with no breaks.
 
 
 
@@ -675,7 +716,6 @@ We must handle attrition. There is likely to be selection on those who remain in
 # we do not evaluate this to save time
 
 library(gesttools)
-
 # must start at 1
 dg <- df %>%
   dplyr::filter(YearMeasured == 1)  %>%
@@ -723,13 +763,13 @@ dg <- df %>%
     religious=as.numeric(Religious),
     urban = as.numeric(Urban),
     ym = as.numeric(YearMeasured)-1) %>%
-  dplyr::group_by(Id) %>% filter(n() > 2) %>%
+  dplyr::group_by(Id) %>% filter(n() > 8) %>%
   ungroup()%>%
   arrange(Id,Wave)
 
 # must start at 1
 dg$time <- as.integer(dg$Wave)-1
-min(dg$time)
+length(unique(dg$Id)) # 2366
 
 dg1 <- dg %>%
   select(Id, time, inc_l, k6, male, urban, employed, nzdep, religious) %>%
@@ -806,6 +846,198 @@ test2 <- gestboot(
 test2 <- readRDS(here::here("models","test2"))
 test2
 ```
+
+## Gformula
+
+Experimental
+
+```{r}
+
+dgf <- df %>%
+ dplyr::filter(Wave != 2009) %>% # no k6 measure
+  droplevels() %>%
+ dplyr::filter(YearMeasured == 1)  %>%
+  dplyr::select(
+    Id,
+    Household.INC,
+    KESSLER6sum,
+    NZdep,
+    Wave,
+   # TSCORE,
+    Age,
+    Euro,
+  # Religion.Prayer,
+  #  Religion.Scripture,
+    Religion.Church,
+    Male,
+    Edu,
+    EthnicCats,
+    Urban,
+    Wave,
+    Employed,
+    Partner,
+    Religious,
+    Parent,
+    NZdep,
+   YearMeasured
+  ) %>%
+  dplyr::mutate(
+    wave = as.numeric(Wave) -1, 
+    k6 = as.numeric(KESSLER6sum),
+    age = (Age),
+    inc_l = log(Household.INC + 1),
+    emp = as.numeric(Employed)-1,
+    euro = as.numeric(Euro)-1,
+    age_c = scale(Age, scale = F),
+    employed = as.numeric(Employed)-1,
+    nzdep = as.numeric(NZdep),
+  #  pray_l = log(Religion.Prayer + 1),
+  #  script_l = log(Religion.Scripture + 1),
+    church_l = log(Religion.Church + 1),
+    edu = as.numeric(Edu),
+    partner = as.numeric(Partner),
+    male = as.numeric(Male)-1,
+    eth = EthnicCats,
+    nzdep = as.numeric(NZdep),
+    religious=as.numeric(Religious)-1,
+    urban = as.numeric(Urban)-1) %>%
+    dplyr::group_by(Id) %>% 
+  select(Id, k6,  inc_l, age, wave, euro, employed, nzdep, partner, male, religious, urban) %>%
+  #mutate_all(~as.numeric(.)) %>%
+ # drop_na() %>%
+  filter(n() == 10) %>%
+  ungroup() %>%
+  mutate(time = wave - min(wave))%>%
+  mutate(mxtime = max(time))%>%
+  mutate(id = as.numeric(factor(Id)))%>%
+  mutate(k6_s = scale(k6)) %>%
+  arrange(id,time)
+
+max(dgf$id)
+
+
+
+count_waves_participants <- function(x){
+  out<-dplyr::count(tally(group_by(x, Id), sort = TRUE, name="number_waves"), number_waves)
+  print(out)
+}
+count_waves_participants(dgf)
+```
+
+```{r, eval=FALSE}
+library(gfoRmula)
+
+#This isn't working
+
+# "Error in error_catch(id = id, nsimul = nsimul, intvars = intvars, interventions = interventions,  : 
+# Time variable in obs_data not correctly specified. For each individual time records should begin with 0 (or, optionally -i if using i lags) and increase in increments of 1, where no time records are skipped."
+dgf<- dgf%>%
+rename(t0= time,
+       A = partner,
+       L1 = "inc_l",
+       Y = "k6_s")
+dgf
+id <- 'id'
+time_name <- 't0'
+time_points <-10
+covnames <- c(
+    "L1",
+    "A"
+  )
+outcome_name <- 'Y'
+outcome_type <- 'continuous_eof'
+covtypes =  c(
+    "normal", "binary"
+  )
+
+intvars <- list('A', 'A')
+
+interventions <- list(list(c(static, rep(0, 10))),
+                      list(c(static, rep(1, 10))))
+
+int_descript <- c('Never treat', 'Always treat')
+                      
+histories <- list(lagged)
+
+histvars = list(c("L1", "A"))
+
+covparams <- list(
+    covmodels = c(
+      L1 ~ lag1_A   +  t0,    
+      A ~ lag1_A + L1  + t0))
+covnames
+
+ymodel <- Y ~  L1 + lag1_A + lag1_L1 + t0
+
+library(data.table)
+dgf<- data.table(dgf)
+
+
+head(dgf)
+test3 <- gformula(
+  obs_data = dgf,
+  id = id, 
+  time_name = time_name,
+  time_points = time_points,
+  covnames = covnames, 
+  outcome_name = outcome_name,
+  outcome_type = outcome_type, 
+  covtypes = covtypes,
+  covparams = covparams, 
+  ymodel = ymodel,
+  intvars = intvars,
+  interventions = interventions,
+  int_descript = int_descript,
+  histories = histories, 
+  histvars = histvars,
+  #basecovs = c("male","euro"),
+  nsimul = 10000,
+  seed = 1234)
+plot(test3)
+
+
+```
+
+```{r, eval=FALSE}
+id <- 'id'
+time_points <- 7
+time_name <- 't0'
+covnames <- c('L1', 'L2', 'A')
+outcome_name <- 'Y'
+outcome_type <- 'survival'
+covtypes <- c('binary', 'bounded normal', 'binary')
+histories <- c(lagged, lagavg)
+histvars <- list(c('A', 'L1', 'L2'), c('L1', 'L2'))
+covparams <- list(covmodels = c(L1 ~ lag1_A + lag_cumavg1_L1 + lag_cumavg1_L2 +
+                                  L3 + t0,
+                                L2 ~ lag1_A + L1 + lag_cumavg1_L1 +
+                                  lag_cumavg1_L2 + L3 + t0,
+                                A ~ lag1_A + L1 + L2 + lag_cumavg1_L1 +
+                                  lag_cumavg1_L2 + L3 + t0))
+ymodel <- Y ~ A + L1 + L2 + L3 + lag1_A + lag1_L1 + lag1_L2 + t0
+intvars <- list('A', 'A')
+interventions <- list(list(c(static, rep(0, time_points))),
+                      list(c(static, rep(1, time_points))))
+int_descript <- c('Never treat', 'Always treat')
+nsimul <- 10000
+
+gform_basic <- gformula(obs_data = basicdata_nocomp, id = id,
+                        time_points = time_points,
+                        time_name = time_name, covnames = covnames,
+                        outcome_name = outcome_name,
+                        outcome_type = outcome_type, covtypes = covtypes,
+                        covparams = covparams, ymodel = ymodel,
+                        intvars = intvars,
+                        interventions = interventions,
+                        int_descript = int_descript,
+                        histories = histories, histvars = histvars,
+                        basecovs = c('L3'), nsimul = nsimul,
+                        seed = 1234)
+gform_basic
+plot(gform_basic)
+```
+
+
 
 
 
