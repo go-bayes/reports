@@ -487,12 +487,12 @@ Next we run a model, including lagged K6 and lagged confounders (unless time inv
 ```{r}
 str(dt)
 m2 <- geeglm(
-  k6  ~ k6_lag  + 
-    inc_l_lag  + 
+  k6  ~  k6_lag  + 
+    inc_l_lag + 
     as.numeric(age_c_lag_lag) +
     male_lag_lag + 
     eth_lag_lag + 
-    emp_lag_lag + 
+   emp_lag_lag + 
     nzdep_lag_lag + 
     partner_lag_lag+  
     urban_lag_lag,
