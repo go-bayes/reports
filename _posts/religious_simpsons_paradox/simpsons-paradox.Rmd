@@ -148,6 +148,20 @@ length(unique(dat$Id)) #48165
 
 ```
 
+Participants by waves
+```{r}
+count_waves_participants <- function(x){
+  out<-dplyr::count(tally(group_by(x, Id), sort = TRUE, name="number_waves"), number_waves)
+  print(out)
+}
+
+count_waves_participants(dat)
+
+
+```
+
+
+
 MSM Analysis
 
 ```{r  msm2, cache = TRUE, eval = FALSE}

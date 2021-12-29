@@ -73,6 +73,14 @@ df <- readRDS(here::here("data", "df"))
 Does money make people happy?
 
 
+## Lingering Questions: 
+
+- What is the target-trial that we are trying to emulate here? (cf Hernans...)
+- Does the (k6 + t2) ~ (inc + t1)  + (k6 + t1) + lag_2 (t0_baseline confounders) emulate a target trial? 
+- exposure/outcome confounding? 
+- do we want to define a clear treatment (ordinal categories for income?), so that we can emulate a target trial (and obtain meaningful IPWs)?
+
+
 ## Data preparation 
 
 ```{r dataprep, cache=TRUE}
@@ -80,7 +88,6 @@ Does money make people happy?
 
 # prepare data
 # note, still need to do IPW and multiply impute missing data
-
 dt <- df %>%
   dplyr::filter(YearMeasured == 1)  %>%
  dplyr::filter(Wave != 2009) %>% # no k6 measure
@@ -154,15 +161,17 @@ dt <- df %>%
                         partner_lag,
                         religious_lag,
                         emp_lag,
+                        inc_l_lag,
                         k6), 
                  list(lag = lag)
                  ))%>%
   dplyr::ungroup(Id) %>%
   dplyr::select(id, k6, k6_lag, inc_l_lag, age_lag_lag, eth_lag_lag,urban_lag_lag,edu_lag_lag,
-                church_l_lag_lag,nzdep_lag_lag,partner_lag_lag,emp_lag_lag,time,male_lag_lag,mxtime, inc_l, age_lag, emp_lag, partner_lag,male_lag, edu_lag, eth_lag, church_l_lag, urban_lag, religious_lag, nzdep_lag, Id) %>%
+                church_l_lag_lag,nzdep_lag_lag,partner_lag_lag,emp_lag_lag,time,male_lag_lag,mxtime, inc_l, age_lag, emp_lag, partner_lag,male_lag, edu_lag, eth_lag, church_l_lag, urban_lag, religious_lag, nzdep_lag, inc_l_lag_lag, Id) %>%
   drop_na() %>%
   dplyr::mutate(age_c_lag_lag = scale(age_lag_lag, scale = F)) %>%
     dplyr::arrange(id,time)
+
 
   
 #dt<- dt %>%
@@ -170,33 +179,74 @@ dt <- df %>%
 
 
 dt<-as.data.frame(dt)
+```
 
+Number of participants
+
+```{r, cache=TRUE}
 # cound id's
-#length(unique(dt$Id))
-
-# demean data to obtain within/between individual predictors
-# we'll be looking at church attendance and scripture reading in other work 
-# 
-# 
+length(unique(dt$Id))
 ```
 
 
-<!--  ```{r} -->
-<!-- # # ip weights -->
-<!-- #  -->
-<!-- # # possion because k6 behaves as a rate parameter. but takes too long to run for this simple demonstration -->
-<!-- # m1 <- -->
-<!-- #   lmer( -->
-<!-- #     k6  ~ k6_lag  + inc_l_within + inc_l_between  + age_within + age_between_c + -->
-<!-- #       male + eth + emp_lag + partner_lag  + nzdep_lag + urban_lag + (1 | Id), -->
-<!-- #     data = df_weights_use_1 -->
-<!-- #     # family = "poisson" -->
-<!-- #   ) -->
-<!-- #  -->
-<!-- #  -->
-<!-- # parameters::model_parameters(m1) %>% -->
-<!-- #   print_html() -->
-<!-- ``` -->
+### Prepare data for within/between models
+
+Some worry about "heterogeneity bias."  Can separate within and between participant features of change? It seems that we should do so, for example, to avoid Simpson's Paradoxes. 
+
+See: https://easystats.github.io/datawizard/articles/demean.html
+
+
+```{r}
+# see https://easystats.github.io/datawizard/articles/demean.html
+# we want to deal with *Heterogeneity bias *
+# prepare data
+dt2 <- cbind(dt,
+             demean(dt,
+                    select = c("inc_l"),
+                    group = "Id")) %>%
+  mutate(
+    inc_l_between_c = scale(inc_l_between, scale = FALSE)
+  )
+```
+
+
+### Prepare data for IP Weights
+
+
+```{r}
+## Marginal Structural model approach: IPW
+# calculate weights: Note -- is this correct? 
+
+dt_weights_2 <- ipw::ipwtm(
+  exposure = inc_l_lag,
+  family = "gaussian",
+  type = "all",
+  corstr = "ar1",
+  id = "id",
+  timevar = "time", 
+  numerator = ~  inc_l_lag_lag  +  # lag treatment + confounders
+    age_c_lag_lag +
+    male_lag_lag + 
+    eth_lag_lag + 
+    emp_lag_lag + 
+    nzdep_lag_lag + 
+    partner_lag_lag+  
+    urban_lag_lag,
+  denominator = ~ # lag treatment + lag outcome +  confounders
+    k6_lag  + 
+    inc_l_lag_lag  + 
+    age_c_lag_lag +
+    male_lag_lag + 
+    eth_lag_lag + 
+    emp_lag_lag + 
+    nzdep_lag_lag + 
+    partner_lag_lag+  
+    urban_lag_lag,
+  data = as.data.frame(dt2)
+)
+dt_weights_use_2 <- dt2 %>% 
+  mutate(ipw = dt_weights_2$ipw.weights)
+```
 
 
 
@@ -265,8 +315,7 @@ widelong <-  df %>%
   dplyr::group_by(Id) %>% filter(n() > 9) %>%
   dplyr::select(Id, KESSLER6sum, Wave) # 
 
-##THIS HANGS
-#out <- with(relwidelong, long2matrices(id = Id, X = Age, Y = Religious))
+
 
 wide <- spread(widelong, Wave, KESSLER6sum)
 
@@ -377,28 +426,10 @@ plot_trajectories(
 ```
 
 
-## So called "Fixed Effects Models"
-
-Some worry about "heterogeneity bias."  Can separate within and between participant features of change? It seems that we should do so, for example, to avoid Simpson's Paradoxes. 
-
-See: https://easystats.github.io/datawizard/articles/demean.html
-
+## Within/between mixed effects model (IPW)
 
 
 ```{r}
-# see https://easystats.github.io/datawizard/articles/demean.html
-# we want to deal with *Heterogeneity bias *
-# prepare data
-dt2 <- cbind(dt,
-             demean(dt,
-                    select = c("inc_l"),
-                    group = "Id")) %>%
-  mutate(
-    inc_l_between_c = scale(inc_l_between, scale = FALSE)
-  )
-
-
-
 m1 <- lmer(
   k6 ~ 
     inc_l_within + 
@@ -413,7 +444,8 @@ m1 <- lmer(
     religious_lag + 
     church_l_lag + 
     urban_lag + (1 | Id),
-  data = dt2
+  weights = dt_weights_use_2$ipw,
+  data = dt_weights_use_2
 )
 
 
@@ -429,60 +461,61 @@ library(patchwork)
 p0 + p1
 ```
 
-We find no evidence for a within-person association with k6 
+We find evidence for a within-person and between person effects of income on k6.
 
-We find strong btween person association on income on k6. 
 
-A causal interpretation does not seem legitimate here. The within and between person averages do not reflect a temporal ordering in which causes precede effects. Both the within-person and between person "effects" average over the entire time series.  To investigate within persona affects we perhaps want to assess gains in income during the previous year. However, there might be other ways to think about this. For example, perhaps the inference using "fixed" effects can view the world *sub species aeternitatis*.
+## No weights: within/between 
+
+We can try within/between model without weights.
+
+```{r}
+m1b <- lmer(
+  k6 ~
+    inc_l_within +
+    inc_l_between_c  +
+    as.numeric(k6_lag) +
+    as.numeric(age_lag) +
+    male_lag +
+    eth_lag +
+    emp_lag +
+    nzdep_lag +
+    partner_lag +
+    religious_lag +
+    church_l_lag +
+    urban_lag + (1 | Id),
+  #weights = dt_weights_use_2$ipw,
+  data =  dt_weights_use_2
+)
+
+
+parameters::model_parameters(m1b) %>%
+  print_html()
+
+library(ggeffects)
+p0b <-
+  plot(
+    ggeffects::ggpredict(m1b, terms = "inc_l_within[all]"),
+    add.data = TRUE,
+    dot.alpha = 0.1
+  ) + labs(title = "Within-person association of log income change on K6 distress (no ipw)")
+
+p1b <-
+  plot(
+    ggeffects::ggpredict(m1b, terms = "inc_l_between_c[all]"),
+    add.data = TRUE,
+    dot.alpha = 0.1
+  )    + labs(title = "Between-person association of log income on K6 distress (no ipw")   # 2 x standard deviations
+
+library(patchwork)
+p0b + p1b
+```
+
+Removing weights attenuates within-person effect.
 
 
 ## GEE
 
 Here we will used lagged values of the exposure to adjust for confounders and IP weights.
-
-
-First we calculate weights for the exposure 
-
-
-```{r}
-## Marginal Structural model approach: IPW
-
-
-```{r}
-# calculate weights
-dt_weights_2 <- ipw::ipwtm(
-  exposure = k6,
-  family = "gaussian",
-  type = "all",
-  corstr = "ar1",
-  id = "id",
-  timevar = "time", 
-  numerator = ~  k6_lag  + 
-    age_c_lag_lag +
-    male_lag_lag + 
-    eth_lag_lag + 
-    emp_lag_lag + 
-    nzdep_lag_lag + 
-    partner_lag_lag+  
-    urban_lag_lag,
-  denominator = ~ 
-    k6_lag  + 
-    inc_l_lag  + 
-    age_c_lag_lag +
-    male_lag_lag + 
-    eth_lag_lag + 
-    emp_lag_lag + 
-    nzdep_lag_lag + 
-    partner_lag_lag+  
-    urban_lag_lag,
-  data = as.data.frame(dt2)
-)
-dt_weights_use_2 <- dt2 %>% 
-  mutate(ipw = dt_weights_2$ipw.weights)
-```
-
-
-Next we run a model, including lagged K6 and lagged confounders (unless time invariant). Note that we could take the lag of the exposure and the lag2 of the confounders.  Additionally, this model does not handle missing data. Finally, we would want a richer set of baseline confounders. That aside, we find: 
 
 ```{r}
 str(dt)
@@ -492,7 +525,7 @@ m2 <- geeglm(
     as.numeric(age_c_lag_lag) +
     male_lag_lag + 
     eth_lag_lag + 
-   emp_lag_lag + 
+    emp_lag_lag + 
     nzdep_lag_lag + 
     partner_lag_lag+  
     urban_lag_lag,
@@ -511,52 +544,8 @@ p2 <- plot(ggeffects::ggemmeans(m2, terms = "inc_l_lag[all]"), add.data = TRUE, 
 p2 #+ scale_y_continuous(limits= c(0,15)) # nothing
 ```
 
+Here we find an effect of income on K6. 
 
-## Weights within/between (No  difference)
-
-We can try within/between model with weights. (We can, but we probably shouldn't)
-
-```{r}
-head(dt_weights_use_2)
-m1b <- lmer(
-  k6 ~ 
-    inc_l_within + 
-    inc_l_between_c  +
-    as.numeric(k6_lag) +
-    as.numeric(age_lag) +
-    male_lag +
-    eth_lag +
-    emp_lag +
-    nzdep_lag +
-    partner_lag +
-    religious_lag + 
-    church_l_lag + 
-    urban_lag + (1 | Id),
-   weights = dt_weights_use_2$ipw,
-   data =  dt_weights_use_2
-)
-
-
-parameters::model_parameters(m1b) %>%
-  print_html()
-
-library(ggeffects)
-p0b <- plot(ggeffects::ggpredict(m1b, terms = "inc_l_within[sd]"), add.data = TRUE, dot.alpha = 0.1) + labs(title = "Within-person association of log income change on K6 distress (ipw)")   
-
-p1b <- plot(ggeffects::ggpredict(m1b, terms = "inc_l_between_c[sd]"), add.data = TRUE, dot.alpha = 0.1)    + labs(title = "Between-person association of log income on K6 distress (ipw")   # 2 x standard deviations
-
-library(patchwork)
-p0b + p1b
-```
-
-
-
-
-
-So we do not find a causal effect.
-
-
-##  What would happen if we did not use IPW? 
 
 We find income more strongly related to Kessler 6 distress!
 
@@ -591,7 +580,7 @@ parameters::model_parameters(m3) %>%
 plot(ggeffects::ggemmeans(m3, terms = "inc_l_lag[all]"), add.data = TRUE, dot.alpha = 0.1)    
 ```
 
-
+Even without weights, we recover the effect. 
 
 
 ## Mixed effects approach: IPW
@@ -602,16 +591,17 @@ What if we were to use a mixed effects model?
 library(gamm4)
 library(splines)
 
+# lmer
 m2_lmer <- lmer(
-  k6  ~ k6_lag  + 
-    inc_l_lag  + 
+  k6  ~ k6_lag  +
+    inc_l_lag  +
     as.numeric(age_c_lag_lag) +
-    male_lag_lag + 
-    eth_lag_lag + 
-    emp_lag_lag + 
-    nzdep_lag_lag + 
-    partner_lag_lag+  
-    urban_lag_lag + (1 + time|id),
+    male_lag_lag +
+    eth_lag_lag +
+    emp_lag_lag +
+    nzdep_lag_lag +
+    partner_lag_lag +
+    urban_lag_lag + (1 + time | id),
   data = dt_weights_use_2,
   weights = dt_weights_use_2$ipw
 )
@@ -619,14 +609,18 @@ m2_lmer <- lmer(
 parameters::model_parameters(m2_lmer) %>%
   print_html()
 
-# unclear
-plot( ggeffects::ggpredict(m2_lmer, terms = "inc_l_lag [all]"), add.data = TRUE, dot.alpha = 0.1)
+# graph
+plot(
+  ggeffects::ggpredict(m2_lmer, terms = "inc_l_lag [all]"),
+  add.data = TRUE,
+  dot.alpha = 0.1
+)
 ```
 
-We do not find support for an income effect. 
+We find support for an income effect. 
 
 
-## Mixed effects approach no IPW
+## Mixed effects approach (no IPW)
 
 ```{r}
 m2_lmer2 <- lmer(
@@ -655,6 +649,7 @@ plot( ggeffects::ggpredict(m2_lmer2, terms = "inc_l_lag"), add.data = TRUE, dot.
 Here we find support for a linear relationship.
 
 
+## Mixed effects models with splines
 
 
 Finally, let us consider splines. 
@@ -672,6 +667,7 @@ m2_lmer3 <- lmer(
     nzdep_lag_lag + 
     partner_lag_lag+  
     urban_lag_lag  + (1|id),
+    weights = dt_weights_use_2$ipw,
   data = dt_weights_use_2
 )
 # we find an effect
@@ -679,27 +675,76 @@ parameters::model_parameters(m2_lmer3) %>%
   print_html()
 
 # then it looks as though more income = lower distress. 
-plot( ggeffects::ggpredict(m2_lmer3, terms = "inc_l_lag [all]"), add.data = TRUE, dot.alpha = 0.1)     # 
+plot(
+  ggeffects::ggpredict(m2_lmer3,
+                       terms = "inc_l_lag [all]"),
+  add.data = TRUE,
+  dot.alpha = 0.1
+)     
 
 ```
 
-This suggests a linear decline in distress from income. The lower distress at the zero end of income might arise from situations in which there is wealt but no household income (Elon Musk, etc...)
+This suggests a linear decline in distress from income, at the high end of income.
+
+### Within/between splines
+
+Similar story. 
+
+```{r}
+m1bs <- lmer(
+  k6 ~
+    bs(inc_l_within) +
+    bs(inc_l_between_c)  +
+    as.numeric(k6_lag) +
+    as.numeric(age_lag) +
+    male_lag +
+    eth_lag +
+    emp_lag +
+    nzdep_lag +
+    partner_lag +
+    religious_lag +
+    church_l_lag +
+    urban_lag + (1 | Id),
+  weights = dt_weights_use_2$ipw,
+  data =  dt_weights_use_2
+)
+
+
+parameters::model_parameters(m1bs) %>%
+  print_html()
+
+library(ggeffects)
+p0bs <-
+  plot(
+    ggeffects::ggpredict(m1bs, terms = "inc_l_within [all]"),
+    add.data = TRUE,
+    dot.alpha = 0.1
+  ) + labs(title = "Within-person association of log income change on K6 distress (no ipw)")
+
+p1bs <-
+  plot(
+    ggeffects::ggpredict(m1bs, terms = "inc_l_between_c[all]"),
+    add.data = TRUE,
+    dot.alpha = 0.1
+  )    + labs(title = "Between-person association of log income on K6 distress (no ipw")   # 2 x standard deviations
+
+library(patchwork)
+p0bs + p1bs
+```
+
+We cannot obtain confidence intervales here. The linear model would appear sufficient. Greater income causes lower psychological distress. 
+
 
 ## Questions
 
 Key points:
   - need to multiply impute
   - Use GEE
-  - Negative binomial? 
-  - Sensitivity to IP weighting = important.
+  - IP weighting = important, but does it makes sense for continuous exposures? 
   - Model specification = important.
   - Handling of zero income? 
-  - Need to handle missingness at the next iteration.
   - Need to adjust for more confounders at the next iteration.  
   - Sensitivity tests.
-
-
-
 
 
 ## G-estimation (just testing)
@@ -707,7 +752,6 @@ Key points:
 This is possibly not the right approach to our question. Notably, however, the model recovers a larger effect estimate. 
 
 We must handle attrition. There is likely to be selection on those who remain in the study. 
-
 Note: the model below won't run because time (k) needs to be ordered k...K+1 with no breaks.
 
 
@@ -717,20 +761,28 @@ Note: the model below won't run because time (k) needs to be ordered k...K+1 wit
 
 library(gesttools)
 # must start at 1
+
 dg <- df %>%
   dplyr::filter(YearMeasured == 1)  %>%
- dplyr::filter(Wave != 2009) %>% # no k6 measure
-  dplyr::filter(!is.na(KESSLER6sum), !is.na(Household.INC),!is.na(EthnicCats),!is.na(Male),!is.na(Urban), !is.na(Employed)) %>%
+  dplyr::filter(Wave != 2009) %>% # no k6 measure
+  dplyr::filter(
+    !is.na(KESSLER6sum),
+    !is.na(Household.INC),
+    !is.na(EthnicCats),
+    !is.na(Male),
+    !is.na(Urban),
+    !is.na(Employed)
+  ) %>%
   dplyr::select(
     Id,
     Household.INC,
     KESSLER6sum,
     NZdep,
     Wave,
-   # TSCORE,
+    # TSCORE,
     Age,
-  # Religion.Prayer,
-  #  Religion.Scripture,
+    # Religion.Prayer,
+    #  Religion.Scripture,
     Religion.Church,
     Male,
     Edu,
@@ -742,7 +794,7 @@ dg <- df %>%
     Religious,
     Parent,
     NZdep,
-   YearMeasured
+    YearMeasured
   ) %>%
   dplyr::mutate(
     k6 = as.numeric(KESSLER6sum),
@@ -750,94 +802,102 @@ dg <- df %>%
     inc_l = log(Household.INC + 1),
     emp = as.numeric(Employed),
     age_c = scale(Age, scale = F),
-    employed = as.numeric(Employed)-1,
+    employed = as.numeric(Employed) - 1,
     nzdep = as.numeric(NZdep),
-  #  pray_l = log(Religion.Prayer + 1),
-  #  script_l = log(Religion.Scripture + 1),
+    #  pray_l = log(Religion.Prayer + 1),
+    #  script_l = log(Religion.Scripture + 1),
     church_l = log(Religion.Church + 1),
     edu = as.numeric(Edu),
     partner = as.numeric(Partner),
     male = as.numeric(Male),
     eth = EthnicCats,
     nzdep = as.numeric(NZdep),
-    religious=as.numeric(Religious),
+    religious = as.numeric(Religious),
     urban = as.numeric(Urban),
-    ym = as.numeric(YearMeasured)-1) %>%
+    ym = as.numeric(YearMeasured) - 1
+  ) %>%
   dplyr::group_by(Id) %>% filter(n() > 8) %>%
-  ungroup()%>%
-  arrange(Id,Wave)
+  ungroup() %>%
+  arrange(Id, Wave)
 
 # must start at 1
-dg$time <- as.integer(dg$Wave)-1
+dg$time <- as.integer(dg$Wave) - 1
 length(unique(dg$Id)) # 2366
 
 dg1 <- dg %>%
   select(Id, time, inc_l, k6, male, urban, employed, nzdep, religious) %>%
   group_by(Id) %>%
-  mutate(time = time - min(time) + 1)%>%
-  mutate(mxtime = max(time))%>%
+  mutate(time = time - min(time) + 1) %>%
+  mutate(mxtime = max(time)) %>%
   ungroup() %>%
-  mutate(id = as.numeric(factor(Id)))%>%
+  mutate(id = as.numeric(factor(Id))) %>%
   select(-Id) %>%
   drop_na()
 
 dg2 <- as.data.frame(dg1)
 
 head(dg2)
-dgg <- FormatData(dg2, 
-                  idvar="id",
-                  timevar = "time", 
-                  An = "inc_l",
-                  Cn = "mxtime",
-                  varying=c("k6","inc_l", "employed","religious","nzdep","urban","male"),
-                  GenerateHistory=TRUE, GenerateHistoryMax=NA)
+dgg <- FormatData(
+  dg2,
+  idvar = "id",
+  timevar = "time",
+  An = "inc_l",
+  Cn = "mxtime",
+  varying = c("k6", "inc_l", "employed", "religious", "nzdep", "urban", "male"),
+  GenerateHistory = TRUE,
+  GenerateHistoryMax = NA
+)
 
 head(dgg$k6)
 head(dg1)
 str(dgg
 
-
-test <- gestMultiple(
-  dgg,
-  idvar = "id",
-  timevar = "time",
-  Yn = "k6",
-  An = "inc_l",
-  Ybin = FALSE,
-  Abin = FALSE,
-  Acat = FALSE,
-  Lny = c("employed", "religious", "nzdep", "urban", "male"),
-  Lnp =c( "employed", "religious", "nzdep", "urban", "male"),
-  type = 1 #,
- # Cn = "mxtime",
- # LnC =c("employed", "religious", "nzdep", "urban", "male"),
- # cutoff = "mxtime"
-)
-summary(test$psi)
-
-
-#
-test2 <- gestboot(
-  gestMultiple,
-  dgg,
-  idvar = "id",
-  timevar = "time",
-  Yn = "k6",
-  An = "inc_l",
-  Ybin = FALSE,
-  Abin = FALSE,
-  Acat = FALSE,
-  Lny = c("employed", "religious", "nzdep", "urban", "male"),
-  Lnp =c( "employed", "religious", "nzdep", "urban", "male"),
-  type = 1 ,#,
-  alpha = .05,
-  bn = 5,
-  oneside = "twosided",
-  seed = 123)
- # Cn = "mxtime",
- # LnC =c("employed", "religious", "nzdep", "urban", "male"),
- # cutoff = "mxtime"
-
+    
+    
+    
+    test <- gestMultiple(
+      dgg,
+      idvar = "id",
+      timevar = "time",
+      Yn = "k6",
+      An = "inc_l",
+      Ybin = FALSE,
+      Abin = FALSE,
+      Acat = FALSE,
+      Lny = c("employed", "religious", "nzdep", "urban", "male"),
+      Lnp = c("employed", "religious", "nzdep", "urban", "male"),
+      type = 1 #,
+      # Cn = "mxtime",
+      # LnC =c("employed", "religious", "nzdep", "urban", "male"),
+      # cutoff = "mxtime"
+    )
+    summary(test$psi)
+    
+    
+    #
+    test2 <- gestboot(
+      gestMultiple,
+      dgg,
+      idvar = "id",
+      timevar = "time",
+      Yn = "k6",
+      An = "inc_l",
+      Ybin = FALSE,
+      Abin = FALSE,
+      Acat = FALSE,
+      Lny = c("employed", "religious", "nzdep", "urban", "male"),
+      Lnp = c("employed", "religious", "nzdep", "urban", "male"),
+      type = 1 ,
+      #,
+      alpha = .05,
+      bn = 5,
+      oneside = "twosided",
+      seed = 123
+    )
+    # Cn = "mxtime",
+    # LnC =c("employed", "religious", "nzdep", "urban", "male"),
+    # cutoff = "mxtime"
+    
 #saveRDS(test2, here::here("models", "test2"))
 ```
 
@@ -852,7 +912,6 @@ test2
 Experimental
 
 ```{r}
-
 dgf <- df %>%
  dplyr::filter(Wave != 2009) %>% # no k6 measure
   droplevels() %>%
@@ -921,7 +980,7 @@ count_waves_participants <- function(x){
   out<-dplyr::count(tally(group_by(x, Id), sort = TRUE, name="number_waves"), number_waves)
   print(out)
 }
-count_waves_participants(dgf)
+#count_waves_participants(dgf)
 ```
 
 ```{r, eval=FALSE}
@@ -972,8 +1031,6 @@ ymodel <- Y ~  L1 + lag1_A + lag1_L1 + t0
 library(data.table)
 dgf<- data.table(dgf)
 
-
-head(dgf)
 test3 <- gformula(
   obs_data = dgf,
   id = id, 
@@ -1033,7 +1090,7 @@ gform_basic <- gformula(obs_data = basicdata_nocomp, id = id,
                         histories = histories, histvars = histvars,
                         basecovs = c('L3'), nsimul = nsimul,
                         seed = 1234)
-gform_basic
+
 plot(gform_basic)
 ```
 
