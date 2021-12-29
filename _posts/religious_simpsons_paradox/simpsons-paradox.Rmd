@@ -128,6 +128,10 @@ religious change at the society level.
 ```{r  msm, cache = TRUE, include = TRUE}
 # Using markov models, show that change within people as they age differs from the society-wide trend
 df <- readRDS(here::here("data", "df"))
+
+length(unique(df$Id))
+
+
 #create dataframe
 dat  <- df %>%
   dplyr::filter(YearMeasured == 1) %>% # filtering only people who have responded in a year
@@ -136,15 +140,18 @@ dat  <- df %>%
   # filter(!is.na(Religious1))%>%
   group_by(Id) %>% filter(n() > 1) %>% # have responded to at least 2 x waves
   filter(n() != 0) %>%
+  filter(n() != 1) %>%
   ungroup(Id) %>%
   group_by(Wave) %>%
   filter(!is.na(Religious1)) %>%
+  ungroup() %>%
+  group_by(Id) %>% filter(n() > 1) %>% # have responded to at least 2 x waves
   ungroup() %>%
   arrange(Id, yearW)
 #nrow(df)
 
 # unique ids
-length(unique(dat$Id)) #48165
+length(unique(dat$Id)) #46681
 
 ```
 
@@ -194,6 +201,8 @@ m1  <- msm(
   # Not running without this assumption.
   gen.inits = TRUE
 )
+
+
 #saveRDS(m1, here::here( "models","mnm-simpson-paradox-religious-change.rds" ))
 saveRDS(m1, here::here( "_posts","religious_simpsons_paradox", "models","mnm-simpson-paradox-religious-change.rds" ))
 ```
@@ -574,13 +583,36 @@ plotI <-
   geom_point(alpha = 1, stroke = 2) +
   geom_linerange(alpha = 1) +
   geom_smooth(se = F) +
-  scale_y_continuous(limits = c(0, .1))  +
-  labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI: range: Pr = 0 to Pr = .1 ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2009--2020") +
+  scale_y_continuous(limits = c(0, .96))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI: range: Pr = 0 to Pr = 1 ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2009--2020") +
   #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
   scale_colour_manual(values = c("#d1495b", "#00798c")) +
   theme(legend.position = "bottom")
 plotI
 
+plotIb <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .1))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI: range: Pr = 0 to Pr = .1 ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2009--2020") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_colour_manual(values = c("#d1495b", "#00798c")) +
+  theme(legend.position = "bottom")
+
+plotIb
+
+plotI /plotIb
 # # to save file in your directory at correct resolution, uncomment below
 #  file <- here::here("_posts","religious_simpsons_paradox", "figs", paste("aff_disaff", ".png", sep = ""))
 # #
@@ -777,6 +809,8 @@ plotmat(toz_70,
         self.shiftx = .12,
         main = "Hidden Markov Model reveals religious switching
        New Zealand: years 2009-2020, Age = 70")
+
+#age_compare 16 x 9
 
 # 
 # 
