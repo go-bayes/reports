@@ -50,6 +50,7 @@ library("igraph")
 library("TraMineR")
 library("xtable")
 library("lcsm")
+library("kableExtra")
 ```
 
 ## Religious change at a societial level indicates "clocklike" decline
@@ -216,8 +217,28 @@ Transition probabilities (averaged)
 m1 <-readRDS(here::here( here::here( "_posts","religious_simpsons_paradox", "models","mnm-simpson-paradox-religious-change.rds" ))
 
 #probability matrix
-round( pmatrix.msm( m1 ) , 2 )
+dt<-  print( round( pmatrix.msm( m1 ) , 2 ) )
 
+# label cols, rows:
+
+rownames(dt) = c("Not-religious time 0", "Religious time 0")
+colnames(dt) = c("Not-religious t+1","Religious t+1")
+
+#table
+dt%>%
+ kbl(caption = "Hidden Markov Model: inferred population average religious state change, years 2009-2020") %>%
+  kable_material(c("hover"))
+```
+
+
+LaTeX table
+
+```{r, eval = FALSE}
+dt %>%
+  kbl(booktabs = T,
+      format = "latex",
+      caption = "Hidden Markov Model: inferred population average religious state change, years 2009-2020")
+  
 ```
 
 
@@ -232,7 +253,26 @@ raw <-msm::statetable.msm(Religious1, Id, data = dat2)
 # calculates proportions by rows
 out<- round( prop.table(raw, 1), 2)
 
-out
+rownames(out) = c("Not-religious time 0", "Religious time 0")
+colnames(out) = c("Not-religious t+1","Religious t+1")
+
+out %>%
+ kbl(caption = "Raw sample religious state change: years 2009-2020") %>%
+  kable_material(c("hover"))
+```
+
+
+LaTeX table
+
+```{r, eval = FALSE}
+out %>%
+  kbl(booktabs = T,
+      format = "latex",
+      caption ="Raw sample religious state change: years 2009-2020")
+  
+```
+
+
 ```
 
 
@@ -669,7 +709,7 @@ Relidwide <-  df %>%
   dplyr::filter(YearMeasured == 1) %>%
   dplyr::filter(!is.na(Religious)) %>%
   dplyr::select(Id, Religious, Wave) %>%
-  group_by(Id) %>% filter(n() > 5) %>%
+  group_by(Id) %>% filter(n() > 10) %>%
   filter(n() != 0) %>%
   ungroup(Id) %>%
   spread(Wave, Religious)
@@ -696,7 +736,7 @@ plot_trajectories(
   scale_x_num_start = 1,
   random_sample_frac = 0.05,
   seed = 1234
-  #title_n = T
+ # title_n = T
 )  +
   facet_wrap( ~ Id)
 
