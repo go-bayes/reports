@@ -243,12 +243,224 @@ plot_trajectories(
 
 ## Prepare data
 
+What might affect both income and happiness?
+
+L = ethnicity, male, partner (current, lag), cohort, NZdep?, urban, employed edu (too much missingness). 
+
+```{r}
+
+dg <- df %>%
+  dplyr::filter(YearMeasured == 1)  %>%
+  dplyr::filter(Wave != 2009) %>% # no k6 measure
+  dplyr::filter(!is.na(Household.INC), !is.na(KESSLER6sum)) %>%
+  dplyr::group_by(Id) %>% filter(n() > 2) %>% ungroup() %>%
+  dplyr::filter(Household.INC > 10000) %>%  # retired people, people in care  %>%
+  dplyr::mutate(inc_quant = ntile(Household.INC, 4)-1) %>% # income categories
+  # dplyr::mutate(k6_cats = cut(
+  #   KESSLER6sum,
+  #   breaks = c(-Inf, 5, 13, Inf),
+  #   # create Kessler 6 diagnostic categories
+  #   labels = c("Low Distress", "Moderate Distress", "Serious Distress"),
+  #   right = TRUE
+  # )) %>%
+  dplyr::mutate(k6 =  as.numeric(KESSLER6sum) ) %>%
+  dplyr::select(Id,
+                inc_quant,
+                k6,
+                Wave,
+                GenCohort,
+                Euro,
+                Religious,
+                Male,
+                Urban,
+                Employed,
+                Household.INC,
+                Partner) %>%
+  dplyr::mutate(across(
+    c(inc_quant,
+      k6,
+      Employed,
+      Religious,
+      Urban,
+      Partner),
+    list(lag = lag)
+  )) %>%
+  drop_na() %>%
+  dplyr::arrange(Id, Wave) %>%
+  dplyr::group_by(Id) %>%
+  mutate(time = (as.numeric(Wave) - min(as.numeric(Wave)))) %>% # zero time is start for each person
+  dplyr::ungroup(Id)
+
+
+
+#dt<- dt %>%
+ # mutate_all(~as.numeric(.))
+
+# number of participants
+length(unique(dg$Id))
+
+```
+
+
+Inspect our cutpoints
+
+```{r}
+dg %>%
+  select(c(inc_quant,Household.INC)) %>%
+  group_by(inc_quant) %>%
+  summarise(min_inc = min(Household.INC),
+            max_inc = max(Household.INC))
+```
+
+
+
+##  Marginal structural model 
+
+
+First we create weights
+
+```{r}
+
+dg_w <- ipw::ipwtm(
+  exposure = inc_quant,
+  family = "ordinal",
+  link = "probit",
+  type = "first",
+  corstr = "ar1",
+  id = "Id",
+  timevar = "time", 
+  numerator = ~ 
+     inc_quant_lag  +  # lag treatment + time invariant confounders
+     GenCohort +
+     Male +
+     Euro, #+
+  denominator = ~ # lag treatment + lag outcome +  confounders + 
+     inc_quant_lag  +
+     k6_lag + 
+     GenCohort +
+     Male + 
+     Urban + 
+     Euro + 
+     Partner + 
+     Partner_lag + 
+     Employed + 
+     Employed_lag, 
+  data = as.data.frame(dg)
+)
+
+
+hist(dg_w$ipw.weights)
+sum(dg_w$ipw.weights > 10)
+
+dg_w_use <- dg %>%
+  dplyr::mutate(ipw = dg_w$ipw.weights) %>%
+  dplyr::filter(ipw < 10)
+```
+
+
+```{r}
+## GEE
+m0 <- geeglm(
+  k6  ~ 
+     inc_quant + 
+     inc_quant_lag,
+  data = dg_w_use,
+  id = Id,
+  family = "gaussian",
+  weights = ipw,
+  waves = time,
+  corstr = "ar1"
+)
+
+parameters::model_parameters(m0) %>%
+  print_html()
+
+library(ggeffects)
+p0 <- plot(ggeffects::ggemmeans(m0, terms = "inc_quant[all]"), add.data = TRUE, dot.alpha = 0.1)  
+p0 
+```
+
+## GEE no weights
+
+
+```{r}
+
+# cannot plot without weights. so we add very small amount of noise
+dg_w_use$nullwts  <- rnorm(nrow(dg_w_use), 1,.001)
+
+
+m0b <- geeglm(
+  k6  ~ 
+     k6_lag + 
+     inc_quant + 
+     inc_quant_lag  +
+     GenCohort +
+     Male + 
+     Urban + 
+     Euro + 
+     Partner + 
+     Partner_lag + 
+     Employed + 
+     Employed_lag,
+  data = dg_w_use,
+  id = Id,
+  family = "gaussian",
+  weights = nullwts,
+  waves = time,
+  corstr = "ar1"
+)
+
+parameters::model_parameters(m0b) %>%
+  print_html()
+
+library(ggeffects)
+p0 <- plot(ggeffects::ggemmeans(m0, terms = "inc_quant[all]"), add.data = TRUE, dot.alpha = 0.1)  
+p0 
+```
+
+
+## Multilevel model 
+
+
+
+```{r}
+
+m0c<- lmer(
+  k6  ~ 
+     k6_lag + 
+     inc_quant + 
+     inc_quant_lag  +
+     GenCohort +
+     Male + 
+     Urban + 
+     Euro + 
+     Partner + 
+     Partner_lag + 
+     Employed + 
+     Employed_lag + 
+    (1|Id),
+  data = dg_w_use
+)
+
+parameters::model_parameters(m0c) %>%
+  print_html()
+
+library(ggeffects)
+p0 <- plot(ggeffects::ggemmeans(m0c, terms = "inc_quant[all]"), add.data = TRUE, dot.alpha = 0.1)  
+p0 
+```
+
+
+
+## Try another approach (older material)
+
 ```{r}
 # prepare data
 # note, still need to do IPW and multiply impute missing data
+
 dl <- df %>%
   dplyr::filter(YearMeasured == 1)  %>%
- dplyr::filter(Wave != 2009) %>% # no k6 measure
+  dplyr::filter(Wave != 2009) %>% # no k6 measure
   dplyr::filter(!is.na(KESSLER6sum), !is.na(Household.INC),!is.na(EthnicCats),!is.na(Male),!is.na(Urban), !is.na(Employed)) %>%
   dplyr::filter(Household.INC > 10000 ) %>%  # retired people, people in care
   dplyr::select(
@@ -260,8 +472,6 @@ dl <- df %>%
     TSCORE,
     Age,
     Religious,
-    Religion.Prayer,
-    Religion.Scripture,
     Religion.Church,
     Male,
     Edu,
@@ -290,8 +500,6 @@ dl <- df %>%
   ) %>%
   dplyr::group_by(Id) %>% filter(n() > 2) %>%
   mutate(time0 = as.numeric(Wave))%>%
-  mutate(time = time0 - min(time0) )%>%
-  mutate(mxtime = max(time))%>%
   dplyr::mutate(across(
     c(
       age,
@@ -324,11 +532,14 @@ dl <- df %>%
   #                list(lag = lag)
   #                ))%>%
    dplyr::ungroup(Id) %>%
-   dplyr::select(id, k6, k6_lag, inc_l_lag, age_lag, eth_lag,urban_lag,edu_lag,
-                 church_l_lag,nzdep_lag,partner_lag,emp_lag,time,male_lag,mxtime, inc_l, Id) %>%
+   dplyr::select(id, k6, k6_lag, inc_l_lag, age_lag, eth_lag,urban_lag, 
+                 church_l_lag, nzdep_lag, church_l, partner, partner_lag, emp_lag, male_lag, inc_l, Id, Wave) %>%
   drop_na() %>%
-  dplyr::mutate(age_c_lag = scale(age_lag, scale = F)) %>%
-    dplyr::arrange(id,time)
+  dplyr::arrange(Id, Wave) %>%
+  dplyr::group_by(Id) %>%
+  mutate(time = (as.numeric(Wave) - min(as.numeric(Wave)))) %>% # zero time is start for each person
+  dplyr::ungroup(Id)
+
 
 
   
@@ -347,12 +558,15 @@ length(unique(dl$Id))
 
 
 
-## Prepare data for IP Weights (round 2)
+## Prepare data for IP Weights 
 
 
 ```{r}
 ## Marginal Structural model approach: IPW
 # calculate weights: Note -- is this correct? 
+# example type ?ipwtm
+
+
 
 dl_weights_2 <- ipw::ipwtm(
   exposure = inc_l,
@@ -361,35 +575,39 @@ dl_weights_2 <- ipw::ipwtm(
   corstr = "ar1",
   id = "id",
   timevar = "time", 
-  numerator = ~  inc_l_lag  +  # lag treatment + confounders
-    age_c_lag +
-    male_lag + 
-    eth_lag + 
-    emp_lag + 
-    nzdep_lag + 
-    partner_lag +  
-    urban_lag,
+  numerator = ~  inc_l_lag  +  # lag treatment + time invariant confounders
+     age_lag +
+     male_lag + 
+     eth_lag + 
+     emp_lag + 
+     nzdep_lag + 
+     urban_lag,
   denominator = ~ # lag treatment + lag outcome +  confounders
-    k6_lag  + 
-    inc_l_lag  + 
-    age_c_lag +
-    male_lag + 
-    eth_lag + 
-    emp_lag + 
-    nzdep_lag + 
-    partner_lag +  
-    urban_lag,
+     k6_lag  + 
+     inc_l_lag  + 
+     age_lag +
+     male_lag + 
+     eth_lag + 
+     emp_lag + 
+     nzdep_lag + 
+     urban_lag + 
+     partner_lag, # household income
   data = as.data.frame(dl)
 )
-dl_weights_use_2 <- dl %>% 
-  mutate(ipw = dl_weights_2$ipw.weights)
+
+sum(dl_weights_2$ipw.weights > 10)
+hist(dl_weights_2$ipw.weights)
+
+
+
+
+
+dl_weights_use_2 <- dl %>%
+  dplyr::mutate(ipw = dl_weights_2$ipw.weights) #%>%
+#  dplyr::filter(ipw < 10)
 ```
 
-Check weights -- no extreme weights 
-
-```{r}
-summary(dl_weights_use_2$ipw)
-```
+Check weights -- this looks pretty extreme 
 
 ```{r}
 dev.off()
@@ -404,17 +622,11 @@ Note that we incorportate the covarariates into "weights"
 
 ```{r}
 ## GEE
-str(dt)
+
 m2z <- geeglm(
-  k6  ~  inc_l  + 
-     inc_l_lag, #+ 
-    # as.numeric(age_c_lag) +
-    # male_lag + 
-    # eth_lag + 
-    # emp_lag + 
-    # nzdep_lag + 
-    # partner_lag +  
-    # urban_lag,
+  k6  ~
+    inc_l + 
+    inc_l_lag,
   data = dl_weights_use_2,
   id = id,
   weights = ipw,
@@ -430,25 +642,34 @@ p2z <- plot(ggeffects::ggemmeans(m2z, terms = "inc_l[all]"), add.data = TRUE, do
 p2z 
 ```
 
+Weights yeilds an attenuated effect. *Highly sensitive to model misspecification**
+
 
 ## GEE without weights
 
 ```{r}
 ## GEE
 str(dt)
+
+# cannot plot without weights. so we add very small amount of noise
+dl_weights_use_2$nullwts  <- rnorm(nrow(dl_weights_use_2), 1,.001)
+
+
 m2z2 <- geeglm(
-  k6  ~  inc_l  + 
-     inc_l_lag + 
-     as.numeric(age_c_lag) +
+  k6  ~  
+     k6_lag + 
+     inc_l +
+     inc_l_lag  + 
+     age_lag +
+     partner_lag + 
      male_lag + 
      eth_lag + 
      emp_lag + 
      nzdep_lag + 
-     partner_lag +  
      urban_lag,
   data = dl_weights_use_2,
   id = id,
- # weights = ipw,
+  weights = nullwts,
   waves = time,
   corstr = "ar1"
 )
@@ -456,15 +677,16 @@ m2z2 <- geeglm(
 parameters::model_parameters(m2z2) %>%
   print_html()
 
+
 library(ggeffects)
-p2z2 <- plot(ggeffects::ggemmeans(m2z2, terms = "inc_l[all]"), add.data = TRUE, dot.alpha = 0.1)    # 
+p2z2 <- plot(ggeffects::ggemmeans(m2z2, terms = "inc_l [all]"), add.data = TRUE, dot.alpha = 0.1)    # 
 p2z2
 ```
 
 
 
 
-Does money make people happy?
+## Does money make people happy?
 
 
 ## Lingering Questions: 
@@ -525,9 +747,6 @@ dt <- df %>%
    id = Id
   ) %>%
   dplyr::group_by(Id) %>% filter(n() > 2) %>%
-  mutate(time0 = as.numeric(Wave))%>%
-  mutate(time = time0 - min(time0) )%>%
-  mutate(mxtime = max(time))%>%
   dplyr::mutate(across(
     c(
       age,
@@ -562,10 +781,12 @@ dt <- df %>%
                  ))%>%
   dplyr::ungroup(Id) %>%
   dplyr::select(id, k6, k6_lag, inc_l_lag, age_lag_lag, eth_lag_lag,urban_lag_lag,edu_lag_lag,
-                church_l_lag_lag,nzdep_lag_lag,partner_lag_lag,emp_lag_lag,time,male_lag_lag,mxtime, inc_l, age_lag, emp_lag, partner_lag,male_lag, edu_lag, eth_lag, church_l_lag, urban_lag, religious_lag, nzdep_lag, inc_l_lag_lag, Id) %>%
+                church_l_lag_lag,nzdep_lag_lag,partner_lag_lag,emp_lag_lag,male_lag_lag, inc_l, age_lag, emp_lag, partner_lag,male_lag, edu_lag, eth_lag, church_l_lag, urban_lag, religious_lag, nzdep_lag, inc_l_lag_lag, Id, Wave) %>%
   drop_na() %>%
-  dplyr::mutate(age_c_lag_lag = scale(age_lag_lag, scale = F)) %>%
-    dplyr::arrange(id,time)
+  dplyr::arrange(Id, Wave) %>%
+  dplyr::group_by(Id) %>%
+  mutate(time = (as.numeric(Wave) - min(as.numeric(Wave)))) %>% # zero time is start for each person
+  dplyr::ungroup(Id)
 
 
   
@@ -613,14 +834,16 @@ dt2 <- cbind(dt,
 # calculate weights: Note -- is this correct? 
 
 dt_weights_2 <- ipw::ipwtm(
-  exposure = inc_l_lag,
+  exposure = inc_l,
   family = "gaussian",
   type = "all",
   corstr = "ar1",
   id = "id",
   timevar = "time", 
-  numerator = ~  inc_l_lag_lag  +  # lag treatment + confounders
-    age_c_lag_lag +
+  numerator = ~  inc_l  + 
+    inc_l_lag + 
+    inc_l_lag_lag  +  # lag treatment + confounders
+    age_lag_lag +
     male_lag_lag + 
     eth_lag_lag + 
     emp_lag_lag + 
@@ -629,8 +852,10 @@ dt_weights_2 <- ipw::ipwtm(
     urban_lag_lag,
   denominator = ~ # lag treatment + lag outcome +  confounders
     k6_lag  + 
+    inc_l  + 
+    inc_l_lag + 
     inc_l_lag_lag  + 
-    age_c_lag_lag +
+    age_lag_lag +
     male_lag_lag + 
     eth_lag_lag + 
     emp_lag_lag + 
@@ -641,6 +866,7 @@ dt_weights_2 <- ipw::ipwtm(
 )
 dt_weights_use_2 <- dt2 %>% 
   mutate(ipw = dt_weights_2$ipw.weights)
+
 ```
 
 
@@ -652,6 +878,7 @@ dt_weights_use_2 <- dt2 %>%
 ```{r}
 m1 <- lmer(
   k6 ~ 
+    k6_lag +
     inc_l_within + 
     inc_l_between_c  +
     as.numeric(k6_lag) +
@@ -695,6 +922,8 @@ This result doesn't make much sense.
 str(dt)
 m2 <- geeglm(
   k6  ~
+    inc_l + 
+    k6_lag +
     inc_l_lag + 
     inc_l_lag_lag, #+ 
     # as.numeric(age_c_lag_lag) +
@@ -715,45 +944,13 @@ parameters::model_parameters(m2) %>%
   print_html()
 
 library(ggeffects)
-p2 <- plot(ggeffects::ggemmeans(m2, terms = "inc_l_lag[all]"), add.data = TRUE, dot.alpha = 0.1)    # 2 x standard deviations
+p2 <- plot(ggeffects::ggemmeans(m2, terms = "inc_l[all]"), add.data = TRUE, dot.alpha = 0.1)    # 2 x standard deviations
 p2 #+ scale_y_continuous(limits= c(0,15)) # nothing
 ```
 
 If we remove weights the model makes sense. 
 
 
-```{r}
-library(effects)
-# cannot plot without weights. so we add very small amount of noise
-dt_weights_use_2$nullwts  <- rnorm(nrow(dt_weights_use_2), 1,.001)
-
-library(splines)
-m3 <- geeglm(
-  k6  ~ 
-    inc_l_lag  +
-    inc_l_lag_lag + 
-    as.numeric(age_c_lag_lag) +
-    male_lag_lag +
-    eth_lag_lag +
-    emp_lag_lag +
-    nzdep_lag_lag +
-    partner_lag_lag +
-    urban_lag_lag,
-  id = id,
-  data = dt_weights_use_2,
-  waves = time,
-  corstr = "ar1"
-)
-
-
-parameters::model_parameters(m3) %>%
-  print_html()
-
-# cannot graph GEE with
-plot(ggeffects::ggemmeans(m3, terms = "inc_l_lag[all]"), add.data = TRUE, dot.alpha = 0.1)    
-```
-
-Without weights, we recover the effect. 
 
 
 ## Mixed effects approach: IPW
@@ -766,10 +963,12 @@ library(splines)
 
 # lmer
 m2_lmer <- lmer(
-  k6  ~   +
-    inc_l_lag  +
+  k6  ~   
+    k6_lag +
+    inc_l + 
+    inc_l_lag +
     inc_l_lag_lag + 
-   (1 + time | id),
+   (1  | id),
   data = dt_weights_use_2,
   weights = dt_weights_use_2$ipw
 )
@@ -779,7 +978,7 @@ parameters::model_parameters(m2_lmer) %>%
 
 # graph
 plot(
-  ggeffects::ggpredict(m2_lmer, terms = "inc_l_lag [all]"),
+  ggeffects::ggpredict(m2_lmer, terms = "inc_l[all]"),
   add.data = TRUE,
   dot.alpha = 0.1
 )
@@ -793,9 +992,11 @@ We find support for an income effect.
 ```{r}
 m2_lmer2 <- lmer(
   k6  ~   + 
+    k6_lag + 
+    inc_l + 
     inc_l_lag  + 
     inc_l_lag_lag + 
-    as.numeric(age_c_lag_lag) +
+    as.numeric(age_lag_lag) +
     male_lag_lag + 
     eth_lag_lag + 
     emp_lag_lag + 
@@ -811,7 +1012,7 @@ parameters::model_parameters(m2_lmer2) %>%
   print_html()
 
 # then it looks as though more income = lower distress. 
-plot( ggeffects::ggpredict(m2_lmer2, terms = "inc_l_lag"), add.data = TRUE, dot.alpha = 0.1)     # 
+plot( ggeffects::ggpredict(m2_lmer2, terms = "inc_l"), add.data = TRUE, dot.alpha = 0.1)     # 
 
 ```
 
@@ -828,9 +1029,10 @@ library(splines)
 
 m2_lmer3 <- lmer(
   k6  ~    + 
-    bs(inc_l_lag) + 
+    bs(inc_l) + 
+     bs(inc_l_lag) + 
      bs(inc_l_lag_lag) + 
-    as.numeric(age_c_lag_lag) +
+    as.numeric(age_lag_lag) +
     male_lag_lag + 
     eth_lag_lag + 
     emp_lag_lag + 
@@ -1220,8 +1422,547 @@ plot(gform_basic)
 
 
 
+## Gformulate Church attendance and distress 
+
+
+### Prepare data
+
+
+
+```{r}
+dgf <- df %>%
+  dplyr::filter(YearMeasured == 1)  %>%
+  dplyr::filter(Wave != 2009) %>% # no k6 measure
+  dplyr::filter(!is.na(KESSLER6sum), !is.na(Religion.Church)) %>%
+  dplyr::group_by(Id) %>% filter(n() > 9) %>% 
+  ungroup() %>%
+  dplyr::mutate(inc_quant = ntile(Household.INC, 4)-1) %>% # income categories
+  dplyr::mutate(k6_cats = cut(
+    KESSLER6sum,
+    breaks = c(-Inf, 5, 13, Inf),
+    # create Kessler 6 diagnostic categories
+    labels = c("Low Distress", "Moderate Distress", "Serious Distress"),
+    right = TRUE
+  )) %>%
+    dplyr::mutate(k6_bin = cut(
+    KESSLER6sum,
+    breaks = c(-Inf, 13, Inf),
+    # create Kessler 6 diagnostic categories
+    labels = c("Low Distress",  "Serious Distress"),
+    right = TRUE
+  )) %>%
+  dplyr::mutate(church_ord = cut(
+    Religion.Church,
+    breaks = c(-Inf, 0, 1, 3, Inf),
+    labels = c("0", "1", "1-3", "4-up"),
+    right = TRUE
+  )) %>%
+    dplyr::mutate(church_bin  = cut(
+    Religion.Church,
+    breaks = c(-Inf, 0,  Inf),
+    labels = c("0", "some"),
+    right = TRUE
+  )) %>%
+  dplyr::mutate(k6 =  as.numeric(KESSLER6sum) ) %>%
+  dplyr::mutate(church_bin =  as.numeric(church_bin) - 1) %>%
+  dplyr::select(Id,
+                inc_quant,
+                church_ord,
+                church_bin,
+                k6,
+                k6_bin,
+                k6_cats,
+                Wave,
+                GenCohort,
+                Euro,
+                Religious,
+                Male,
+                Urban,
+                Employed,
+                Household.INC,
+                Partner,
+                Wave) %>%
+  mutate(time0 = as.numeric(Wave)) %>%
+  mutate(time = time0 - min(time0)) %>%
+  dplyr::mutate(across(
+    c(inc_quant,
+      k6,
+      church_ord,
+      church_bin,
+      k6_cats,
+      Employed,
+      Religious,
+      Urban,
+      Partner),
+    list(lag = lag)
+  )) %>%
+  drop_na() %>%
+    dplyr::group_by(Id) %>% filter(n() > 9) %>% 
+    filter(n() == 10) %>%
+  dplyr::arrange(Id, Wave) %>%
+   dplyr::group_by(Id)%>%
+  mutate(time = (as.numeric(Wave) - min(as.numeric(Wave))) ) %>% # zero time is start for each person
+   dplyr::ungroup(Id) %>%
+   dplyr::mutate( Partner = as.numeric(Partner),
+                  Male = as.numeric(Male),
+                  GenCohort = as.numeric(GenCohort))
+
+head(dgf$time)
+summary((dgf$time))
+hist(dgf$time)
+
+str(dgf)
+#dt<- dt %>%
+ # mutate_all(~as.numeric(.))
+
+# number of participants
+length(unique(dgf$Id))
+
+library(data.table)
+dgf <- data.table(dgf)
+```
+
+
+
+```{r, eval=FALSE}
+# not running
+
+
+head(dgf)
+id <- 'Id'
+time_points <- 10
+time_name <- 'time'
+covnames <- c('Partner', 'Employed', 'church_bin')
+outcome_name <- 'k6'
+outcome_type <- 'continuous_eof'
+covtypes <- c('binary', 'binary', 'binary')
+histories <- c(lagged)
+histvars <- list(c('church_bin', 'Partner', 'Employed'))
+covparams <- list(covmodels = c(Partner ~  lag1_Partner + lag1_church_bin + time,
+                                  Employed ~   lag1_Employed + Male + time,
+                                  church_bin ~ lag1_church_bin  + GenCohort  + Male +  time))
+ymodel <- k6 ~ church_bin + lag1_church_bin + Partner + Employed  + GenCohort + lag1_Partner + lag1_Employed 
+intvars <- list('church_bin', 'church_bin')
+interventions <- list(list(c(static, rep(0, time_points))),
+                        list(c(static, rep(1, time_points))))
+
+int_descript <- c('Never treat', 'Threshold - lower bound 1')
+nsimul <- 10000
+
+
+# dgf%>%
+#   group_by(Id) %>%
+#   summarise(n = n()) %>%
+#   count(n == 10)
+
+gform_basic <- gformula(obs_data = dgf, 
+                        id = id,
+                        time_points = time_points,
+                        time_name = time_name, 
+                        covnames = covnames,
+                        outcome_name = outcome_name,
+                        outcome_type = outcome_type, 
+                        covtypes = covtypes,
+                        covparams = covparams, 
+                        ymodel = ymodel,
+                        intvars = intvars,
+                        interventions = interventions,
+                        int_descript = int_descript,
+                        histories = histories, 
+                        histvars = histvars,
+                        basecovs = c("Male","GenCohort"), 
+                        nsimul = nsimul,
+                        seed = 1234)
+
+plot(gform_basic)
+```
+
+
+### Model 
+
+
+```{r}
+dg_gf <- ipw::ipwtm(
+  exposure = church_bin,
+  family = "binomial",
+  link = "probit",
+  type = "first",
+  corstr = "ar1",
+  id = "Id",
+  timevar = "time", 
+  numerator = ~ 
+     church_bin_lag  + 
+     GenCohort +
+     Male +
+     Euro + 
+   #  Partner +
+    # Partner_lag +
+     Employed + 
+     Employed_lag, #+
+  denominator = ~ # lag treatment + lag outcome +  confounders + 
+     church_bin_lag  + 
+     k6_lag + # lag treatment + time invariant confounders
+     GenCohort +
+     Male +
+     Euro +
+     Partner +
+     Partner_lag +
+     Employed + 
+     Employed_lag, 
+  data = as.data.frame(dgf)
+)
+
+
+hist(dg_gf$ipw.weights)
+sum(dg_gf$ipw.weights > 10)
+
+cdat <- dgf %>%
+  dplyr::mutate(ipw = dg_gf$ipw.weights) 
+```
+
+
+```{r}
+## GEE
+m0 <- geeglm(
+  k6  ~ 
+     church_bin + 
+     church_bin_lag,
+  data = cdat,
+  id = Id,
+  family = "gaussian",
+  weights = ipw,
+  waves = time,
+  corstr = "ar1"
+)
+
+parameters::model_parameters(m0) %>%
+  print_html()
+
+library(ggeffects)
+p0 <- plot(ggeffects::ggemmeans(m0, terms = "church_bin[all]"), add.data = TRUE, dot.alpha = 0.1)  
+p0 
+```
 
 
 
 
+
+
+
+
+
+
+## Change in church
+
+### Ordinal
+
+```{r}
+widelong <-  dgf %>%
+  dplyr::select(Id, church_ord, Wave) # 
+
+wide <- spread(widelong, Wave, church_ord)
+
+
+wide2 <- wide[complete.cases(wide),]
+
+
+x_var_list <- names(wide2[, 2:11])
+
+
+
+wide2 <- as.data.frame(wide2)
+
+plot_trajectories(
+  data = wide2,
+  id_var = "Id",
+  var_list = x_var_list,
+  line_colour = "red",
+  xlab = "Time",
+  ylab = "NZdep",
+  connect_missing = F,
+  scale_x_num = T,
+  scale_x_num_start = 1,
+  random_sample_frac = 0.15,
+  seed = 1234
+  #title_n = T
+)  +
+  facet_wrap( ~ Id)
+```
+
+## Binary church
+
+```{r}
+widelong <-  dgf %>%
+  dplyr::select(Id, church_bin, Wave) # 
+
+wide <- spread(widelong, Wave, church_bin)
+
+
+wide2 <- wide[complete.cases(wide),]
+
+
+x_var_list <- names(wide2[, 2:11])
+
+
+
+wide2 <- as.data.frame(wide2)
+
+plot_trajectories(
+  data = wide2,
+  id_var = "Id",
+  var_list = x_var_list,
+  line_colour = "red",
+  xlab = "Time",
+  ylab = "NZdep",
+  connect_missing = F,
+  scale_x_num = T,
+  scale_x_num_start = 1,
+  random_sample_frac = 0.15,
+  seed = 1234
+  #title_n = T
+)  +
+  facet_wrap( ~ Id)
+```
+
+
+
+
+## Change in K6 
+
+```{r}
+widelong <-  dgf %>%
+  dplyr::select(Id, k6_cats, Wave) # x
+
+wide <- spread(widelong, Wave, k6_cats)
+
+
+wide2 <- wide[complete.cases(wide),]
+
+
+x_var_list <- names(wide2[, 2:11])
+
+
+
+wide2 <- as.data.frame(wide2)
+
+plot_trajectories(
+  data = wide2,
+  id_var = "Id",
+  var_list = x_var_list,
+  line_colour = "red",
+  xlab = "Time",
+  ylab = "NZdep",
+  connect_missing = F,
+  scale_x_num = T,
+  scale_x_num_start = 1,
+  random_sample_frac = 0.15,
+  seed = 1234
+  #title_n = T
+)  +
+  facet_wrap( ~ Id)
+```
+
+
+### Binary k6
+
+```{r}
+widelong <-  dgf %>%
+  dplyr::select(Id, k6_bin, Wave) # 
+
+wide <- spread(widelong, Wave, k6_bin)
+
+
+wide2 <- wide[complete.cases(wide),]
+
+
+x_var_list <- names(wide2[, 2:11])
+
+
+
+wide2 <- as.data.frame(wide2)
+
+plot_trajectories(
+  data = wide2,
+  id_var = "Id",
+  var_list = x_var_list,
+  line_colour = "red",
+  xlab = "Time",
+  ylab = "NZdep",
+  connect_missing = F,
+  scale_x_num = T,
+  scale_x_num_start = 1,
+  random_sample_frac = 0.15,
+  seed = 1234
+  #title_n = T
+)  +
+  facet_wrap( ~ Id)
+```
+
+
+
+## Ethnicity Change
+
+```{r}
+
+widelong <-  df %>%
+  dplyr::filter(YearMeasured==1) %>%
+ # dplyr::filter(Wave!=2009) %>% # 1
+  dplyr::group_by(Id) %>% filter(n() > 5) %>%
+  dplyr::ungroup() %>%
+  dplyr::select(Id, EthnicCats, Wave) # 
+
+wide <- spread(widelong, Wave, EthnicCats)
+
+
+wide2 <- wide[complete.cases(wide),]
+
+head(wide)
+x_var_list <- names(wide2[, 2:11])
+
+
+
+wide2 <- as.data.frame(wide2)
+
+plot_trajectories(
+  data = wide2,
+  id_var = "Id",
+  var_list = x_var_list,
+  line_colour = "red",
+  xlab = "Time",
+  ylab = "NZdep",
+  connect_missing = F,
+  scale_x_num = T,
+  scale_x_num_start = 1,
+  random_sample_frac = 0.15,
+  seed = 1234
+  #title_n = T
+)  +
+  facet_wrap( ~ Id)
+```
+
+
+## Employed change
+
+
+```{r}
+
+widelong <-  df %>%
+  dplyr::filter(YearMeasured==1) %>%
+ # dplyr::filter(Wave!=2009) %>% # 1
+  dplyr::group_by(Id) %>% filter(n() > 5) %>%
+  dplyr::ungroup() %>%
+  dplyr::select(Id, Employed, Wave) # 
+
+wide <- spread(widelong, Wave, Employed)
+
+
+wide2 <- wide[complete.cases(wide),]
+
+head(wide)
+x_var_list <- names(wide2[, 2:11])
+
+
+
+wide2 <- as.data.frame(wide2)
+
+plot_trajectories(
+  data = wide2,
+  id_var = "Id",
+  var_list = x_var_list,
+  line_colour = "red",
+  xlab = "Time",
+  ylab = "NZdep",
+  connect_missing = F,
+  scale_x_num = T,
+  scale_x_num_start = 1,
+  random_sample_frac = 0.15,
+  seed = 1234
+  #title_n = T
+)  +
+  facet_wrap( ~ Id)
+```
+
+
+## Urban change
+
+
+```{r}
+widelong <-  df %>%
+  dplyr::filter(YearMeasured==1) %>%
+ # dplyr::filter(Wave!=2009) %>% # 1
+  dplyr::group_by(Id) %>% filter(n() > 5) %>%
+  dplyr::ungroup() %>%
+  dplyr::select(Id, Urban, Wave) # 
+
+wide <- spread(widelong, Wave, Urban)
+
+
+wide2 <- wide[complete.cases(wide),]
+
+head(wide)
+x_var_list <- names(wide2[, 2:11])
+
+
+
+wide2 <- as.data.frame(wide2)
+
+plot_trajectories(
+  data = wide2,
+  id_var = "Id",
+  var_list = x_var_list,
+  line_colour = "red",
+  xlab = "Time",
+  ylab = "NZdep",
+  connect_missing = F,
+  scale_x_num = T,
+  scale_x_num_start = 1,
+  random_sample_frac = 0.15,
+  seed = 1234
+  #title_n = T
+)  +
+  facet_wrap( ~ Id)
+```
+
+
+
+## Edu change
+
+
+```{r}
+
+widelong <-  df %>%
+  dplyr::filter(YearMeasured==1) %>%
+   dplyr::filter(Wave!=2010 & Wave!=2011) %>% # 1
+  dplyr::group_by(Id) %>% filter(n() > 5) %>%
+  dplyr::ungroup() %>%
+  dplyr::select(Id, Edu, Wave) # 
+
+wide <- spread(widelong, Wave, Edu)
+
+
+wide2 <- wide[complete.cases(wide),]
+
+head(wide)
+x_var_list <- names(wide2[, 2:9])
+
+
+
+wide2 <- as.data.frame(wide2)
+
+plot_trajectories(
+  data = wide2,
+  id_var = "Id",
+  var_list = x_var_list,
+  line_colour = "red",
+  xlab = "Time",
+  ylab = "NZdep",
+  connect_missing = F,
+  scale_x_num = T,
+  scale_x_num_start = 1,
+  random_sample_frac = 0.15,
+  seed = 1234
+  #title_n = T
+)  +
+  facet_wrap( ~ Id)
+```
 
