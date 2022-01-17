@@ -102,6 +102,7 @@ ggdag::ggdag_adjustment_set(dg) + theme_dag_blank()
 Here we plot change in K6 by id over 10 waves. Hard to see what is happening. 
 
 ```{r}
+16 17 19
 df %>% 
   dplyr::filter(YearMeasured==1) %>%
   dplyr::group_by(Id) %>% filter(n() > 9) %>%
@@ -1965,4 +1966,269 @@ plot_trajectories(
 )  +
   facet_wrap( ~ Id)
 ```
+
+
+## BMI - Checks 
+
+Pedro points out that waves 2016,2017,2019 have some anomolies. Here we visually inspect a subset of the data. 
+
+```{r}
+library(lcsm)
+ # BMI
+widelong <-  df %>%
+  dplyr::filter(YearMeasured==1) %>%
+  dplyr::filter(Wave ==2016| Wave ==2017 | Wave ==2019) %>% # k6 not measured in wave 1
+  dplyr::filter(Wave!=2009) %>% # k6 not measured in wave 1
+  dplyr::group_by(Id) %>% filter(n() > 2) %>%
+  dplyr::select(Id, HLTH.BMI, Wave) # 
+
+
+
+wide <- spread(widelong, Wave, HLTH.BMI)
+
+wide2 <- wide[complete.cases(wide),]
+head(wide2)
+
+x_var_list <- names(wide2[, 2:4])
+wide2
+
+
+wide2 <- as.data.frame(wide2)
+plot_trajectories(
+  data = wide2,
+  id_var = "Id",
+  var_list = x_var_list,
+  line_colour = "red",
+  xlab = "Time",
+  ylab = "BMI",
+  connect_missing = F,
+  scale_x_num = T,
+  scale_x_num_start = 1,
+  random_sample_frac = .05,
+  seed = 1234
+  #title_n = T
+)  +
+  facet_wrap( ~ Id)
+
+```
+
+### BMI all
+
+
+```{r}
+library(lcsm)
+ # BMI
+widelong <-  df %>%
+  dplyr::filter(YearMeasured==1) %>%
+ # dplyr::filter(Wave ==2016| Wave ==2017 | Wave ==2019) %>% # k6 not measured in wave 1
+  dplyr::filter(Wave!=2009) %>% # k6 not measured in wave 1
+  dplyr::group_by(Id) %>% filter(n() > 9) %>%
+  dplyr::select(Id, HLTH.BMI, Wave) # 
+
+
+
+wide <- spread(widelong, Wave, HLTH.BMI)
+
+wide2 <- wide[complete.cases(wide),]
+head(wide2)
+
+x_var_list <- names(wide2[, 2:11])
+wide2
+
+
+wide2 <- as.data.frame(wide2)
+plot_trajectories(
+  data = wide2,
+  id_var = "Id",
+  var_list = x_var_list,
+  line_colour = "red",
+  xlab = "Time",
+  ylab = "BMI",
+  connect_missing = F,
+  scale_x_num = T,
+  scale_x_num_start = 1,
+  random_sample_frac = .2,
+  seed = 1234,
+  title_n = T
+)  +
+  facet_wrap( ~ Id)
+```
+
+
+## Weight
+
+```{r}
+
+library(lcsm)
+ # Weight
+widelong <-  df %>%
+  dplyr::filter(YearMeasured==1) %>%
+  dplyr::filter(Wave ==2016| Wave ==2017 | Wave ==2019) %>% # k6 not measured in wave 1
+  dplyr::filter(Wave!=2009) %>% # k6 not measured in wave 1
+  dplyr::group_by(Id) %>% filter(n() > 2) %>%
+  dplyr::select(Id, HLTH.Weight, Wave) # 
+
+
+
+wide <- spread(widelong, Wave, HLTH.Weight)
+
+wide2 <- wide[complete.cases(wide),]
+
+
+x_var_list <- names(wide2[, 2:4])
+
+
+
+wide2 <- as.data.frame(wide2)
+plot_trajectories(
+  data = wide2,
+  id_var = "Id",
+  var_list = x_var_list,
+  line_colour = "red",
+  xlab = "Time",
+  ylab = "BMI",
+  connect_missing = F,
+  scale_x_num = T,
+  scale_x_num_start = 1,
+  random_sample_frac = 0.05,
+  seed = 1234
+  #title_n = T
+)  +
+  facet_wrap( ~ Id)
+
+```
+
+
+### Weight all 
+
+```{r}
+
+library(lcsm)
+ # Weight
+widelong <-  df %>%
+  dplyr::filter(YearMeasured==1) %>%
+ # dplyr::filter(Wave ==2016| Wave ==2017 | Wave ==2019) %>% # k6 not measured in wave 1
+  dplyr::filter(Wave!=2009) %>% # k6 not measured in wave 1
+  dplyr::group_by(Id) %>% filter(n() > 9) %>%
+  dplyr::select(Id, HLTH.Weight, Wave) # 
+
+
+
+wide <- spread(widelong, Wave, HLTH.Weight)
+wide
+wide2 <- wide[complete.cases(wide),]
+
+
+x_var_list <- names(wide2[, 2:11])
+
+
+
+wide2 <- as.data.frame(wide2)
+plot_trajectories(
+  data = wide2,
+  id_var = "Id",
+  var_list = x_var_list,
+  line_colour = "red",
+  xlab = "Time",
+  ylab = "Weight",
+  connect_missing = F,
+  scale_x_num = T,
+  scale_x_num_start = 1,
+  random_sample_frac = 0.2,
+  seed = 1234,
+  title_n = T
+)  +
+  facet_wrap( ~ Id)
+
+```
+
+
+
+
+
+
+## Height
+
+```{r}
+library(lcsm)
+ # height
+widelong <-  df %>%
+  dplyr::filter(YearMeasured==1) %>%
+  dplyr::filter(Wave ==2016| Wave ==2017 | Wave ==2019) %>% # k6 not measured in wave 1
+  dplyr::filter(Wave!=2009) %>% # k6 not measured in wave 1
+  dplyr::group_by(Id) %>% filter(n() > 2) %>%
+  dplyr::select(Id, HLTH.Height, Wave) # 
+
+
+
+wide <- spread(widelong, Wave, HLTH.Height)
+
+wide2 <- wide[complete.cases(wide),]
+
+
+x_var_list <- names(wide2[, 2:4])
+
+
+
+wide2 <- as.data.frame(wide2)
+plot_trajectories(
+  data = wide2,
+  id_var = "Id",
+  var_list = x_var_list,
+  line_colour = "red",
+  xlab = "Time",
+  ylab = "BMI",
+  connect_missing = F,
+  scale_x_num = T,
+  scale_x_num_start = 1,
+  random_sample_frac = 0.05,
+  seed = 1234
+  #title_n = T
+)  +
+  facet_wrap( ~ Id)
+
+```
+
+### Height all
+
+```{r}
+library(lcsm)
+ # height
+widelong <-  df %>%
+  dplyr::filter(YearMeasured==1) %>%
+#  dplyr::filter(Wave ==2016| Wave ==2017 | Wave ==2019) %>% # k6 not measured in wave 1
+  dplyr::filter(Wave!=2009) %>% # k6 not measured in wave 1
+  dplyr::group_by(Id) %>% filter(n() > 9) %>%
+  dplyr::select(Id, HLTH.Height, Wave) # 
+
+
+
+wide <- spread(widelong, Wave, HLTH.Height)
+
+wide2 <- wide[complete.cases(wide),]
+
+
+x_var_list <- names(wide2[, 2:11])
+
+
+
+wide2 <- as.data.frame(wide2)
+plot_trajectories(
+  data = wide2,
+  id_var = "Id",
+  var_list = x_var_list,
+  line_colour = "red",
+  xlab = "Time",
+  ylab = "Height",
+  connect_missing = F,
+  scale_x_num = T,
+  scale_x_num_start = 1,
+  random_sample_frac = 0.2,
+  seed = 1234,
+  title_n = T
+)  +
+  facet_wrap( ~ Id)
+
+```
+
 
