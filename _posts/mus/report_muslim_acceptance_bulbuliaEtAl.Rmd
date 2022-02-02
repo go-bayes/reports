@@ -286,6 +286,8 @@ dindians <- df %>%
   dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack", "post_attack")))
 
 
+
+
 # For Pacific Peoples timline
 
 dpacific <- df %>%
