@@ -60,7 +60,6 @@ theme_set(theme_classic())
 
 ```{r data, cache = TRUE}
 #import data
-
 df <- readRDS(here::here("data", "df"))
 ```
 
