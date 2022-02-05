@@ -30,7 +30,6 @@ library("ggpubr")
 #library("wesanderson")
 # library("papaja")
 library("here")
-library("citr")
 library("here")
 library("brms")
 library("rstan")
@@ -51,6 +50,7 @@ library("tidybayes")
 rstan_options(auto_write=TRUE)
 options(mc.cores=parallel::detectCores ())
 theme_set(theme_classic())
+
 ```
 
 ```{r setup, include=FALSE}
@@ -1060,10 +1060,10 @@ path_y <- bf(
   y ~ x + mk +
                (1 | id)
   )
-f1a <- brm(
+f1a <- brms::brm(
   path_m + path_y + set_rescor(FALSE),
   data = datF,
-  file = here("models/mediation-k6-covid-life-meaning-outcome-by-covid")
+  file = here::here("models/mediation-k6-covid-lifemeaning.rds")
 )
 summary(f1a)
 ```
@@ -1071,7 +1071,9 @@ summary(f1a)
 ## Results: life meaning  - March
 
 ```{r echo=FALSE, cache = FALSE}
-post1F <- brms::posterior_samples(f1a)
+
+post1F <- brms::as_draws_df(f1a)
+
 post_marF <- post1F %>% 
   transmute(
     a = b_mk_xEarlyMarch,
@@ -1188,14 +1190,14 @@ path_y <- bf(
 f1a <- brm(
   path_m + path_y + set_rescor(FALSE),
   data = datF,
-  file = here("models/mediation-k6-covid-fatigueW")
+  file = here("models/mediation-k6-covid-fatigueW.rds")
 )
 ```
 
 ## Results: fatigue - March
 
 ```{r echo=FALSE, cache = FALSE}
-post1F <- brms::posterior_samples(f1a)
+post1F <- brms::as_draws_df(f1a)
 post_marF <- post1F %>% 
   transmute(
     a = b_mF_xEarly_March_2020,
@@ -1305,9 +1307,9 @@ path_y <- bf(
 f3 <- brm(
   path_m + path_y + set_rescor(FALSE),
   data = datFS,
-  file = here("models/mediation-k6-covid-future-security")
+  file = here("models/mediation-k6-covid-future-security.rds")
 )
-post3 <- posterior_samples(f3)
+post3 <- as_draws_df(f3)
 ```
 
 ```{r}
