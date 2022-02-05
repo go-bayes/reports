@@ -28,7 +28,7 @@ vignettes/*.pdf
 *.txt
 #*data/
 *_cache/
-*models/*.rds
+models/*.rds
 _posts/**/*.html
 _posts/**/*_files/
 # data
