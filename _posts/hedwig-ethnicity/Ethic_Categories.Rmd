@@ -974,13 +974,13 @@ Model
 
 ```{r}
 fit_t3 <-
-  brm(
+  brms::brm(
     bf(underidentified ~ max_eth + (1|id)),
     data = dtt_removed,
     family =  "bernoulli",
     file = here::here("models", "hedwig-total_3")
   )
-par_m3 <- parameters::model_parameters(fit_t3i)
+par_m3 <- parameters::model_parameters(fit_t3)
 par_m3
 plot(par_m3)
 ```
@@ -1054,7 +1054,6 @@ The expected probabilities for diversity on ethnic identification is:
 
 ```{r}
 ggeffects::ggpredict(fit_4)[1]
-
 ```
 
 We can plot the conditional expectations. Here we find that those who are maximally indian and maximally european exhibit separation in the expected probabilities for one or at most two identities. The effective sample sizes here look better.

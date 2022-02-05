@@ -381,11 +381,14 @@ Maori are much less trusting of the police, on average, than NZ Europeans and ot
 pt4 <- 
   lme4::lmer(Police_Trust ~ Ethnic_Categories +  year_s  + (1 | Id), data = pd)
 
-parameers::model_parameters(pt4)
+parameters::model_parameters(pt4)
+```
 
-pt4_b <#- plot(
+
+```{r layout = "l-body-outset"}
+pt4_b <- plot(
   ggeffects::ggpredict(pt4,
-                       effects = c("year_s","Ethnic_Categories"),
+                       effects = c("year_s","Ethnic_Categories")),
 add.data = TRUE,
  dot.alpha = .05
 )[[1]] + 

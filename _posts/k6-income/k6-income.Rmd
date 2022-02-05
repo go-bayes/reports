@@ -102,7 +102,6 @@ ggdag::ggdag_adjustment_set(dg) + theme_dag_blank()
 Here we plot change in K6 by id over 10 waves. Hard to see what is happening. 
 
 ```{r}
-16 17 19
 df %>% 
   dplyr::filter(YearMeasured==1) %>%
   dplyr::group_by(Id) %>% filter(n() > 9) %>%
@@ -425,7 +424,6 @@ p0
 
 
 ```{r}
-
 m0c<- lmer(
   k6  ~ 
      k6_lag + 
@@ -445,7 +443,10 @@ m0c<- lmer(
 
 parameters::model_parameters(m0c) %>%
   print_html()
+```
 
+
+```{r}
 library(ggeffects)
 p0 <- plot(ggeffects::ggemmeans(m0c, terms = "inc_quant[all]"), add.data = TRUE, dot.alpha = 0.1)  
 p0 
@@ -540,9 +541,6 @@ dl <- df %>%
   dplyr::group_by(Id) %>%
   mutate(time = (as.numeric(Wave) - min(as.numeric(Wave)))) %>% # zero time is start for each person
   dplyr::ungroup(Id)
-
-
-
   
 #dt<- dt %>%
  # mutate_all(~as.numeric(.))
@@ -566,9 +564,6 @@ length(unique(dl$Id))
 ## Marginal Structural model approach: IPW
 # calculate weights: Note -- is this correct? 
 # example type ?ipwtm
-
-
-
 dl_weights_2 <- ipw::ipwtm(
   exposure = inc_l,
   family = "gaussian",
@@ -598,10 +593,6 @@ dl_weights_2 <- ipw::ipwtm(
 
 sum(dl_weights_2$ipw.weights > 10)
 hist(dl_weights_2$ipw.weights)
-
-
-
-
 
 dl_weights_use_2 <- dl %>%
   dplyr::mutate(ipw = dl_weights_2$ipw.weights) #%>%
@@ -637,9 +628,12 @@ m2z <- geeglm(
 
 parameters::model_parameters(m2z) %>%
   print_html()
+```
 
+
+```{r}
 library(ggeffects)
-p2z <- plot(ggeffects::ggemmeans(m2z, terms = "inc_l[all]"), add.data = TRUE, dot.alpha = 0.1)    # 
+p2z <- plot(ggeffects::ggemmeans(m2z, terms = "inc_l[all]"), add.data = TRUE, dot.alpha = 0.1)    
 p2z 
 ```
 
@@ -677,10 +671,12 @@ m2z2 <- geeglm(
 
 parameters::model_parameters(m2z2) %>%
   print_html()
+```
 
 
+```{r}
 library(ggeffects)
-p2z2 <- plot(ggeffects::ggemmeans(m2z2, terms = "inc_l [all]"), add.data = TRUE, dot.alpha = 0.1)    # 
+p2z2 <- plot(ggeffects::ggemmeans(m2z2, terms = "inc_l"), add.data = T, dot.alpha = 0.1)    # 
 p2z2
 ```
 

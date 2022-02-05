@@ -2,58 +2,54 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" version="1.0">
   <url>
     <loc>https://go-bayes.github.io/reports/about.html</loc>
-    <lastmod>2021-08-10T13:45:54+12:00</lastmod>
+    <lastmod>2022-01-30T12:42:50+13:00</lastmod>
   </url>
   <url>
     <loc>https://go-bayes.github.io/reports/</loc>
-    <lastmod>2021-12-16T14:04:11+13:00</lastmod>
+    <lastmod>2022-01-30T12:42:52+13:00</lastmod>
   </url>
   <url>
     <loc>https://go-bayes.github.io/reports/joseph.html</loc>
-    <lastmod>2021-06-17T00:04:09+12:00</lastmod>
+    <lastmod>2022-01-30T12:42:52+13:00</lastmod>
   </url>
   <url>
     <loc>https://go-bayes.github.io/reports/posts/k6-income/</loc>
-    <lastmod>2022-01-01T21:22:18+13:00</lastmod>
+    <lastmod>2022-02-06T10:47:49+13:00</lastmod>
+  </url>
+  <url>
+    <loc>https://go-bayes.github.io/reports/posts/nzreligion/</loc>
+    <lastmod>2022-02-06T11:13:50+13:00</lastmod>
   </url>
   <url>
     <loc>https://go-bayes.github.io/reports/posts/spiriteuthanasia/</loc>
-    <lastmod>2021-09-30T21:45:03+13:00</lastmod>
+    <lastmod>2022-02-06T11:19:57+13:00</lastmod>
   </url>
   <url>
     <loc>https://go-bayes.github.io/reports/posts/nzavsnetwork/</loc>
-    <lastmod>2021-08-10T14:06:11+12:00</lastmod>
+    <lastmod>2022-02-06T10:55:20+13:00</lastmod>
   </url>
   <url>
     <loc>https://go-bayes.github.io/reports/posts/hedwig-ethnicity/</loc>
-    <lastmod>2021-06-23T22:38:51+12:00</lastmod>
-  </url>
-  <url>
-    <loc>https://go-bayes.github.io/reports/posts/sasha-language-vars/</loc>
-    <lastmod>2021-05-28T10:23:35+12:00</lastmod>
+    <lastmod>2022-02-05T18:30:30+13:00</lastmod>
   </url>
   <url>
     <loc>https://go-bayes.github.io/reports/posts/confounding/</loc>
-    <lastmod>2021-05-21T01:13:43+12:00</lastmod>
+    <lastmod>2022-02-05T18:27:05+13:00</lastmod>
   </url>
   <url>
     <loc>https://go-bayes.github.io/reports/posts/police/</loc>
-    <lastmod>2021-05-11T10:23:45+12:00</lastmod>
+    <lastmod>2022-02-06T11:19:16+13:00</lastmod>
   </url>
   <url>
     <loc>https://go-bayes.github.io/reports/posts/mus/</loc>
-    <lastmod>2021-06-11T12:27:44+12:00</lastmod>
-  </url>
-  <url>
-    <loc>https://go-bayes.github.io/reports/posts/covid/</loc>
-    <lastmod>2021-06-17T00:39:04+12:00</lastmod>
+    <lastmod>2022-02-06T10:51:44+13:00</lastmod>
   </url>
   <url>
     <loc>https://go-bayes.github.io/reports/posts/nzavs/</loc>
-    <lastmod>2021-03-30T00:55:53+13:00</lastmod>
+    <lastmod>2022-02-06T10:54:19+13:00</lastmod>
   </url>
   <url>
     <loc>https://go-bayes.github.io/reports/posts/religious_simpsons_paradox/</loc>
-    <lastmod>2021-12-17T19:18:55+13:00</lastmod>
+    <lastmod>2022-02-05T18:25:23+13:00</lastmod>
   </url>
 </urlset>

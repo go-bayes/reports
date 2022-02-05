@@ -214,10 +214,10 @@ Transition probabilities (averaged)
 
 ```{r}
 # read model, (saved to save time)
-m1 <-readRDS(here::here( here::here( "_posts","religious_simpsons_paradox", "models","mnm-simpson-paradox-religious-change.rds" ))
-
+m1 <-readRDS(here::here( "_posts","religious_simpsons_paradox", "models","mnm-simpson-paradox-religious-change.rds" ))
+m1
 #probability matrix
-dt<-  print( round( pmatrix.msm( m1 ) , 2 ) )
+dt<-  print( round( msm::pmatrix.msm( m1 ) , 2 ) )
 
 # label cols, rows:
 
@@ -272,8 +272,6 @@ out %>%
   
 ```
 
-
-```
 
 
 ```{r, eval=FALSE}

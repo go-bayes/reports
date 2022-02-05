@@ -23,6 +23,7 @@
 pre > code.sourceCode { white-space: pre; position: relative; }
 pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
 div.sourceCode { margin: 1em 0; }
 pre.sourceCode { margin: 0; }
@@ -55,7 +56,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 }
 code span.al { color: #ad0000; } /* Alert */
 code span.an { color: #5e5e5e; } /* Annotation */
-code span.at { color: #20794d; } /* Attribute */
+code span.at { } /* Attribute */
 code span.bn { color: #ad0000; } /* BaseN */
 code span.bu { } /* BuiltIn */
 code span.cf { color: #007ba5; } /* ControlFlow */
@@ -76,13 +77,14 @@ code span.kw { color: #007ba5; } /* Keyword */
 code span.op { color: #5e5e5e; } /* Operator */
 code span.ot { color: #007ba5; } /* Other */
 code span.pp { color: #ad0000; } /* Preprocessor */
-code span.sc { color: #20794d; } /* SpecialChar */
+code span.sc { color: #5e5e5e; } /* SpecialChar */
 code span.ss { color: #20794d; } /* SpecialString */
 code span.st { color: #20794d; } /* String */
 code span.va { color: #111111; } /* Variable */
 code span.vs { color: #20794d; } /* VerbatimString */
 code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 </style>
+
 
   <!--radix_placeholder_meta_tags-->
 <title>Reports: Trust in the New Zealand Police has been increasing since 2017</title>
@@ -136,7 +138,7 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 <!--/radix_placeholder_rmarkdown_metadata-->
   
   <script type="text/json" id="radix-resource-manifest">
-  {"type":"character","attributes":{},"value":["police_files/anchor-4.2.2/anchor.min.js","police_files/bowser-1.9.3/bowser.min.js","police_files/distill-2.2.21/template.v2.js","police_files/figure-html5/unnamed-chunk-10-1.png","police_files/figure-html5/unnamed-chunk-11-1.png","police_files/figure-html5/unnamed-chunk-12-1.png","police_files/figure-html5/unnamed-chunk-13-1.png","police_files/figure-html5/unnamed-chunk-14-1.png","police_files/figure-html5/unnamed-chunk-15-1.png","police_files/figure-html5/unnamed-chunk-16-1.png","police_files/figure-html5/unnamed-chunk-17-1.png","police_files/figure-html5/unnamed-chunk-18-1.png","police_files/figure-html5/unnamed-chunk-2-1.png","police_files/figure-html5/unnamed-chunk-21-1.png","police_files/figure-html5/unnamed-chunk-3-1.png","police_files/figure-html5/unnamed-chunk-4-1.png","police_files/figure-html5/unnamed-chunk-5-1.png","police_files/figure-html5/unnamed-chunk-6-1.png","police_files/figure-html5/unnamed-chunk-7-1.png","police_files/figure-html5/unnamed-chunk-8-1.png","police_files/figure-html5/unnamed-chunk-9-1.png","police_files/header-attrs-2.7.8/header-attrs.js","police_files/header-attrs-2.8.1/header-attrs.js","police_files/jquery-1.11.3/jquery.min.js","police_files/kePrint-0.0.1/kePrint.js","police_files/lightable-0.0.1/lightable.css","police_files/popper-2.6.0/popper.min.js","police_files/table1-1.0/table1_defaults.css","police_files/tippy-6.2.7/tippy-bundle.umd.min.js","police_files/tippy-6.2.7/tippy-light-border.css","police_files/tippy-6.2.7/tippy.css","police_files/tippy-6.2.7/tippy.umd.min.js","police_files/webcomponents-2.0.0/webcomponents.js"]}
+  {"type":"character","attributes":{},"value":["police_files/figure-html5/unnamed-chunk-10-1.png","police_files/figure-html5/unnamed-chunk-12-1.png","police_files/figure-html5/unnamed-chunk-13-1.png","police_files/figure-html5/unnamed-chunk-14-1.png","police_files/figure-html5/unnamed-chunk-15-1.png","police_files/figure-html5/unnamed-chunk-16-1.png","police_files/figure-html5/unnamed-chunk-17-1.png","police_files/figure-html5/unnamed-chunk-18-1.png","police_files/figure-html5/unnamed-chunk-19-1.png","police_files/figure-html5/unnamed-chunk-2-1.png","police_files/figure-html5/unnamed-chunk-22-1.png","police_files/figure-html5/unnamed-chunk-3-1.png","police_files/figure-html5/unnamed-chunk-5-1.png","police_files/figure-html5/unnamed-chunk-6-1.png","police_files/figure-html5/unnamed-chunk-8-1.png","police_files/figure-html5/unnamed-chunk-9-1.png"]}
   </script>
   <!--radix_placeholder_navigation_in_header-->
 <meta name="distill:offset" content="../.."/>
@@ -1889,7 +1891,10 @@ function init_distill() {
 
     // hoverable references
     $('span.citation[data-cites]').each(function() {
-      var refHtml = $('#ref-' + $(this).attr('data-cites')).html();
+      var refs = $(this).attr('data-cites').split(" ");
+      var refHtml = refs.map(function(ref) {
+        return "<p>" + $('#ref-' + ref).html() + "</p>";
+      }).join("\n");
       window.tippy(this, {
         allowHTML: true,
         content: refHtml,
@@ -2330,11 +2335,11 @@ d-appendix d-footnote-list a.footnote-backlink {
   color: var(--hover-color, white);
 }</style>
 <!--/radix_placeholder_distill-->
-  <script src="../../site_libs/header-attrs-2.8.1/header-attrs.js"></script>
+  <script src="../../site_libs/header-attrs-2.11/header-attrs.js"></script>
   <link href="../../site_libs/table1-1.0/table1_defaults.css" rel="stylesheet" />
   <script src="../../site_libs/kePrint-0.0.1/kePrint.js"></script>
   <link href="../../site_libs/lightable-0.0.1/lightable.css" rel="stylesheet" />
-  <script src="../../site_libs/jquery-1.11.3/jquery.min.js"></script>
+  <script src="../../site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
   <script src="../../site_libs/popper-2.6.0/popper.min.js"></script>
   <link href="../../site_libs/tippy-6.2.7/tippy.css" rel="stylesheet" />
   <link href="../../site_libs/tippy-6.2.7/tippy-light-border.css" rel="stylesheet" />
@@ -2361,7 +2366,7 @@ gtag('config', 'G-RHXJDBVMBK');
 <!--radix_placeholder_front_matter-->
 
 <script id="distill-front-matter" type="text/json">
-{"title":"Trust in the New Zealand Police has been increasing since 2017","description":"However willingness to enage with the police, and trust in politicians, have been decreasing: evidence from the New Zealand Attitudes and Values Study (N = 11,481)","authors":[{"author":"Joseph Bulbulia","authorURL":"https://josephbulbulia.netlify.app","affiliation":"Victoria University of Wellington","affiliationURL":"https://www.wgtn.ac.nz","orcidID":"0000-0002-5861-2056"}],"publishedDate":"2021-05-08T00:00:00.000+00:00","citationText":"Bulbulia, 2021"}
+{"title":"Trust in the New Zealand Police has been increasing since 2017","description":"However willingness to enage with the police, and trust in politicians, have been decreasing: evidence from the New Zealand Attitudes and Values Study (N = 11,481)","authors":[{"author":"Joseph Bulbulia","authorURL":"https://josephbulbulia.netlify.app","affiliation":"Victoria University of Wellington","affiliationURL":"https://www.wgtn.ac.nz","orcidID":"0000-0002-5861-2056"}],"publishedDate":"2021-05-08T00:00:00.000+12:00","citationText":"Bulbulia, 2021"}
 </script>
 
 <!--/radix_placeholder_front_matter-->
@@ -2484,18 +2489,19 @@ Show code
 </summary>
 <div class="sourceCode">
 <pre class="sourceCode r"><code class="sourceCode r"><span class='va'>pt</span> <span class='op'>&lt;-</span><span class='fu'>lme4</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/lme4/man/lmer.html'>lmer</a></span><span class='op'>(</span><span class='va'>Police_Trust</span> <span class='op'>~</span> <span class='va'>year_s</span>  <span class='op'>+</span> <span class='op'>(</span><span class='fl'>1</span><span class='op'>|</span><span class='va'>Id</span><span class='op'>)</span>, data <span class='op'>=</span> <span class='va'>pd</span><span class='op'>)</span>
-<span class='fu'>parameters</span><span class='fu'>::</span><span class='fu'><a href='https://easystats.github.io/parameters/reference/model_parameters.html'>model_parameters</a></span><span class='op'>(</span><span class='va'>pt</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+<span class='fu'>parameters</span><span class='fu'>::</span><span class='fu'><a href='https://easystats.github.io/parameters/reference/model_parameters.html'>model_parameters</a></span><span class='op'>(</span><span class='va'>pt</span><span class='op'>)</span> <span class='op'><a href='https://rpkgs.datanovia.com/ggpubr/reference/pipe.html'>%&gt;%</a></span>
   <span class='fu'>parameters</span><span class='fu'>::</span><span class='fu'><a href='https://easystats.github.io/insight/reference/display.html'>print_html</a></span><span class='op'>(</span>
       caption <span class='op'>=</span> <span class='st'>"data from the New Zealand Attitudes and Values Study"</span>,
       title <span class='op'>=</span> <span class='st'>"Trust in New Zealand Police: years 2017-2020"</span><span class='op'>)</span>
 </code></pre>
 </div>
 </details>
+<div id="ibkfoxxcvi" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
 <style>html {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', 'Fira Sans', 'Droid Sans', Arial, sans-serif;
 }
 
-#wqggzftyyg .gt_table {
+#ibkfoxxcvi .gt_table {
   display: table;
   border-collapse: collapse;
   margin-left: auto;
@@ -2520,7 +2526,7 @@ Show code
   border-left-color: #D3D3D3;
 }
 
-#wqggzftyyg .gt_heading {
+#ibkfoxxcvi .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -2532,7 +2538,7 @@ Show code
   border-right-color: #D3D3D3;
 }
 
-#wqggzftyyg .gt_title {
+#ibkfoxxcvi .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -2542,23 +2548,23 @@ Show code
   border-bottom-width: 0;
 }
 
-#wqggzftyyg .gt_subtitle {
+#ibkfoxxcvi .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
   padding-top: 0;
-  padding-bottom: 4px;
+  padding-bottom: 6px;
   border-top-color: #FFFFFF;
   border-top-width: 0;
 }
 
-#wqggzftyyg .gt_bottom_border {
+#ibkfoxxcvi .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#wqggzftyyg .gt_col_headings {
+#ibkfoxxcvi .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -2573,7 +2579,7 @@ Show code
   border-right-color: #D3D3D3;
 }
 
-#wqggzftyyg .gt_col_heading {
+#ibkfoxxcvi .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2593,7 +2599,7 @@ Show code
   overflow-x: hidden;
 }
 
-#wqggzftyyg .gt_column_spanner_outer {
+#ibkfoxxcvi .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2605,27 +2611,27 @@ Show code
   padding-right: 4px;
 }
 
-#wqggzftyyg .gt_column_spanner_outer:first-child {
+#ibkfoxxcvi .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#wqggzftyyg .gt_column_spanner_outer:last-child {
+#ibkfoxxcvi .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#wqggzftyyg .gt_column_spanner {
+#ibkfoxxcvi .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
   vertical-align: bottom;
   padding-top: 5px;
-  padding-bottom: 6px;
+  padding-bottom: 5px;
   overflow-x: hidden;
   display: inline-block;
   width: 100%;
 }
 
-#wqggzftyyg .gt_group_heading {
+#ibkfoxxcvi .gt_group_heading {
   padding: 8px;
   color: #333333;
   background-color: #FFFFFF;
@@ -2647,7 +2653,7 @@ Show code
   vertical-align: middle;
 }
 
-#wqggzftyyg .gt_empty_group_heading {
+#ibkfoxxcvi .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -2662,15 +2668,15 @@ Show code
   vertical-align: middle;
 }
 
-#wqggzftyyg .gt_from_md > :first-child {
+#ibkfoxxcvi .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#wqggzftyyg .gt_from_md > :last-child {
+#ibkfoxxcvi .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#wqggzftyyg .gt_row {
+#ibkfoxxcvi .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2689,7 +2695,7 @@ Show code
   overflow-x: hidden;
 }
 
-#wqggzftyyg .gt_stub {
+#ibkfoxxcvi .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2701,7 +2707,7 @@ Show code
   padding-left: 12px;
 }
 
-#wqggzftyyg .gt_summary_row {
+#ibkfoxxcvi .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -2711,7 +2717,7 @@ Show code
   padding-right: 5px;
 }
 
-#wqggzftyyg .gt_first_summary_row {
+#ibkfoxxcvi .gt_first_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2721,7 +2727,7 @@ Show code
   border-top-color: #D3D3D3;
 }
 
-#wqggzftyyg .gt_grand_summary_row {
+#ibkfoxxcvi .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -2731,7 +2737,7 @@ Show code
   padding-right: 5px;
 }
 
-#wqggzftyyg .gt_first_grand_summary_row {
+#ibkfoxxcvi .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2741,11 +2747,11 @@ Show code
   border-top-color: #D3D3D3;
 }
 
-#wqggzftyyg .gt_striped {
+#ibkfoxxcvi .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#wqggzftyyg .gt_table_body {
+#ibkfoxxcvi .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -2754,7 +2760,7 @@ Show code
   border-bottom-color: #D3D3D3;
 }
 
-#wqggzftyyg .gt_footnotes {
+#ibkfoxxcvi .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -2768,13 +2774,13 @@ Show code
   border-right-color: #D3D3D3;
 }
 
-#wqggzftyyg .gt_footnote {
+#ibkfoxxcvi .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding: 4px;
 }
 
-#wqggzftyyg .gt_sourcenotes {
+#ibkfoxxcvi .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -2788,53 +2794,52 @@ Show code
   border-right-color: #D3D3D3;
 }
 
-#wqggzftyyg .gt_sourcenote {
+#ibkfoxxcvi .gt_sourcenote {
   font-size: 90%;
   padding: 4px;
 }
 
-#wqggzftyyg .gt_left {
+#ibkfoxxcvi .gt_left {
   text-align: left;
 }
 
-#wqggzftyyg .gt_center {
+#ibkfoxxcvi .gt_center {
   text-align: center;
 }
 
-#wqggzftyyg .gt_right {
+#ibkfoxxcvi .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#wqggzftyyg .gt_font_normal {
+#ibkfoxxcvi .gt_font_normal {
   font-weight: normal;
 }
 
-#wqggzftyyg .gt_font_bold {
+#ibkfoxxcvi .gt_font_bold {
   font-weight: bold;
 }
 
-#wqggzftyyg .gt_font_italic {
+#ibkfoxxcvi .gt_font_italic {
   font-style: italic;
 }
 
-#wqggzftyyg .gt_super {
+#ibkfoxxcvi .gt_super {
   font-size: 65%;
 }
 
-#wqggzftyyg .gt_footnote_marks {
+#ibkfoxxcvi .gt_footnote_marks {
   font-style: italic;
+  font-weight: normal;
   font-size: 65%;
 }
 </style>
-<div id="wqggzftyyg" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;"><table class="gt_table">
+<table class="gt_table">
   <thead class="gt_header">
     <tr>
-      <th colspan="6" class="gt_heading gt_title gt_font_normal" style>Trust in New Zealand Police: years 2017-2020</th>
+      <th colspan="6" class="gt_heading gt_title gt_font_normal gt_bottom_border" style>Trust in New Zealand Police: years 2017-2020</th>
     </tr>
-    <tr>
-      <th colspan="6" class="gt_heading gt_subtitle gt_font_normal gt_bottom_border" style></th>
-    </tr>
+    
   </thead>
   <thead class="gt_col_headings">
     <tr>
@@ -2842,7 +2847,7 @@ Show code
       <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1">Coefficient</th>
       <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1">SE</th>
       <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1">95% CI</th>
-      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1">t(34228)</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1">t(34231)</th>
       <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1">p</th>
     </tr>
   </thead>
@@ -2850,45 +2855,38 @@ Show code
     <tr class="gt_group_heading_row">
       <td colspan="6" class="gt_group_heading">Fixed Effects </td>
     </tr>
-    <tr>
-      <td class="gt_row gt_left">(Intercept)</td>
-      <td class="gt_row gt_center">4.44</td>
-      <td class="gt_row gt_center">0.01</td>
-      <td class="gt_row gt_center">(4.42, 4.47)</td>
-      <td class="gt_row gt_center">377.85</td>
-      <td class="gt_row gt_center">&lt; .001</td>
-    </tr>
-    <tr>
-      <td class="gt_row gt_left">year_s</td>
-      <td class="gt_row gt_center">0.10</td>
-      <td class="gt_row gt_center">4.46e-03</td>
-      <td class="gt_row gt_center">(0.09, 0.11)</td>
-      <td class="gt_row gt_center">21.88</td>
-      <td class="gt_row gt_center">&lt; .001</td>
-    </tr>
+    <tr><td class="gt_row gt_left">(Intercept)</td>
+<td class="gt_row gt_center">4.44</td>
+<td class="gt_row gt_center">0.01</td>
+<td class="gt_row gt_center">(4.42, 4.47)</td>
+<td class="gt_row gt_center">377.87</td>
+<td class="gt_row gt_center">&lt; .001</td></tr>
+    <tr><td class="gt_row gt_left">year s</td>
+<td class="gt_row gt_center">0.10</td>
+<td class="gt_row gt_center">4.46e-03</td>
+<td class="gt_row gt_center">(0.09, 0.11)</td>
+<td class="gt_row gt_center">21.88</td>
+<td class="gt_row gt_center">&lt; .001</td></tr>
     <tr class="gt_group_heading_row">
       <td colspan="6" class="gt_group_heading">Random Effects </td>
     </tr>
-    <tr>
-      <td class="gt_row gt_left">SD (Intercept: Id)</td>
-      <td class="gt_row gt_center">0.98</td>
-      <td class="gt_row gt_center"></td>
-      <td class="gt_row gt_center"></td>
-      <td class="gt_row gt_center"></td>
-      <td class="gt_row gt_center"></td>
-    </tr>
-    <tr>
-      <td class="gt_row gt_left">SD (Residual)</td>
-      <td class="gt_row gt_center">0.81</td>
-      <td class="gt_row gt_center"></td>
-      <td class="gt_row gt_center"></td>
-      <td class="gt_row gt_center"></td>
-      <td class="gt_row gt_center"></td>
-    </tr>
+    <tr><td class="gt_row gt_left">SD (Intercept: Id)</td>
+<td class="gt_row gt_center">0.98</td>
+<td class="gt_row gt_center"></td>
+<td class="gt_row gt_center"></td>
+<td class="gt_row gt_center"></td>
+<td class="gt_row gt_center"></td></tr>
+    <tr><td class="gt_row gt_left">SD (Residual)</td>
+<td class="gt_row gt_center">0.66</td>
+<td class="gt_row gt_center"></td>
+<td class="gt_row gt_center"></td>
+<td class="gt_row gt_center"></td>
+<td class="gt_row gt_center"></td></tr>
   </tbody>
   <tfoot class="gt_sourcenotes"></tfoot>
   
-</table></div>
+</table>
+</div>
 </div>
 <p>Graphing the trend:.</p>
 <div class="layout-chunk" data-layout="l-body-outset">
@@ -2946,7 +2944,7 @@ Show code
 </summary>
 <div class="sourceCode">
 <pre class="sourceCode r"><code class="sourceCode r"><span class='va'>pt2</span> <span class='op'>&lt;-</span><span class='fu'>lme4</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/lme4/man/lmer.html'>lmer</a></span><span class='op'>(</span><span class='va'>Police_Engage</span> <span class='op'>~</span> <span class='va'>year_s</span> <span class='op'>+</span> <span class='op'>(</span><span class='fl'>1</span><span class='op'>|</span><span class='va'>Id</span><span class='op'>)</span>, data <span class='op'>=</span> <span class='va'>pd</span><span class='op'>)</span>
-<span class='fu'>parameters</span><span class='fu'>::</span><span class='fu'><a href='https://easystats.github.io/parameters/reference/model_parameters.html'>model_parameters</a></span><span class='op'>(</span><span class='va'>pt2</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+<span class='fu'>parameters</span><span class='fu'>::</span><span class='fu'><a href='https://easystats.github.io/parameters/reference/model_parameters.html'>model_parameters</a></span><span class='op'>(</span><span class='va'>pt2</span><span class='op'>)</span> <span class='op'><a href='https://rpkgs.datanovia.com/ggpubr/reference/pipe.html'>%&gt;%</a></span>
   <span class='fu'>parameters</span><span class='fu'>::</span><span class='fu'><a href='https://easystats.github.io/insight/reference/display.html'>print_html</a></span><span class='op'>(</span>
       caption <span class='op'>=</span> <span class='st'>"Data from the New Zealand Attitudes and Values Study"</span>,
       title <span class='op'>=</span> <span class='st'>"Willingness to Engage New Zealand Police: years 2017-2020"</span>
@@ -2954,11 +2952,12 @@ Show code
 </code></pre>
 </div>
 </details>
+<div id="fbkfjfbgtc" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
 <style>html {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', 'Fira Sans', 'Droid Sans', Arial, sans-serif;
 }
 
-#zeriozaief .gt_table {
+#fbkfjfbgtc .gt_table {
   display: table;
   border-collapse: collapse;
   margin-left: auto;
@@ -2983,7 +2982,7 @@ Show code
   border-left-color: #D3D3D3;
 }
 
-#zeriozaief .gt_heading {
+#fbkfjfbgtc .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -2995,7 +2994,7 @@ Show code
   border-right-color: #D3D3D3;
 }
 
-#zeriozaief .gt_title {
+#fbkfjfbgtc .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -3005,23 +3004,23 @@ Show code
   border-bottom-width: 0;
 }
 
-#zeriozaief .gt_subtitle {
+#fbkfjfbgtc .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
   padding-top: 0;
-  padding-bottom: 4px;
+  padding-bottom: 6px;
   border-top-color: #FFFFFF;
   border-top-width: 0;
 }
 
-#zeriozaief .gt_bottom_border {
+#fbkfjfbgtc .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#zeriozaief .gt_col_headings {
+#fbkfjfbgtc .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -3036,7 +3035,7 @@ Show code
   border-right-color: #D3D3D3;
 }
 
-#zeriozaief .gt_col_heading {
+#fbkfjfbgtc .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3056,7 +3055,7 @@ Show code
   overflow-x: hidden;
 }
 
-#zeriozaief .gt_column_spanner_outer {
+#fbkfjfbgtc .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3068,27 +3067,27 @@ Show code
   padding-right: 4px;
 }
 
-#zeriozaief .gt_column_spanner_outer:first-child {
+#fbkfjfbgtc .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#zeriozaief .gt_column_spanner_outer:last-child {
+#fbkfjfbgtc .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#zeriozaief .gt_column_spanner {
+#fbkfjfbgtc .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
   vertical-align: bottom;
   padding-top: 5px;
-  padding-bottom: 6px;
+  padding-bottom: 5px;
   overflow-x: hidden;
   display: inline-block;
   width: 100%;
 }
 
-#zeriozaief .gt_group_heading {
+#fbkfjfbgtc .gt_group_heading {
   padding: 8px;
   color: #333333;
   background-color: #FFFFFF;
@@ -3110,7 +3109,7 @@ Show code
   vertical-align: middle;
 }
 
-#zeriozaief .gt_empty_group_heading {
+#fbkfjfbgtc .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -3125,15 +3124,15 @@ Show code
   vertical-align: middle;
 }
 
-#zeriozaief .gt_from_md > :first-child {
+#fbkfjfbgtc .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#zeriozaief .gt_from_md > :last-child {
+#fbkfjfbgtc .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#zeriozaief .gt_row {
+#fbkfjfbgtc .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3152,7 +3151,7 @@ Show code
   overflow-x: hidden;
 }
 
-#zeriozaief .gt_stub {
+#fbkfjfbgtc .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3164,7 +3163,7 @@ Show code
   padding-left: 12px;
 }
 
-#zeriozaief .gt_summary_row {
+#fbkfjfbgtc .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -3174,7 +3173,7 @@ Show code
   padding-right: 5px;
 }
 
-#zeriozaief .gt_first_summary_row {
+#fbkfjfbgtc .gt_first_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3184,7 +3183,7 @@ Show code
   border-top-color: #D3D3D3;
 }
 
-#zeriozaief .gt_grand_summary_row {
+#fbkfjfbgtc .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -3194,7 +3193,7 @@ Show code
   padding-right: 5px;
 }
 
-#zeriozaief .gt_first_grand_summary_row {
+#fbkfjfbgtc .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3204,11 +3203,11 @@ Show code
   border-top-color: #D3D3D3;
 }
 
-#zeriozaief .gt_striped {
+#fbkfjfbgtc .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#zeriozaief .gt_table_body {
+#fbkfjfbgtc .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -3217,7 +3216,7 @@ Show code
   border-bottom-color: #D3D3D3;
 }
 
-#zeriozaief .gt_footnotes {
+#fbkfjfbgtc .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -3231,13 +3230,13 @@ Show code
   border-right-color: #D3D3D3;
 }
 
-#zeriozaief .gt_footnote {
+#fbkfjfbgtc .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding: 4px;
 }
 
-#zeriozaief .gt_sourcenotes {
+#fbkfjfbgtc .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -3251,53 +3250,52 @@ Show code
   border-right-color: #D3D3D3;
 }
 
-#zeriozaief .gt_sourcenote {
+#fbkfjfbgtc .gt_sourcenote {
   font-size: 90%;
   padding: 4px;
 }
 
-#zeriozaief .gt_left {
+#fbkfjfbgtc .gt_left {
   text-align: left;
 }
 
-#zeriozaief .gt_center {
+#fbkfjfbgtc .gt_center {
   text-align: center;
 }
 
-#zeriozaief .gt_right {
+#fbkfjfbgtc .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#zeriozaief .gt_font_normal {
+#fbkfjfbgtc .gt_font_normal {
   font-weight: normal;
 }
 
-#zeriozaief .gt_font_bold {
+#fbkfjfbgtc .gt_font_bold {
   font-weight: bold;
 }
 
-#zeriozaief .gt_font_italic {
+#fbkfjfbgtc .gt_font_italic {
   font-style: italic;
 }
 
-#zeriozaief .gt_super {
+#fbkfjfbgtc .gt_super {
   font-size: 65%;
 }
 
-#zeriozaief .gt_footnote_marks {
+#fbkfjfbgtc .gt_footnote_marks {
   font-style: italic;
+  font-weight: normal;
   font-size: 65%;
 }
 </style>
-<div id="zeriozaief" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;"><table class="gt_table">
+<table class="gt_table">
   <thead class="gt_header">
     <tr>
-      <th colspan="6" class="gt_heading gt_title gt_font_normal" style>Willingness to Engage New Zealand Police: years 2017-2020</th>
+      <th colspan="6" class="gt_heading gt_title gt_font_normal gt_bottom_border" style>Willingness to Engage New Zealand Police: years 2017-2020</th>
     </tr>
-    <tr>
-      <th colspan="6" class="gt_heading gt_subtitle gt_font_normal gt_bottom_border" style></th>
-    </tr>
+    
   </thead>
   <thead class="gt_col_headings">
     <tr>
@@ -3305,7 +3303,7 @@ Show code
       <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1">Coefficient</th>
       <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1">SE</th>
       <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1">95% CI</th>
-      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1">t(33561)</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1">t(33564)</th>
       <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1">p</th>
     </tr>
   </thead>
@@ -3313,45 +3311,38 @@ Show code
     <tr class="gt_group_heading_row">
       <td colspan="6" class="gt_group_heading">Fixed Effects </td>
     </tr>
-    <tr>
-      <td class="gt_row gt_left">(Intercept)</td>
-      <td class="gt_row gt_center">5.97</td>
-      <td class="gt_row gt_center">0.01</td>
-      <td class="gt_row gt_center">(5.95, 5.99)</td>
-      <td class="gt_row gt_center">538.23</td>
-      <td class="gt_row gt_center">&lt; .001</td>
-    </tr>
-    <tr>
-      <td class="gt_row gt_left">year_s</td>
-      <td class="gt_row gt_center">-0.09</td>
-      <td class="gt_row gt_center">4.61e-03</td>
-      <td class="gt_row gt_center">(-0.10, -0.08)</td>
-      <td class="gt_row gt_center">-19.99</td>
-      <td class="gt_row gt_center">&lt; .001</td>
-    </tr>
+    <tr><td class="gt_row gt_left">(Intercept)</td>
+<td class="gt_row gt_center">5.97</td>
+<td class="gt_row gt_center">0.01</td>
+<td class="gt_row gt_center">(5.95, 5.99)</td>
+<td class="gt_row gt_center">538.24</td>
+<td class="gt_row gt_center">&lt; .001</td></tr>
+    <tr><td class="gt_row gt_left">year s</td>
+<td class="gt_row gt_center">-0.09</td>
+<td class="gt_row gt_center">4.61e-03</td>
+<td class="gt_row gt_center">(-0.10, -0.08)</td>
+<td class="gt_row gt_center">-19.99</td>
+<td class="gt_row gt_center">&lt; .001</td></tr>
     <tr class="gt_group_heading_row">
       <td colspan="6" class="gt_group_heading">Random Effects </td>
     </tr>
-    <tr>
-      <td class="gt_row gt_left">SD (Intercept: Id)</td>
-      <td class="gt_row gt_center">0.86</td>
-      <td class="gt_row gt_center"></td>
-      <td class="gt_row gt_center"></td>
-      <td class="gt_row gt_center"></td>
-      <td class="gt_row gt_center"></td>
-    </tr>
-    <tr>
-      <td class="gt_row gt_left">SD (Residual)</td>
-      <td class="gt_row gt_center">0.82</td>
-      <td class="gt_row gt_center"></td>
-      <td class="gt_row gt_center"></td>
-      <td class="gt_row gt_center"></td>
-      <td class="gt_row gt_center"></td>
-    </tr>
+    <tr><td class="gt_row gt_left">SD (Intercept: Id)</td>
+<td class="gt_row gt_center">0.86</td>
+<td class="gt_row gt_center"></td>
+<td class="gt_row gt_center"></td>
+<td class="gt_row gt_center"></td>
+<td class="gt_row gt_center"></td></tr>
+    <tr><td class="gt_row gt_left">SD (Residual)</td>
+<td class="gt_row gt_center">0.68</td>
+<td class="gt_row gt_center"></td>
+<td class="gt_row gt_center"></td>
+<td class="gt_row gt_center"></td>
+<td class="gt_row gt_center"></td></tr>
   </tbody>
   <tfoot class="gt_sourcenotes"></tfoot>
   
-</table></div>
+</table>
+</div>
 </div>
 <p>Graphing the trend reveals this steady decrease in willingness to assist the police.</p>
 <div class="layout-chunk" data-layout="l-body-outset">
@@ -3410,17 +3401,18 @@ Show code
 <div class="sourceCode">
 <pre class="sourceCode r"><code class="sourceCode r"><span class='va'>pt3</span> <span class='op'>&lt;-</span>
   <span class='fu'>lme4</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/lme4/man/lmer.html'>lmer</a></span><span class='op'>(</span><span class='va'>Politicians_Trust</span> <span class='op'>~</span> <span class='va'>year_s</span> <span class='op'>+</span> <span class='op'>(</span><span class='fl'>1</span> <span class='op'>|</span> <span class='va'>Id</span><span class='op'>)</span>, data <span class='op'>=</span> <span class='va'>pd</span><span class='op'>)</span>
-<span class='fu'>parameters</span><span class='fu'>::</span><span class='fu'><a href='https://easystats.github.io/parameters/reference/model_parameters.html'>model_parameters</a></span><span class='op'>(</span><span class='va'>pt3</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+<span class='fu'>parameters</span><span class='fu'>::</span><span class='fu'><a href='https://easystats.github.io/parameters/reference/model_parameters.html'>model_parameters</a></span><span class='op'>(</span><span class='va'>pt3</span><span class='op'>)</span> <span class='op'><a href='https://rpkgs.datanovia.com/ggpubr/reference/pipe.html'>%&gt;%</a></span>
   <span class='fu'>parameters</span><span class='fu'>::</span><span class='fu'><a href='https://easystats.github.io/insight/reference/display.html'>print_html</a></span><span class='op'>(</span>caption <span class='op'>=</span> <span class='st'>"Data from the New Zealand Attitudes and Values Study"</span>,
                          title <span class='op'>=</span> <span class='st'>"Trust in Politicians: years 2017-2020"</span><span class='op'>)</span>
 </code></pre>
 </div>
 </details>
+<div id="daijcaiwck" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
 <style>html {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', 'Fira Sans', 'Droid Sans', Arial, sans-serif;
 }
 
-#wbakvbtigc .gt_table {
+#daijcaiwck .gt_table {
   display: table;
   border-collapse: collapse;
   margin-left: auto;
@@ -3445,7 +3437,7 @@ Show code
   border-left-color: #D3D3D3;
 }
 
-#wbakvbtigc .gt_heading {
+#daijcaiwck .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -3457,7 +3449,7 @@ Show code
   border-right-color: #D3D3D3;
 }
 
-#wbakvbtigc .gt_title {
+#daijcaiwck .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -3467,23 +3459,23 @@ Show code
   border-bottom-width: 0;
 }
 
-#wbakvbtigc .gt_subtitle {
+#daijcaiwck .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
   padding-top: 0;
-  padding-bottom: 4px;
+  padding-bottom: 6px;
   border-top-color: #FFFFFF;
   border-top-width: 0;
 }
 
-#wbakvbtigc .gt_bottom_border {
+#daijcaiwck .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#wbakvbtigc .gt_col_headings {
+#daijcaiwck .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -3498,7 +3490,7 @@ Show code
   border-right-color: #D3D3D3;
 }
 
-#wbakvbtigc .gt_col_heading {
+#daijcaiwck .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3518,7 +3510,7 @@ Show code
   overflow-x: hidden;
 }
 
-#wbakvbtigc .gt_column_spanner_outer {
+#daijcaiwck .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3530,27 +3522,27 @@ Show code
   padding-right: 4px;
 }
 
-#wbakvbtigc .gt_column_spanner_outer:first-child {
+#daijcaiwck .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#wbakvbtigc .gt_column_spanner_outer:last-child {
+#daijcaiwck .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#wbakvbtigc .gt_column_spanner {
+#daijcaiwck .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
   vertical-align: bottom;
   padding-top: 5px;
-  padding-bottom: 6px;
+  padding-bottom: 5px;
   overflow-x: hidden;
   display: inline-block;
   width: 100%;
 }
 
-#wbakvbtigc .gt_group_heading {
+#daijcaiwck .gt_group_heading {
   padding: 8px;
   color: #333333;
   background-color: #FFFFFF;
@@ -3572,7 +3564,7 @@ Show code
   vertical-align: middle;
 }
 
-#wbakvbtigc .gt_empty_group_heading {
+#daijcaiwck .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -3587,15 +3579,15 @@ Show code
   vertical-align: middle;
 }
 
-#wbakvbtigc .gt_from_md > :first-child {
+#daijcaiwck .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#wbakvbtigc .gt_from_md > :last-child {
+#daijcaiwck .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#wbakvbtigc .gt_row {
+#daijcaiwck .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3614,7 +3606,7 @@ Show code
   overflow-x: hidden;
 }
 
-#wbakvbtigc .gt_stub {
+#daijcaiwck .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3626,7 +3618,7 @@ Show code
   padding-left: 12px;
 }
 
-#wbakvbtigc .gt_summary_row {
+#daijcaiwck .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -3636,7 +3628,7 @@ Show code
   padding-right: 5px;
 }
 
-#wbakvbtigc .gt_first_summary_row {
+#daijcaiwck .gt_first_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3646,7 +3638,7 @@ Show code
   border-top-color: #D3D3D3;
 }
 
-#wbakvbtigc .gt_grand_summary_row {
+#daijcaiwck .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -3656,7 +3648,7 @@ Show code
   padding-right: 5px;
 }
 
-#wbakvbtigc .gt_first_grand_summary_row {
+#daijcaiwck .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3666,11 +3658,11 @@ Show code
   border-top-color: #D3D3D3;
 }
 
-#wbakvbtigc .gt_striped {
+#daijcaiwck .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#wbakvbtigc .gt_table_body {
+#daijcaiwck .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -3679,7 +3671,7 @@ Show code
   border-bottom-color: #D3D3D3;
 }
 
-#wbakvbtigc .gt_footnotes {
+#daijcaiwck .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -3693,13 +3685,13 @@ Show code
   border-right-color: #D3D3D3;
 }
 
-#wbakvbtigc .gt_footnote {
+#daijcaiwck .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding: 4px;
 }
 
-#wbakvbtigc .gt_sourcenotes {
+#daijcaiwck .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -3713,53 +3705,52 @@ Show code
   border-right-color: #D3D3D3;
 }
 
-#wbakvbtigc .gt_sourcenote {
+#daijcaiwck .gt_sourcenote {
   font-size: 90%;
   padding: 4px;
 }
 
-#wbakvbtigc .gt_left {
+#daijcaiwck .gt_left {
   text-align: left;
 }
 
-#wbakvbtigc .gt_center {
+#daijcaiwck .gt_center {
   text-align: center;
 }
 
-#wbakvbtigc .gt_right {
+#daijcaiwck .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#wbakvbtigc .gt_font_normal {
+#daijcaiwck .gt_font_normal {
   font-weight: normal;
 }
 
-#wbakvbtigc .gt_font_bold {
+#daijcaiwck .gt_font_bold {
   font-weight: bold;
 }
 
-#wbakvbtigc .gt_font_italic {
+#daijcaiwck .gt_font_italic {
   font-style: italic;
 }
 
-#wbakvbtigc .gt_super {
+#daijcaiwck .gt_super {
   font-size: 65%;
 }
 
-#wbakvbtigc .gt_footnote_marks {
+#daijcaiwck .gt_footnote_marks {
   font-style: italic;
+  font-weight: normal;
   font-size: 65%;
 }
 </style>
-<div id="wbakvbtigc" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;"><table class="gt_table">
+<table class="gt_table">
   <thead class="gt_header">
     <tr>
-      <th colspan="6" class="gt_heading gt_title gt_font_normal" style>Trust in Politicians: years 2017-2020</th>
+      <th colspan="6" class="gt_heading gt_title gt_font_normal gt_bottom_border" style>Trust in Politicians: years 2017-2020</th>
     </tr>
-    <tr>
-      <th colspan="6" class="gt_heading gt_subtitle gt_font_normal gt_bottom_border" style></th>
-    </tr>
+    
   </thead>
   <thead class="gt_col_headings">
     <tr>
@@ -3767,7 +3758,7 @@ Show code
       <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1">Coefficient</th>
       <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1">SE</th>
       <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1">95% CI</th>
-      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1">t(33645)</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1">t(33648)</th>
       <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1">p</th>
     </tr>
   </thead>
@@ -3775,45 +3766,38 @@ Show code
     <tr class="gt_group_heading_row">
       <td colspan="6" class="gt_group_heading">Fixed Effects </td>
     </tr>
-    <tr>
-      <td class="gt_row gt_left">(Intercept)</td>
-      <td class="gt_row gt_center">3.93</td>
-      <td class="gt_row gt_center">0.01</td>
-      <td class="gt_row gt_center">(3.90, 3.96)</td>
-      <td class="gt_row gt_center">269.30</td>
-      <td class="gt_row gt_center">&lt; .001</td>
-    </tr>
-    <tr>
-      <td class="gt_row gt_left">year_s</td>
-      <td class="gt_row gt_center">-0.04</td>
-      <td class="gt_row gt_center">6.18e-03</td>
-      <td class="gt_row gt_center">(-0.05, -0.03)</td>
-      <td class="gt_row gt_center">-6.72</td>
-      <td class="gt_row gt_center">&lt; .001</td>
-    </tr>
+    <tr><td class="gt_row gt_left">(Intercept)</td>
+<td class="gt_row gt_center">3.93</td>
+<td class="gt_row gt_center">0.01</td>
+<td class="gt_row gt_center">(3.90, 3.96)</td>
+<td class="gt_row gt_center">269.32</td>
+<td class="gt_row gt_center">&lt; .001</td></tr>
+    <tr><td class="gt_row gt_left">year s</td>
+<td class="gt_row gt_center">-0.04</td>
+<td class="gt_row gt_center">6.18e-03</td>
+<td class="gt_row gt_center">(-0.05, -0.03)</td>
+<td class="gt_row gt_center">-6.72</td>
+<td class="gt_row gt_center">&lt; .001</td></tr>
     <tr class="gt_group_heading_row">
       <td colspan="6" class="gt_group_heading">Random Effects </td>
     </tr>
-    <tr>
-      <td class="gt_row gt_left">SD (Intercept: Id)</td>
-      <td class="gt_row gt_center">1.11</td>
-      <td class="gt_row gt_center"></td>
-      <td class="gt_row gt_center"></td>
-      <td class="gt_row gt_center"></td>
-      <td class="gt_row gt_center"></td>
-    </tr>
-    <tr>
-      <td class="gt_row gt_left">SD (Residual)</td>
-      <td class="gt_row gt_center">0.95</td>
-      <td class="gt_row gt_center"></td>
-      <td class="gt_row gt_center"></td>
-      <td class="gt_row gt_center"></td>
-      <td class="gt_row gt_center"></td>
-    </tr>
+    <tr><td class="gt_row gt_left">SD (Intercept: Id)</td>
+<td class="gt_row gt_center">1.11</td>
+<td class="gt_row gt_center"></td>
+<td class="gt_row gt_center"></td>
+<td class="gt_row gt_center"></td>
+<td class="gt_row gt_center"></td></tr>
+    <tr><td class="gt_row gt_left">SD (Residual)</td>
+<td class="gt_row gt_center">0.91</td>
+<td class="gt_row gt_center"></td>
+<td class="gt_row gt_center"></td>
+<td class="gt_row gt_center"></td>
+<td class="gt_row gt_center"></td></tr>
   </tbody>
   <tfoot class="gt_sourcenotes"></tfoot>
   
-</table></div>
+</table>
+</div>
 </div>
 <p>Graphing the trend for trust in New Zealand politicians:</p>
 <div class="layout-chunk" data-layout="l-body-outset">
@@ -3895,13 +3879,40 @@ Show code
 </summary>
 <div class="sourceCode">
 <pre class="sourceCode r"><code class="sourceCode r"><span class='va'>pt4</span> <span class='op'>&lt;-</span> 
-  <span class='fu'>lme4</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/lme4/man/lmer.html'>lmer</a></span><span class='op'>(</span><span class='va'>Police_Trust</span> <span class='op'>~</span> <span class='va'>Ethnic_Categories</span> <span class='op'>+</span> <span class='va'>year_s</span>  <span class='op'>+</span> <span class='op'>(</span><span class='fl'>1</span> <span class='op'>|</span> <span class='va'>Id</span><span class='op'>)</span>, data <span class='op'>=</span> <span class='va'>pd</span><span class='op'>)</span>
+  <span class='fu'>lme4</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/lme4/man/lmer.html'>lmer</a></span><span class='op'>(</span><span class='va'>Police_Trust</span> <span class='op'>~</span> <span class='va'>Ethnic_Categories</span> <span class='op'>+</span>  <span class='va'>year_s</span>  <span class='op'>+</span> <span class='op'>(</span><span class='fl'>1</span> <span class='op'>|</span> <span class='va'>Id</span><span class='op'>)</span>, data <span class='op'>=</span> <span class='va'>pd</span><span class='op'>)</span>
 
-<span class='va'>pt4_b</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://strengejacke.github.io/ggeffects/reference/plot.html'>plot</a></span><span class='op'>(</span>
+<span class='fu'>parameters</span><span class='fu'>::</span><span class='fu'><a href='https://easystats.github.io/parameters/reference/model_parameters.html'>model_parameters</a></span><span class='op'>(</span><span class='va'>pt4</span><span class='op'>)</span>
+</code></pre>
+</div>
+</details>
+<pre><code># Fixed Effects
+
+Parameter                   | Coefficient |       SE |         95% CI | t(33798) |      p
+-----------------------------------------------------------------------------------------
+(Intercept)                 |        4.48 |     0.01 | [ 4.46,  4.51] |   367.63 | &lt; .001
+Ethnic Categories [Maori]   |       -0.34 |     0.03 | [-0.40, -0.29] |   -12.25 | &lt; .001
+Ethnic Categories [Pacific] |       -0.07 |     0.05 | [-0.18,  0.03] |    -1.36 | 0.173 
+Ethnic Categories [Asian]   |       -0.17 |     0.05 | [-0.26, -0.07] |    -3.39 | &lt; .001
+year s                      |        0.10 | 4.49e-03 | [ 0.09,  0.11] |    22.54 | &lt; .001
+
+# Random Effects
+
+Parameter          | Coefficient
+--------------------------------
+SD (Intercept: Id) |        0.97
+SD (Residual)      |        0.66</code></pre>
+</div>
+<div class="layout-chunk" data-layout="l-body-outset">
+<details>
+<summary>
+Show code
+</summary>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>pt4_b</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://strengejacke.github.io/ggeffects/reference/plot.html'>plot</a></span><span class='op'>(</span>
   <span class='fu'>ggeffects</span><span class='fu'>::</span><span class='fu'><a href='https://strengejacke.github.io/ggeffects/reference/ggpredict.html'>ggpredict</a></span><span class='op'>(</span><span class='va'>pt4</span>,
-                       effects <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"Ethnic_Categories"</span><span class='op'>)</span><span class='op'>)</span>,
-  add.data <span class='op'>=</span> <span class='cn'>TRUE</span>,
-  dot.alpha <span class='op'>=</span> <span class='fl'>.05</span>
+                       effects <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"year_s"</span>,<span class='st'>"Ethnic_Categories"</span><span class='op'>)</span><span class='op'>)</span>,
+add.data <span class='op'>=</span> <span class='cn'>TRUE</span>,
+ dot.alpha <span class='op'>=</span> <span class='fl'>.05</span>
 <span class='op'>)</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span> <span class='op'>+</span> 
   <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/labs.html'>xlab</a></span><span class='op'>(</span><span class='st'>"Ethnic Categories"</span><span class='op'>)</span> <span class='op'>+</span> 
   <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/labs.html'>ylab</a></span><span class='op'>(</span><span class='st'>"Trust in Police (1-7)"</span><span class='op'>)</span> <span class='op'>+</span>
@@ -3911,7 +3922,7 @@ Show code
 </code></pre>
 </div>
 </details>
-<p><img src="police_files/figure-html5/unnamed-chunk-11-1.png" width="1152" /></p>
+<p><img src="police_files/figure-html5/unnamed-chunk-12-1.png" width="1152" /></p>
 </div>
 <h3 id="trust-in-police-predicted-by-gender-identity">Trust in police predicted by gender identity</h3>
 <p>Those who identify as male are more trusting of the police.</p>
@@ -3939,7 +3950,7 @@ Show code
 </code></pre>
 </div>
 </details>
-<p><img src="police_files/figure-html5/unnamed-chunk-12-1.png" width="1152" /></p>
+<p><img src="police_files/figure-html5/unnamed-chunk-13-1.png" width="1152" /></p>
 </div>
 <h3 id="trust-in-police-predicted-by-age">Trust in police predicted by age</h3>
 <p>Older people are more trusting of the Police.</p>
@@ -3967,7 +3978,7 @@ Show code
 </code></pre>
 </div>
 </details>
-<p><img src="police_files/figure-html5/unnamed-chunk-13-1.png" width="1152" /></p>
+<p><img src="police_files/figure-html5/unnamed-chunk-14-1.png" width="1152" /></p>
 </div>
 <h3 id="trust-in-police-predicted-by-education-standardised">Trust in police predicted by education (standardised)</h3>
 <p>Education only weakly predicts greater trust in the police.</p>
@@ -3994,7 +4005,7 @@ Show code
 </code></pre>
 </div>
 </details>
-<p><img src="police_files/figure-html5/unnamed-chunk-14-1.png" width="1152" /></p>
+<p><img src="police_files/figure-html5/unnamed-chunk-15-1.png" width="1152" /></p>
 </div>
 <h3 id="willingness-to-engage-with-the-police-predicted-by-ethnic-identification">Willingness to engage with the police predicted by ethnic identification</h3>
 <p>Asians are less willing to engage the police, on average, than are other ethnic groups.</p>
@@ -4021,7 +4032,16 @@ Show code
 </code></pre>
 </div>
 </details>
-<p><img src="police_files/figure-html5/unnamed-chunk-15-1.png" width="1152" /></p>
+<img src="police_files/figure-html5/unnamed-chunk-16-1.png" width="1152" />
+<details>
+<summary>
+Show code
+</summary>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='co'>#model_parameters(pt41)</span>
+</code></pre>
+</div>
+</details>
 </div>
 <h3 id="willingness-to-engage-with-the-police-predicted-by-gender-identity">Willingness to engage with the police predicted by gender identity</h3>
 <p>Those who identify as male are less willing to engage the police.</p>
@@ -4049,7 +4069,7 @@ Show code
 </code></pre>
 </div>
 </details>
-<p><img src="police_files/figure-html5/unnamed-chunk-16-1.png" width="1152" /></p>
+<p><img src="police_files/figure-html5/unnamed-chunk-17-1.png" width="1152" /></p>
 </div>
 <h3 id="willingness-to-engage-with-the-police-predicted-by-age">Willingness to engage with the police predicted by age</h3>
 <p>Older people are much more willing to engage the police.</p>
@@ -4077,7 +4097,7 @@ Show code
 </code></pre>
 </div>
 </details>
-<p><img src="police_files/figure-html5/unnamed-chunk-17-1.png" width="1152" /></p>
+<p><img src="police_files/figure-html5/unnamed-chunk-18-1.png" width="1152" /></p>
 </div>
 <h3 id="willingness-to-engage-with-the-police-by-education-standardised">Willingness to engage with the police by education (standardised)</h3>
 <p>Educated people are slightly more willing to engage the police.</p>
@@ -4104,7 +4124,7 @@ Show code
 </code></pre>
 </div>
 </details>
-<p><img src="police_files/figure-html5/unnamed-chunk-18-1.png" width="1152" /></p>
+<p><img src="police_files/figure-html5/unnamed-chunk-19-1.png" width="1152" /></p>
 </div>
 <h3 id="sample-information">Sample information</h3>
 <p>The following table reports the means and standard deviations in responses to these item, as well as sample descriptive details.</p>
@@ -4132,14 +4152,14 @@ Show code
 <thead>
 <tr>
 <th class='rowlabel firstrow lastrow'></th>
-<th class='firstrow lastrow'><span class='stratlabel'>2017<br><span class='stratn'>(N=11481)</span></span></th>
-<th class='firstrow lastrow'><span class='stratlabel'>2018<br><span class='stratn'>(N=11481)</span></span></th>
-<th class='firstrow lastrow'><span class='stratlabel'>2019<br><span class='stratn'>(N=11481)</span></span></th>
+<th class='firstrow lastrow'><span class='stratlabel'>2017<br><span class='stratn'>(N=11482)</span></span></th>
+<th class='firstrow lastrow'><span class='stratlabel'>2018<br><span class='stratn'>(N=11482)</span></span></th>
+<th class='firstrow lastrow'><span class='stratlabel'>2019<br><span class='stratn'>(N=11482)</span></span></th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class='rowlabel firstrow'><span class='varlabel'>Age</span></td>
+<td class='rowlabel firstrow'>Age</td>
 <td class='firstrow'></td>
 <td class='firstrow'></td>
 <td class='firstrow'></td>
@@ -4152,57 +4172,57 @@ Show code
 </tr>
 <tr>
 <td class='rowlabel lastrow'>Median [Min, Max]</td>
-<td class='lastrow'>54.9 [17.1, 94.4]</td>
-<td class='lastrow'>55.9 [18.1, 95.5]</td>
-<td class='lastrow'>56.9 [19.1, 96.5]</td>
+<td class='lastrow'>54.9 [19.2, 94.4]</td>
+<td class='lastrow'>55.9 [20.0, 95.5]</td>
+<td class='lastrow'>56.9 [21.0, 96.5]</td>
 </tr>
 <tr>
-<td class='rowlabel firstrow'><span class='varlabel'>Ethnic_Categories</span></td>
+<td class='rowlabel firstrow'>Ethnic_Categories</td>
 <td class='firstrow'></td>
 <td class='firstrow'></td>
 <td class='firstrow'></td>
 </tr>
 <tr>
 <td class='rowlabel'>Euro</td>
-<td>9631 (83.9%)</td>
-<td>9620 (83.8%)</td>
-<td>9379 (81.7%)</td>
+<td>9632 (83.9%)</td>
+<td>9641 (84.0%)</td>
+<td>9380 (81.7%)</td>
 </tr>
 <tr>
 <td class='rowlabel'>Maori</td>
 <td>1198 (10.4%)</td>
-<td>1134 (9.9%)</td>
+<td>1137 (9.9%)</td>
 <td>1323 (11.5%)</td>
 </tr>
 <tr>
 <td class='rowlabel'>Pacific</td>
 <td>175 (1.5%)</td>
-<td>172 (1.5%)</td>
+<td>174 (1.5%)</td>
 <td>249 (2.2%)</td>
 </tr>
 <tr>
 <td class='rowlabel'>Asian</td>
 <td>361 (3.1%)</td>
-<td>357 (3.1%)</td>
+<td>358 (3.1%)</td>
 <td>386 (3.4%)</td>
 </tr>
 <tr>
 <td class='rowlabel lastrow'>Missing</td>
 <td class='lastrow'>116 (1.0%)</td>
-<td class='lastrow'>198 (1.7%)</td>
+<td class='lastrow'>172 (1.5%)</td>
 <td class='lastrow'>144 (1.3%)</td>
 </tr>
 <tr>
-<td class='rowlabel firstrow'><span class='varlabel'>Male</span></td>
+<td class='rowlabel firstrow'>Male</td>
 <td class='firstrow'></td>
 <td class='firstrow'></td>
 <td class='firstrow'></td>
 </tr>
 <tr>
 <td class='rowlabel'>Not_Male</td>
-<td>7244 (63.1%)</td>
-<td>7246 (63.1%)</td>
-<td>7242 (63.1%)</td>
+<td>7245 (63.1%)</td>
+<td>7247 (63.1%)</td>
+<td>7243 (63.1%)</td>
 </tr>
 <tr>
 <td class='rowlabel'>Male</td>
@@ -4217,7 +4237,7 @@ Show code
 <td class='lastrow'>37 (0.3%)</td>
 </tr>
 <tr>
-<td class='rowlabel firstrow'><span class='varlabel'>Household_income</span></td>
+<td class='rowlabel firstrow'>Household_income</td>
 <td class='firstrow'></td>
 <td class='firstrow'></td>
 <td class='firstrow'></td>
@@ -4237,11 +4257,11 @@ Show code
 <tr>
 <td class='rowlabel lastrow'>Missing</td>
 <td class='lastrow'>225 (2.0%)</td>
-<td class='lastrow'>223 (1.9%)</td>
+<td class='lastrow'>211 (1.8%)</td>
 <td class='lastrow'>791 (6.9%)</td>
 </tr>
 <tr>
-<td class='rowlabel firstrow'><span class='varlabel'>Police_Trust</span></td>
+<td class='rowlabel firstrow'>Police_Trust</td>
 <td class='firstrow'></td>
 <td class='firstrow'></td>
 <td class='firstrow'></td>
@@ -4265,7 +4285,7 @@ Show code
 <td class='lastrow'>5 (0.0%)</td>
 </tr>
 <tr>
-<td class='rowlabel firstrow'><span class='varlabel'>Police_Engage</span></td>
+<td class='rowlabel firstrow'>Police_Engage</td>
 <td class='firstrow'></td>
 <td class='firstrow'></td>
 <td class='firstrow'></td>
@@ -4289,7 +4309,7 @@ Show code
 <td class='lastrow'>8 (0.1%)</td>
 </tr>
 <tr>
-<td class='rowlabel firstrow'><span class='varlabel'>Politicians_Trust</span></td>
+<td class='rowlabel firstrow'>Politicians_Trust</td>
 <td class='firstrow'></td>
 <td class='firstrow'></td>
 <td class='firstrow'></td>
@@ -4324,11 +4344,11 @@ Show code
 Show code
 </summary>
 <div class="sourceCode">
-<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>pd</span> <span class='op'>%&gt;%</span>
-  <span class='fu'>select</span><span class='op'>(</span><span class='va'>Covid_Timeline</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
-   <span class='fu'><a href='https://dplyr.tidyverse.org/reference/group_by.html'>group_by</a></span><span class='op'>(</span><span class='va'>Covid_Timeline</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
-  <span class='fu'>count</span><span class='op'>(</span><span class='op'>)</span><span class='op'>%&gt;%</span>
-   <span class='fu'><a href='https://rdrr.io/pkg/kableExtra/man/kbl.html'>kbl</a></span><span class='op'>(</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>pd</span> <span class='op'><a href='https://rpkgs.datanovia.com/ggpubr/reference/pipe.html'>%&gt;%</a></span>
+  <span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='va'>Covid_Timeline</span><span class='op'>)</span> <span class='op'><a href='https://rpkgs.datanovia.com/ggpubr/reference/pipe.html'>%&gt;%</a></span>
+   <span class='fu'><a href='https://dplyr.tidyverse.org/reference/group_by.html'>group_by</a></span><span class='op'>(</span><span class='va'>Covid_Timeline</span><span class='op'>)</span> <span class='op'><a href='https://rpkgs.datanovia.com/ggpubr/reference/pipe.html'>%&gt;%</a></span>
+  <span class='fu'><a href='https://dplyr.tidyverse.org/reference/count.html'>count</a></span><span class='op'>(</span><span class='op'>)</span><span class='op'><a href='https://rpkgs.datanovia.com/ggpubr/reference/pipe.html'>%&gt;%</a></span>
+   <span class='fu'><a href='https://rdrr.io/pkg/kableExtra/man/kbl.html'>kbl</a></span><span class='op'>(</span><span class='op'>)</span> <span class='op'><a href='https://rpkgs.datanovia.com/ggpubr/reference/pipe.html'>%&gt;%</a></span>
     <span class='fu'><a href='https://rdrr.io/pkg/kableExtra/man/kable_classic.html'>kable_paper</a></span><span class='op'>(</span><span class='st'>"hover"</span>, full_width <span class='op'>=</span> <span class='cn'>F</span><span class='op'>)</span>
 </code></pre>
 </div>
@@ -4350,7 +4370,7 @@ n
 PreCOVID
 </td>
 <td style="text-align:right;">
-29333
+29336
 </td>
 </tr>
 <tr>
@@ -4395,9 +4415,9 @@ Post_Lockdown_2020
 Show code
 </summary>
 <div class="sourceCode">
-<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>carep</span> <span class='op'>&lt;-</span> <span class='va'>pd</span> <span class='op'>%&gt;%</span>
-  <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>timeline <span class='op'>=</span> <span class='fu'><a href='http://lubridate.tidyverse.org/reference/make_datetime.html'>make_date</a></span><span class='op'>(</span>year <span class='op'>=</span> <span class='fl'>2009</span>, month <span class='op'>=</span> <span class='fl'>6</span>, day <span class='op'>=</span> <span class='fl'>30</span><span class='op'>)</span> <span class='op'>+</span> <span class='va'>TSCORE</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
-  <span class='fu'>count</span><span class='op'>(</span>day <span class='op'>=</span> <span class='fu'><a href='http://lubridate.tidyverse.org/reference/round_date.html'>floor_date</a></span><span class='op'>(</span><span class='va'>timeline</span>, <span class='st'>"day"</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>carep</span> <span class='op'>&lt;-</span> <span class='va'>pd</span> <span class='op'><a href='https://rpkgs.datanovia.com/ggpubr/reference/pipe.html'>%&gt;%</a></span>
+  <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>timeline <span class='op'>=</span> <span class='fu'><a href='https://lubridate.tidyverse.org/reference/make_datetime.html'>make_date</a></span><span class='op'>(</span>year <span class='op'>=</span> <span class='fl'>2009</span>, month <span class='op'>=</span> <span class='fl'>6</span>, day <span class='op'>=</span> <span class='fl'>30</span><span class='op'>)</span> <span class='op'>+</span> <span class='va'>TSCORE</span><span class='op'>)</span> <span class='op'><a href='https://rpkgs.datanovia.com/ggpubr/reference/pipe.html'>%&gt;%</a></span>
+  <span class='fu'><a href='https://dplyr.tidyverse.org/reference/count.html'>count</a></span><span class='op'>(</span>day <span class='op'>=</span> <span class='fu'><a href='https://lubridate.tidyverse.org/reference/round_date.html'>floor_date</a></span><span class='op'>(</span><span class='va'>timeline</span>, <span class='st'>"day"</span><span class='op'>)</span><span class='op'>)</span> <span class='op'><a href='https://rpkgs.datanovia.com/ggpubr/reference/pipe.html'>%&gt;%</a></span>
 <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>condition <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/ifelse.html'>ifelse</a></span><span class='op'>(</span>
     <span class='va'>day</span> <span class='op'>&lt;</span> <span class='st'>"2019-06-20"</span> <span class='op'>&amp;</span>
       <span class='va'>day</span> <span class='op'>&gt;</span> <span class='st'>"2018-07-10"</span>,
@@ -4421,9 +4441,9 @@ Show code
             <span class='va'>day</span> <span class='op'>&lt;=</span> <span class='st'>"2018-07-10"</span>,
             <span class='st'>"Wave_9"</span>,
             <span class='st'>"Post_Lockdown"</span>
-            <span class='op'>)</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>)</span><span class='op'>%&gt;%</span>
-  <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>condition <span class='op'>=</span> <span class='fu'>forcats</span><span class='fu'>::</span><span class='fu'><a href='https://forcats.tidyverse.org/reference/fct_relevel.html'>fct_relevel</a></span><span class='op'>(</span><span class='va'>condition</span>, <span class='va'>ord_dates_class</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
-  <span class='fu'>arrange</span><span class='op'>(</span><span class='va'>day</span><span class='op'>)</span>
+            <span class='op'>)</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>)</span><span class='op'><a href='https://rpkgs.datanovia.com/ggpubr/reference/pipe.html'>%&gt;%</a></span>
+  <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>condition <span class='op'>=</span> <span class='fu'>forcats</span><span class='fu'>::</span><span class='fu'><a href='https://forcats.tidyverse.org/reference/fct_relevel.html'>fct_relevel</a></span><span class='op'>(</span><span class='va'>condition</span>, <span class='va'>ord_dates_class</span><span class='op'>)</span><span class='op'>)</span> <span class='op'><a href='https://rpkgs.datanovia.com/ggpubr/reference/pipe.html'>%&gt;%</a></span>
+  <span class='fu'><a href='https://dplyr.tidyverse.org/reference/arrange.html'>arrange</a></span><span class='op'>(</span><span class='va'>day</span><span class='op'>)</span>
 
 <span class='va'>tline</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/ggplot.html'>ggplot</a></span><span class='op'>(</span><span class='va'>carep</span>, <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/aes.html'>aes</a></span><span class='op'>(</span><span class='va'>day</span>, <span class='va'>n</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>+</span>
   <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/geom_bar.html'>geom_col</a></span><span class='op'>(</span><span class='fu'><a href='https://ggplot2.tidyverse.org/reference/aes.html'>aes</a></span><span class='op'>(</span>fill <span class='op'>=</span> <span class='va'>condition</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>+</span> <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/scale_date.html'>scale_x_date</a></span><span class='op'>(</span>date_labels <span class='op'>=</span> <span class='st'>"%b/%Y"</span>, limits <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/as.Date.html'>as.Date</a></span><span class='op'>(</span><span class='st'>"2017-08-26"</span><span class='op'>)</span>, <span class='fu'><a href='https://rdrr.io/r/base/as.Date.html'>as.Date</a></span><span class='op'>(</span><span class='st'>"2020-10-15"</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span>  <span class='op'>+</span> <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/scale_continuous.html'>scale_y_continuous</a></span><span class='op'>(</span>limits <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fl'>0</span>, <span class='fl'>650</span><span class='op'>)</span><span class='op'>)</span>  <span class='op'>+</span>
@@ -4433,9 +4453,9 @@ Show code
 </code></pre>
 </div>
 </details>
-<p><img src="police_files/figure-html5/unnamed-chunk-21-1.png" width="1152" /></p>
+<p><img src="police_files/figure-html5/unnamed-chunk-22-1.png" width="1152" /></p>
 </div>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r distill-force-highlighting-css"><code class="sourceCode r"></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r distill-force-highlighting-css"><code class="sourceCode r"></code></pre></div>
 <!--radix_placeholder_article_footer-->
 <!--/radix_placeholder_article_footer-->
 </div>
