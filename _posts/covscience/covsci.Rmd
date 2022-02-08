@@ -14,6 +14,8 @@ output:
     toc: true
     code_folding: true
 bibliography: bibliography.bib
+editor_options: 
+  chunk_output_type: console
 ---
 
 
@@ -74,8 +76,8 @@ ord_dates_class <- c(
 # prepare data
 cv <- df %>%
   dplyr::filter(YearMeasured == 1) %>%
-  droplevels() %>%
   dplyr::filter(Wave == 2019) %>%
+    droplevels() %>%
   dplyr::mutate(Covid_Timeline =
                     as.factor(ifelse(
                       TSCORE %in% 3896:3921, # feb 29 - march 25th
@@ -400,12 +402,20 @@ There is some unbalence with respect to key indicators
 
 Weight data and check weights
 ```{r}
-cobalt::bal.tab(Covid_Timeline ~ Partner + Age + Male + Relid + Urban + EthnicCats + Edu,
-        data = cv, estimand = "ATE", m.threshold = .05)
+cv19n <- cv%>%
+   dplyr::select(SCIENCE.TRUST, Sat.Government, Age,  Edu , EthnicCats , Male ,  Urban, Covid_Timeline, Id)%>%
+  droplevels() %>%
+  drop_na() %>%
+  mutate(SCIENCE.TRUST_S = scale(SCIENCE.TRUST),
+         Sat.Government_S = scale(Sat.Government))
 
 
-w_out <- WeightIt::weightit(Covid_Timeline ~ Partner  + Age + Male + Relid  + Urban + Edu  + EthnicCats,
-        data = cv, estimand = "ATE", method = "ebal", stabilize = TRUE)
+cobalt::bal.tab(Covid_Timeline ~  Age + Edu + EthnicCats + Male  + Urban,
+        data = cv19n, estimand = "ATE", m.threshold = .05)
+
+
+w_out <- WeightIt::weightit(Covid_Timeline ~ Age + Edu + EthnicCats + Male + Urban,
+        data = cv19n, estimand = "ATE", method = "ebal", stabilize = TRUE)
 
 summary(w_out)
 ```
@@ -418,7 +428,7 @@ cobalt::bal.tab(w_out, m.threshold = .05, disp.v.ratio = TRUE)
 #sum(w_out$ipw.weights >= 10)
 
 # create data frame
-cv19w <- cv %>% 
+cv19w <- cv19n %>% 
   mutate(ipw = w_out$weights)
 ```
 
@@ -494,3 +504,187 @@ Below another graph of the same result.
 ```{r}
 plot(ggeffects::ggemmeans(SCIENCE.TRUST, terms = "Covid_Timeline"))
 ```
+
+## Causal mediation model
+
+
+
+
+```{r}
+library(mediation)
+#length(unique(cv19n$Id))
+
+# + Age + Edu + EthnicCats + Male + Relid + Partner + Urban
+
+med.fit <- lm( Sat.Government_S  ~ Covid_Timeline + Age + Edu + EthnicCats + Male  + Urban,  data = cv19w)
+out.fit <- lm( SCIENCE.TRUST_S   ~ Sat.Government_S  + Covid_Timeline +  Age + Edu + EthnicCats + Male + Urban, 
+               data = cv19w)
+med.out <- mediate(med.fit, out.fit, treat = "Covid_Timeline", mediator = "Sat.Government_S",
+                   robustSE = TRUE, sims = 1000, control.value = "Baseline", treat.value = "Lockdown")
+
+# save model
+saveRDS(med.out, here::here("_posts", "covscience","mods", "med.out.rds"))
+
+```
+
+We observe that government satisfaction strongly mediates the effect of Lockdown on trust in science. 
+
+```{r eval=FALSE}
+med.out <- readRDS(here::here("_posts", "covscience","mods", "med.out.rds"))
+
+summary(med.out)
+plot(med.out,  
+     effect.type = c("indirect", "direct", "total"), 
+     xlim = c(0,.4))
+```
+
+
+ We next contrast the Locdown with the period following lockdown in which there was declining trust in science. 
+
+
+## Sensitivity Analysis
+
+
+```{r eval=FALSE}
+sens.out <- medsens(med.out, rho.by = 0.25,  effect.type = "indirect", sims = 100)
+# save sensitivity analysis
+saveRDS(sens.out, here::here("_posts", "covscience","mods", "sens.out.rds"))
+```
+
+Sensitivity plot reveals that for sequential ignorability to be violated, the correlation between the the error terms of the mediator and outcome (rho) would need to be .25. We infer that the findings are reasonably robust in respect of unmeasured mediator outcome confounding. 
+
+```{r eval=FALSE}
+sens.out <- readRDS(sens.out, here::here("_posts", "covscience","mods", "sens.out.rds"))
+
+summary(sens.out)
+plot(sens.out)
+#plot(sens.out, sens.par = "R2", r.type = "total", sign.prod = "positive")
+# This is the workhorse function for sensitivity analyses for average causal mediation effects. The sensitivity analysis can be used to assess the robustness of the findings from mediate to the violation of sequential ignorability, the crucial identification assumption necessary for the estimates to be valid. The analysis proceeds by quantifying the degree of sequential ignorability violation as the correlation between the error terms of the mediator and outcome models, and then calculating the true values of the average causal mediation effect for given values of this sensitivity parameter, rho. The original findings are deemed sensitive if the true effects are found to vary widely as function of rho.
+
+#The resulting "rho" figures plot the estimated true values of ACME (or ADE, proportion mediated) against rho, along with the confidence intervals. When rho is zero, sequantial ignorability holds, so the estimated value at that point will be equal to the estimate returned by the mediate. The confidence level is determined by the 'conf.level' value of the original mediate object
+```
+
+
+We next investigate whether declining satisfaction with government caused a drop in trust in science
+
+```{r eval=F}
+library(mediation)
+med.out2 <- mediate(med.fit, out.fit, treat = "Covid_Timeline", mediator = "Sat.Government_S",
+                   robustSE = TRUE, sims = 1000, control.value = "Lockdown", treat.value = "PostLockdown")
+saveRDS(med.out2, here::here("_posts", "covscience","mods", "med.out2.rds"))
+
+```
+
+
+We find evidence for only a weak mediation effect 
+
+
+```{r}
+med.out2 <- readRDS( here::here("_posts", "covscience","mods", "med.out2.rds"))
+summary(med.out2)
+plot(med.out2)
+```
+
+
+```{r eval=FALSE}
+sens.out2 <- medsens(med.out2, rho.by = 0.25,  effect.type = "indirect", sims = 100)
+# save sensitivity analysis
+saveRDS(sens.out2, here::here("_posts", "covscience","mods", "sens.out2.rds"))
+```
+
+
+As expected this small effect is robust to unmeasured confounding.
+
+```{r eval=FALSE}
+sens.out2 <- readRDS( here::here("_posts", "covscience","mods", "sens.out2.rds"))
+summary(sens.out2)
+plot(sens.out2)
+```
+
+
+
+## Does trust in science mediate the effect of government satisfaction? 
+
+
+```{r eval=F}
+med.fitb <- lm( SCIENCE.TRUST_S  ~ Covid_Timeline + Age + Edu + EthnicCats + Male  + Urban,  data = cv19w)
+out.fitb <- lm( Sat.Government_S   ~ SCIENCE.TRUST_S  + Covid_Timeline +  Age + Edu + EthnicCats + Male + Urban, 
+               data = cv19w)
+med.outb <- mediate(med.fitb, out.fitb, treat = "Covid_Timeline", mediator = "SCIENCE.TRUST_S",
+                   robustSE = TRUE, sims = 1000, control.value = "Baseline", treat.value = "Lockdown")
+
+saveRDS(med.outb, here::here("_posts", "covscience","mods", "med.outb.rds"))
+```
+
+
+We find a very strong effect of lockdown on satisfaction with government, but we do not find any evidence for a substantial effect of mediation through trust in science. 
+
+```{r eval=TRUE}
+med.outb <- readRDS(here::here("_posts", "covscience","mods", "med.outb.rds"))
+
+summary(med.outb)
+
+plot(med.outb,  
+     effect.type = c("indirect", "direct", "total"), 
+     xlim = c(0,1))
+```
+
+
+### Sensitivity analysis
+
+```{r eval=FALSE}
+sens.outb2 <- medsens(med.outb2, rho.by = 0.25,  effect.type = "indirect", sims = 100)
+# save sensitivity analysis
+saveRDS(sens.outb2, here::here("_posts", "covscience","mods", "sens.outb2.rds"))
+sens.outb2 <- readRDS(here::here("_posts", "covscience","mods", "sens.outb2.rds"))
+plot(sens.outb2)
+summary(sens.outb2)
+```
+
+
+###  Loss of gov't satisfaction does not mediate loss of trust in science. 
+
+We can ask whether the fall in government satisfaction was mediated by a loss of confidence in science. 
+
+```{r, eval= FALSE}
+med.outb2 <- mediate(med.fitb, out.fitb, treat = "Covid_Timeline", mediator = "SCIENCE.TRUST_S",
+                   robustSE = TRUE, sims = 1000, control.value = "Lockdown", treat.value = "PostLockdown")
+
+
+saveRDS(med.outb2, here::here("_posts", "covscience","mods", "med.outb2.rds"))
+```
+
+We do not find strong evidence for a causal effect of loss of trust in science on satisfaction with the government.   
+
+```{r}
+med.outb2 <- readRDS(here::here("_posts", "covscience","mods", "med.outb2.rds"))
+summary(med.outb2)
+```
+
+
+<!-- Sensitivity analysis  -->
+
+<!-- ```{r eval=F} -->
+<!-- sens.outb <- medsens(med.outb, rho.by = 0.25,  effect.type = "indirect", sims = 100) -->
+<!-- sens.outb2 <- medsens(med.outb2, rho.by = 0.25,  effect.type = "indirect", sims = 100) -->
+
+<!-- # save sensitivity analysis -->
+
+<!-- saveRDS(sens.outb, here::here("_posts", "covscience","mods", "sens.outb.rds")) -->
+<!-- saveRDS(sens.outb2, here::here("_posts", "covscience","mods", "sens.outb2.rds")) -->
+<!-- ``` -->
+
+
+
+
+<!-- ```{r eval=FALSE} -->
+<!-- sens.outb <- readRDS(here::here("_posts", "covscience","mods", "sens.outb")) -->
+<!-- sens.outb2 <- readRDS(here::here("_posts", "covscience","mods", "sens.outb2")) -->
+
+<!-- summary(sens.outb) -->
+<!-- plot(sens.outb) -->
+<!-- plot(sens.outb2) -->
+<!-- ``` -->
+
+
+
