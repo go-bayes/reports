@@ -7,7 +7,7 @@ author:
     affiliation: Victoria University of Wellington
     affiliation_url: https://www.wgtn.ac.nz
     orcid_id: 0000-0002-5861-2056
-date: 2021-MAR-12
+date: 2022-FEB-09
 output:
   distill::distill_article:
     self_contained: false
@@ -508,8 +508,6 @@ plot(ggeffects::ggemmeans(SCIENCE.TRUST, terms = "Covid_Timeline"))
 ## Causal mediation model
 
 
-
-
 ```{r}
 library(mediation)
 #length(unique(cv19n$Id))
@@ -529,10 +527,14 @@ saveRDS(med.out, here::here("_posts", "covscience","mods", "med.out.rds"))
 
 We observe that government satisfaction strongly mediates the effect of Lockdown on trust in science. 
 
-```{r eval=FALSE}
+```{r eval=TRUE}
 med.out <- readRDS(here::here("_posts", "covscience","mods", "med.out.rds"))
 
 summary(med.out)
+```
+
+
+```{r eval=TRUE}
 plot(med.out,  
      effect.type = c("indirect", "direct", "total"), 
      xlim = c(0,.4))
