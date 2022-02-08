@@ -17,6 +17,7 @@ bibliography: bibliography.bib
 editor_options:
   markdown:
     wrap: 72
+  chunk_output_type: console
 ---
 
 ```{r load_libraries, include=FALSE}
@@ -139,6 +140,7 @@ cv <- df %>%
     TSCORE,
     WSCORE,
     Wave,
+    SCIENCE.TRUST,
     Partner,
     Employed,
     Sat.Government,
@@ -304,7 +306,6 @@ cv <- cbind(cv,
               ),
               group = "Id"
             )) 
-
 
 
 # Demean employed
@@ -515,13 +516,14 @@ tline + plot_annotation(title = "NZAVS COVID timeline",
 subtitle = "0(34778) 1.PreCVD(23460) 2.JanFeb(2678) 3.March(2537) 4.LckDwn(1647) 5.PostLD(4456)")
 ```
 
+
 # What we did with our time?
 
 ## Slept - more
 
 ```{r cache=TRUE}
 Hours.Sleep <- lmer(Hours.Sleep ~ Covid_Timeline + (1|Id),  cv)
-plot(ggeffects::ggpredict(Hours.Sleep, terms = "Covid_Timeline")) 
+plot(ggeffects::ggpredict(Hours.Sleep, terms = "Covid_Timeline"),add.data=TRUE, dot.alpha =.005) 
 ```
 
 ##  Excercised - more

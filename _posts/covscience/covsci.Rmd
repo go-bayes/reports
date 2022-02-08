@@ -1,0 +1,485 @@
+---
+title: "How did New Zealand's first Covid lockdown affect Trust in Science (and for how long)?"
+description: |
+author:
+  - name: Joseph Bulbulia
+    url: https://josephbulbulia.netlify.app
+    affiliation: Victoria University of Wellington
+    affiliation_url: https://www.wgtn.ac.nz
+    orcid_id: 0000-0002-5861-2056
+date: 2021-MAR-12
+output:
+  distill::distill_article:
+    self_contained: false
+    toc: true
+    code_folding: true
+bibliography: bibliography.bib
+---
+
+
+```{r load_libraries, include=FALSE}
+# see: https://github.com/rjknell/Ioslides_css
+library("tidyverse")
+library("easystats")
+library("patchwork")
+library("kableExtra")
+library("ggpubr")
+library("here")
+library("lubridate")
+library("ggdag")
+library("viridisLite")
+library("geepack")
+library("cobalt") # check balence
+library("WeightIt")
+library("ggeffects")
+theme_set(theme_classic())
+```
+
+
+Here we estimate the effects of the COVID-19 pandemic on Trust in Science at various stages of the pandemic in New Zealand.  
+
+
+```{r cache=TRUE, echo = FALSE}
+# import data
+df <- readRDS(here::here("data", "df"))
+
+# prepare graph
+ord_dates_class <- c(
+  "Baseline", 
+  "JanFeb", 
+  "EarlyMarch", 
+  "Lockdown",
+  "PostLockdown")
+
+# 3665 days after 30 June 2009 Saturday 13 July 2019
+# 3842 days after 30 June 2009 Monday 6 January 2020
+# 3895 days after 30 June 2009 Friday 28 February 2020
+# 3921 days after 30 June 2009 WED MAR 25th
+# 3954 days after 30 June 2009 Monday 27 April 2020
+# 3672 days after June 30 2009 Saturday 20 July 2019
+
+# prepare data
+cv <- df %>%
+  dplyr::filter(YearMeasured == 1) %>%
+  droplevels() %>%
+  dplyr::filter(Wave == 2019) %>%
+  dplyr::mutate(Covid_Timeline =
+                    as.factor(ifelse(
+                      TSCORE %in% 3896:3921, # feb 29 - march 25th
+                      "EarlyMarch",
+                      ifelse(
+                        TSCORE %in% 3922:3954,
+                        "Lockdown", #march 26- Mon 27 April 2020
+                        ifelse(
+                          TSCORE > 3954, # after april 27th 20202
+                          "PostLockdown",
+                          ifelse(
+                            TSCORE %in% 3842:3895, # jan 6 to feb 28
+                            "JanFeb",
+                            "Baseline"  # 3672 TSCORE or  20 July 2019
+                          )
+                        )
+                      )
+                    ) ))%>%
+  dplyr::select(
+    Wave,
+    TSCORE,
+    SCIENCE.TRUST,
+    Partner,
+    Employed,
+    Sat.Government,
+    NZ.Business.Conditions,
+    NZ.Economic.Situation,
+    Rel.Conflict,
+    Rel.Satisfaction,
+    Hours.SocialMedia,
+    Hours.Exercise,
+    HoursCharity,
+    Hours.Internet,
+    Hours.News,
+    Hours.Family,
+    Hours.Friends,
+    Hours.Housework,
+    Hours.Children,
+    Hours.Religious,
+    Hours.Work,
+    Hours.Commute,
+    Hours.TV,
+    Hours.CompGames,
+    Hours.Community,
+    Family.Time,
+    Community.Time,
+    Friends.Time,
+    Family.Money,
+    Friends.Money,
+    Community.Money,
+    Id,
+    Parent,
+    SWB.SatPWI02, # your health
+    Hours.Work,
+    Hours.Exercise,
+    LIFEMEANING,
+    KESSLER6,
+    KESSLER6sum,
+    Age,
+    Male,
+    Relid,
+    Pol.Orient,
+    Urban,
+    GenCohort,
+    Edu,
+    YearMeasured,
+    Covid_Timeline,
+    HLTH.SleepHours,
+    HLTH.Fatigue,
+    LIFESAT,
+    PWI,
+    EthnicCats,
+    NZdep,
+    Partner,
+    Pol.Orient,
+    Urban,
+    Euro,
+    Religious,
+    NZdep,
+    WSCORE,
+    Religion.Church,
+    Emp.JobSecure,
+    Emp.JobSat,
+    Emp.JobValued,
+    Alcohol.Intensity,
+    Alcohol.Frequency,
+    Your.Future.Security
+  ) %>%
+  dplyr::mutate(
+    Urban = (Urban),
+    Euro = (Euro),
+    Religious = as.factor(Religious),
+    Your_Health = (SWB.SatPWI02),
+    Your_Future_Security = Your.Future.Security,
+    Covid_Timeline = as.factor(Covid_Timeline)
+  ) %>%
+  dplyr::mutate(
+    WSCORE = as.factor(WSCORE),
+    #EduC = scale(as.numeric(Edu), scale = F, center = TRUE),
+    Sat.Government = scale(Sat.Government),
+   # AgeDecadeC = scale(Age, scale = F, center = T) / 10,
+    Hours.Work10 = as.integer(Hours.Work) / 10,
+    Hours.Sleep = as.integer(HLTH.SleepHours),
+    Hours.Exercise = as.integer(Hours.Exercise),
+    Fatigue = as.integer(HLTH.Fatigue),
+    K6sum = as.integer(KESSLER6 * 6),
+    LIFEMEANING_S = scale(LIFEMEANING),
+    NZdepS = scale(NZdep),
+    PolOrientS = scale(Pol.Orient, scale = T, center = T),
+    Conservative = Pol.Orient,
+    logSM = log(Hours.SocialMedia + 1),
+    logINT = log(Hours.Internet + 1),
+    logEX = log(Hours.Exercise + 1),
+    logWK= log(Hours.Work + 1),
+    logCT = log(Hours.Commute + 1),
+    KESSLER6sum = as.integer(KESSLER6sum),
+    Alcohol.Intensity_S = scale(Alcohol.Intensity),
+    Alcohol.Frequency_S = scale(Alcohol.Frequency),
+    Hours.Work = as.integer(Hours.Work),
+    Hours.Exercise = as.integer(Hours.Exercise)  )%>%
+  dplyr::mutate(Covid_Timeline = forcats::fct_relevel(Covid_Timeline, ord_dates_class))
+```
+
+
+```{r cache = TRUE}
+# covid timeline
+# 3665 days after 30 June 2009 Saturday 13 July 2019
+# 3842 days after 30 June 2009 Monday 6 January 2020
+# 3895 days after 30 June 2009 Friday 28 February 2020
+# 3921 days after 30 June 2009 WED MAR 25th
+library(lubridate)
+library(tidyverse)
+
+
+carep <- cv %>%
+  dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30) + TSCORE) %>%
+  count(day = floor_date(timeline, "day")) %>%
+dplyr::mutate(condition = ifelse(
+      day >= "2019-06-20" &
+        day < "2020-01-06",
+      "Baseline",
+      ifelse(
+        day >= "2020-01-06" & day < "2020-02-29",
+        "JanFeb",
+        ifelse(
+          day >= "2020-02-29" & day < "2020-03-25",
+          "EarlyMarch",
+          ifelse(
+            day >= "2020-03-25" &
+              day < "2020-04-28",
+            "Lockdown",
+            "PostLockdown"
+            ))))) %>%
+  dplyr::mutate(condition = forcats::fct_relevel(condition, ord_dates_class)) %>%
+  arrange(day)
+
+# get COVID date
+dates_vline1<- as.Date("2019-06-20")
+dates_vline2<- as.Date("2020-01-06")
+dates_vline3<- as.Date("2020-02-28")
+# get data of change of baseline
+dates_vline4<- as.Date("2020-03-25")
+dates_vline5 <- as.Date("2020-04-27")
+dates_vline6 <- as.Date("2020-10-15")
+# for line in a graph
+
+# for line in a graph
+#
+dates_vline1b <- which(carep$day %in% dates_vline1)
+dates_vline2b <- which(carep$day %in% dates_vline2)
+dates_vline3b <- which(carep$day %in% dates_vline3)
+dates_vline4b <- which(carep$day %in% dates_vline4)
+dates_vline5b <- which(carep$day %in% dates_vline5)
+dates_vline6b <- which(carep$day %in% dates_vline6)
+
+
+tline <- ggplot(carep, aes(day, n)) +
+  geom_col(aes(fill = condition)) + scale_x_date(date_labels = "%b/%Y", limits = c(as.Date("2019-06-20"), as.Date("2020-10-15")))  + 
+  scale_y_continuous(limits = c(0, 1000))  +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline1b]),
+             col = "red",
+             linetype = "dashed") +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline2b]),
+             col = "red") +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline3b]),
+             col = "red",
+             linetype = "dashed") +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline4b]),
+             col = "red",
+             linetype = "dashed") +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline5b]),
+             col = "red",
+             linetype = "dashed") + 
+  xlab("NZAVS Waves 10 and 11 daily counts: repeated measures") + ylab("Count of Responses")  + theme_classic() +   scale_fill_viridis_d() + theme(
+    legend.position = "top",
+    legend.text = element_text(size = 6),
+    legend.title = element_text(color = "Black", size = 8)
+  ) +
+  # annotate(
+  #   "rect",
+  #   xmin = as.Date("2019-06-20"),
+  #   xmax = dates_vline1,
+  #   ymin = 0,
+  #   ymax = 1000,
+  #   alpha = .1,
+  #   fill = "darkblue"
+  # )  +
+  # annotate(
+  #   "rect",
+  #   xmin = dates_vline1,
+  #   xmax = dates_vline6,
+  #   ymin = 0,
+  #   ymax = 1000,
+  #   alpha = .001
+  # ) +
+  # annotate(
+  #   geom = "curve",
+  #   x = as.Date("2019-06-20"),
+  #   y = 750,
+  #   xend = as.Date("2019-10-15"),
+  #   yend = 800,
+  #   curvature = -.2,
+  #   arrow = arrow(length = unit(2, "mm"))
+  # ) +
+  # annotate(
+  #   geom = "curve",
+  #   x = as.Date("2019-06-20"),
+  #   y = 750,
+  #   xend = as.Date("2020-01-30"),
+  #   yend = 850,
+  #   curvature = -.2,
+  #   arrow = arrow(length = unit(2, "mm"))
+  # ) +
+  # annotate(
+  #   geom = "curve",
+  #   x = as.Date("2019-06-20"),
+  #   y = 750,
+  #   xend = as.Date("2020-03-10"),
+  #   yend = 875,
+  #   curvature = -.2,
+  #   arrow = arrow(length = unit(2, "mm"))
+  # ) +
+  # annotate(
+  #   geom = "curve",
+  #   x = as.Date("2019-06-20"),
+  #   y = 750,
+  #   xend = as.Date("2020-04-10"),
+  #   yend = 900,
+  #   curvature = -.2,
+  #   arrow = arrow(length = unit(2, "mm"))
+  # ) +
+  # annotate(
+  #   geom = "curve",
+  #   x = as.Date("2019-06-20"),
+  #   y = 750,
+  #   xend = as.Date("2020-06-10"),
+  #   yend = 925,
+  #   curvature = -.2,
+  #   arrow = arrow(length = unit(2, "mm"))
+  # ) +
+  annotate("text",
+           x = as.Date("2019-06-20"),
+           y = 755,
+           label = "0") +
+  annotate("text",
+           x = as.Date("2019-10-25"),
+           y = 800,
+           label = "1") + 
+   annotate("text",
+           x = as.Date("2020-02-10"),
+           y = 850,
+           label = "2") + 
+  annotate("text",
+           x = as.Date("2020-03-15"),
+           y = 875,
+           label = "3") +
+  annotate("text",
+           x = as.Date("2020-04-20"),
+           y = 900,
+           label = "4") +
+  annotate("text",
+           x = as.Date("2020-06-10"),
+           y = 925,
+           label = "5")
+```
+
+
+
+
+
+
+## The New Zealand Attitudes and Values Study
+
+-   Planned 20-year longitudinal study, currently in its 12$^{th}$ year.
+-   Sample frame drawn randomly from NZ Electoral Roll.
+-   Postal questionnaire (coverage; retention \~ 80%)
+-   Focus on personality, social attitudes, values, religion,
+    meaning-making, perfectionism, virtues, habits, employment,
+    experiences of discrimination, physical and psychological health,
+    and environmental attitudes ...
+-   Current sample contains `36524` unique people, which is $>$ 1% of
+    the NZ adult population.
+-   Here, *N* = `r  length(unique(cv$Id))` longitudinal participants who responded
+    to **both** 2019/20 NZAVS waves.
+
+## 
+
+
+
+```{r cache = TRUE}
+# GRAPH
+tline + plot_annotation(title = "NZAVS COVID timeline", 
+subtitle = "")
+```
+
+
+
+
+
+## First we check for balance and generate IPW for the conditions
+
+There is some unbalence with respect to key indicators
+
+
+Weight data and check weights
+```{r}
+cobalt::bal.tab(Covid_Timeline ~ Partner + Age + Male + Relid + Urban + EthnicCats + Edu,
+        data = cv, estimand = "ATE", m.threshold = .05)
+
+
+w_out <- WeightIt::weightit(Covid_Timeline ~ Partner  + Age + Male + Relid  + Urban + Edu  + EthnicCats,
+        data = cv, estimand = "ATE", method = "ebal", stabilize = TRUE)
+
+summary(w_out)
+```
+
+Inspect weights:
+
+```{r}
+cobalt::bal.tab(w_out, m.threshold = .05, disp.v.ratio = TRUE)
+
+#sum(w_out$ipw.weights >= 10)
+
+# create data frame
+cv19w <- cv %>% 
+  mutate(ipw = w_out$weights)
+```
+
+
+## Estimate model
+
+Model 
+
+```{r}
+SCIENCE.TRUST  <- glm(
+  SCIENCE.TRUST ~ Covid_Timeline,
+  data = cv19w,
+  weights = ipw
+)
+```
+
+Estimated marginal means: strong boost to Trust in Science during lockdown, which was dropped somewhat after lockdown. 
+
+
+
+```{r}
+# estimated marginal means
+means <-  estimate_means(SCIENCE.TRUST, at = "Covid_Timeline") 
+
+# print
+means%>%
+  print_html()
+```
+
+
+
+Post-hoc contrasts
+
+```{r}
+#
+contrasts <-  estimate_contrasts(SCIENCE.TRUST, contrast = "Covid_Timeline", adjust = "bonferroni") 
+contrasts%>%
+  print_html()
+```
+
+
+
+Graph of the expected (marginal) means .
+
+
+```{r}
+#plot(means, alpha =.005) 
+ggplot(cv19w, aes(x = Covid_Timeline, y = SCIENCE.TRUST)) +
+  # Add base data
+  geom_violin(aes(fill = Covid_Timeline, alpha=.02), color = "white") +
+  geom_jitter2(width = 0.05, alpha = 0.005) +
+  # Add pointrange and line from means 
+  geom_line(data = means, aes(y = Mean, group = 1), size = 1) +
+  geom_pointrange(
+    data = means,
+    aes(y = Mean, ymin = CI_low, ymax = CI_high),
+    size = 1,
+    color = "white"
+  ) +
+  # Improve colors
+  scale_fill_material() +
+  theme_modern()
+```
+
+```{r, eval = FALSE}
+# Hard to read
+plot(ggeffects::ggemmeans(SCIENCE.TRUST, terms = "Covid_Timeline"),add.data=TRUE, dot.alpha =.005)
+```
+
+
+
+Trust in science increased, and then dropped. The key question, will it trust revert to baseline (or worse)?  Below another graph of the same result.
+```{r}
+plot(ggeffects::ggemmeans(SCIENCE.TRUST, terms = "Covid_Timeline"))
+```
