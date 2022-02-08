@@ -18,7 +18,20 @@ bibliography: bibliography.bib
 
 
 ```{r load_libraries, include=FALSE}
-# see: https://github.com/rjknell/Ioslides_css
+# setup
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  layout = "l-body-outset",
+  fig.width = 16,
+  fig.height = 9,
+  collapse = TRUE,
+  R.options = list(width = 60
+)
+  )
+
+
 library("tidyverse")
 library("easystats")
 library("patchwork")
@@ -370,9 +383,7 @@ tline <- ggplot(carep, aes(day, n)) +
 
 ## 
 
-
-
-```{r cache = TRUE}
+```{r eval=FALSE}
 # GRAPH
 tline + plot_annotation(title = "NZAVS COVID timeline", 
 subtitle = "")
@@ -424,11 +435,9 @@ SCIENCE.TRUST  <- glm(
 )
 ```
 
-Estimated marginal means: strong boost to Trust in Science during lockdown, which was dropped somewhat after lockdown. 
 
 
-
-```{r}
+```{r, eval=TRUE}
 # estimated marginal means
 means <-  estimate_means(SCIENCE.TRUST, at = "Covid_Timeline") 
 
@@ -438,10 +447,7 @@ means%>%
 ```
 
 
-
-Post-hoc contrasts
-
-```{r}
+```{r, evalue = FALSE}
 #
 contrasts <-  estimate_contrasts(SCIENCE.TRUST, contrast = "Covid_Timeline", adjust = "bonferroni") 
 contrasts%>%
@@ -450,21 +456,21 @@ contrasts%>%
 
 
 
-Graph of the expected (marginal) means .
+Graph of the expected (marginal) means:
 
 
 ```{r}
 #plot(means, alpha =.005) 
 ggplot(cv19w, aes(x = Covid_Timeline, y = SCIENCE.TRUST)) +
   # Add base data
-  geom_violin(aes(fill = Covid_Timeline, alpha=.02), color = "white") +
+  geom_violin(aes(fill = Covid_Timeline), color = "white") +
   geom_jitter2(width = 0.05, alpha = 0.005) +
   # Add pointrange and line from means 
-  geom_line(data = means, aes(y = Mean, group = 1), size = 1) +
+  geom_line(data = means, aes(y = Mean, group = 1), size = .3) +
   geom_pointrange(
     data = means,
     aes(y = Mean, ymin = CI_low, ymax = CI_high),
-    size = 1,
+    size = .3,
     color = "white"
   ) +
   # Improve colors
@@ -479,7 +485,12 @@ plot(ggeffects::ggemmeans(SCIENCE.TRUST, terms = "Covid_Timeline"),add.data=TRUE
 
 
 
-Trust in science increased, and then dropped. The key question, will it trust revert to baseline (or worse)?  Below another graph of the same result.
+Trust in science increased, and then dropped. The key question, will it trust revert to baseline (or worse)?  
+
+
+Below another graph of the same result.
+
+
 ```{r}
 plot(ggeffects::ggemmeans(SCIENCE.TRUST, terms = "Covid_Timeline"))
 ```

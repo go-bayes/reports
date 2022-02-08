@@ -23,8 +23,8 @@ output:
 ---
  
 
-I'm a professor of psychology in the Faculty of Science at Victoria University of Wellington. I work in the areas of cultural evolution, religion, longitudinal research, psychological distress, and the good life. I like to run, play bass, and code.
+I'm a professor of psychology in the Faculty of Science at Victoria University of Wellington. I work in the areas of cultural evolution, religion, longitudinal research, psychological distress, and the good life. 
 
-The views expressed here are my own, and, where indicated, of my collaborators. 
+The views expressed here are my own, and, where indicated, also of my collaborators. 
 
 My email contact is: joseph.bulbulia@vuw.ac.nz

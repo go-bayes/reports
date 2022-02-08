@@ -102,9 +102,9 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 <meta property="og:title" content="Reports: How did New Zealand&#39;s first Covid lockdown affect Trust in Science (and for how long)?"/>
 <meta property="og:type" content="article"/>
 <meta property="og:url" content="https://go-bayes.github.io/reports/posts/covscience/"/>
-<meta property="og:image" content="https://go-bayes.github.io/reports/posts/covscience/covsci_files/figure-html5/unnamed-chunk-3-1.png"/>
-<meta property="og:image:width" content="1248"/>
-<meta property="og:image:height" content="768"/>
+<meta property="og:image" content="https://go-bayes.github.io/reports/posts/covscience/covsci_files/figure-html5/unnamed-chunk-9-1.png"/>
+<meta property="og:image:width" content="3072"/>
+<meta property="og:image:height" content="1728"/>
 <meta property="og:locale" content="en_US"/>
 <meta property="og:site_name" content="Reports"/>
 
@@ -112,9 +112,9 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 <meta property="twitter:card" content="summary_large_image"/>
 <meta property="twitter:title" content="Reports: How did New Zealand&#39;s first Covid lockdown affect Trust in Science (and for how long)?"/>
 <meta property="twitter:url" content="https://go-bayes.github.io/reports/posts/covscience/"/>
-<meta property="twitter:image" content="https://go-bayes.github.io/reports/posts/covscience/covsci_files/figure-html5/unnamed-chunk-3-1.png"/>
-<meta property="twitter:image:width" content="1248"/>
-<meta property="twitter:image:height" content="768"/>
+<meta property="twitter:image" content="https://go-bayes.github.io/reports/posts/covscience/covsci_files/figure-html5/unnamed-chunk-9-1.png"/>
+<meta property="twitter:image:width" content="3072"/>
+<meta property="twitter:image:height" content="1728"/>
 <meta property="twitter:site" content="@go_bayes"/>
 <meta property="twitter:creator" content="@go_bayes"/>
 
@@ -2413,7 +2413,7 @@ gtag('config', 'G-RHXJDBVMBK');
 </nav>
 </div>
 <p>Here we estimate the effects of the COVID-19 pandemic on Trust in Science at various stages of the pandemic in New Zealand.</p>
-<div class="layout-chunk" data-layout="l-body">
+<div class="layout-chunk" data-layout="l-body-outset">
 <details>
 <summary>
 Show code
@@ -2567,7 +2567,7 @@ Show code
 </div>
 </details>
 </div>
-<div class="layout-chunk" data-layout="l-body">
+<div class="layout-chunk" data-layout="l-body-outset">
 <details>
 <summary>
 Show code
@@ -2746,7 +2746,7 @@ Show code
 <li>Here, <em>N</em> = 42684 longitudinal participants who responded to <strong>both</strong> 2019/20 NZAVS waves.</li>
 </ul>
 <h2 id="section"></h2>
-<div class="layout-chunk" data-layout="l-body">
+<div class="layout-chunk" data-layout="l-body-outset">
 <details>
 <summary>
 Show code
@@ -2758,12 +2758,11 @@ subtitle <span class='op'>=</span> <span class='st'>""</span><span class='op'>)<
 </code></pre>
 </div>
 </details>
-<p><img src="covsci_files/figure-html5/unnamed-chunk-3-1.png" width="624" /></p>
 </div>
 <h2 id="first-we-check-for-balance-and-generate-ipw-for-the-conditions">First we check for balance and generate IPW for the conditions</h2>
 <p>There is some unbalence with respect to key indicators</p>
 Weight data and check weights
-<div class="layout-chunk" data-layout="l-body">
+<div class="layout-chunk" data-layout="l-body-outset">
 <details>
 <summary>
 Show code
@@ -2820,7 +2819,9 @@ All    24034   2827       2950     3511         9362</code></pre>
 Show code
 </summary>
 <div class="sourceCode">
-<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>w_out</span> <span class='op'>&lt;-</span> <span class='fu'>WeightIt</span><span class='fu'>::</span><span class='fu'><a href='https://ngreifer.github.io/WeightIt/reference/weightit.html'>weightit</a></span><span class='op'>(</span><span class='va'>Covid_Timeline</span> <span class='op'>~</span> <span class='va'>Partner</span>  <span class='op'>+</span> <span class='va'>Age</span> <span class='op'>+</span> <span class='va'>Male</span> <span class='op'>+</span> <span class='va'>Relid</span>  <span class='op'>+</span> <span class='va'>Urban</span> <span class='op'>+</span> <span class='va'>Edu</span>  <span class='op'>+</span> <span class='va'>EthnicCats</span>,
+<pre class="sourceCode r"><code class="sourceCode r">
+
+<span class='va'>w_out</span> <span class='op'>&lt;-</span> <span class='fu'>WeightIt</span><span class='fu'>::</span><span class='fu'><a href='https://ngreifer.github.io/WeightIt/reference/weightit.html'>weightit</a></span><span class='op'>(</span><span class='va'>Covid_Timeline</span> <span class='op'>~</span> <span class='va'>Partner</span>  <span class='op'>+</span> <span class='va'>Age</span> <span class='op'>+</span> <span class='va'>Male</span> <span class='op'>+</span> <span class='va'>Relid</span>  <span class='op'>+</span> <span class='va'>Urban</span> <span class='op'>+</span> <span class='va'>Edu</span>  <span class='op'>+</span> <span class='va'>EthnicCats</span>,
         data <span class='op'>=</span> <span class='va'>cv</span>, estimand <span class='op'>=</span> <span class='st'>"ATE"</span>, method <span class='op'>=</span> <span class='st'>"ebal"</span>, stabilize <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
 
 <span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span><span class='op'>(</span><span class='va'>w_out</span><span class='op'>)</span>
@@ -2862,12 +2863,15 @@ PostLockdown       0.144 0.103   0.010       0
 
 - Effective Sample Sizes:
 
-           Baseline  JanFeb EarlyMarch Lockdown PostLockdown
-Unweighted 24034.   2827.      2950.     3511.       9362.  
-Weighted   23896.62 2771.82    2677.67   3271.9      9172.54</code></pre>
+           Baseline  JanFeb EarlyMarch Lockdown
+Unweighted 24034.   2827.      2950.     3511. 
+Weighted   23896.62 2771.82    2677.67   3271.9
+           PostLockdown
+Unweighted      9362.  
+Weighted        9172.54</code></pre>
 </div>
 <p>Inspect weights:</p>
-<div class="layout-chunk" data-layout="l-body">
+<div class="layout-chunk" data-layout="l-body-outset">
 <details>
 <summary>
 Show code
@@ -2948,15 +2952,19 @@ Variable with the greatest mean difference
     Relid       0.0002 Balanced, &lt;0.05
 
 Effective sample sizes
-           Baseline  JanFeb EarlyMarch Lockdown PostLockdown
-Unadjusted 24034.   2827.      2950.     3511.       9362.  
-Adjusted   23896.62 2771.82    2677.67   3271.9      9172.54</code></pre>
+           Baseline  JanFeb EarlyMarch Lockdown
+Unadjusted 24034.   2827.      2950.     3511. 
+Adjusted   23896.62 2771.82    2677.67   3271.9
+           PostLockdown
+Unadjusted      9362.  
+Adjusted        9172.54</code></pre>
 <details>
 <summary>
 Show code
 </summary>
 <div class="sourceCode">
-<pre class="sourceCode r"><code class="sourceCode r"><span class='co'>#sum(w_out$ipw.weights &gt;= 10)</span>
+<pre class="sourceCode r"><code class="sourceCode r">
+<span class='co'>#sum(w_out$ipw.weights &gt;= 10)</span>
 
 <span class='co'># create data frame</span>
 <span class='va'>cv19w</span> <span class='op'>&lt;-</span> <span class='va'>cv</span> <span class='op'><a href='https://magrittr.tidyverse.org/reference/pipe.html'>%&gt;%</a></span> 
@@ -2967,7 +2975,7 @@ Show code
 </div>
 <h2 id="estimate-model">Estimate model</h2>
 <p>Model</p>
-<div class="layout-chunk" data-layout="l-body">
+<div class="layout-chunk" data-layout="l-body-outset">
 <details>
 <summary>
 Show code
@@ -2982,8 +2990,7 @@ Show code
 </div>
 </details>
 </div>
-<p>Estimated marginal means: strong boost to Trust in Science during lockdown, which was dropped somewhat after lockdown.</p>
-<div class="layout-chunk" data-layout="l-body">
+<div class="layout-chunk" data-layout="l-body-outset">
 <details>
 <summary>
 Show code
@@ -2998,12 +3005,12 @@ Show code
 </code></pre>
 </div>
 </details>
-<div id="ibvnccfcsg" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<div id="ysgbxwrlkn" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
 <style>html {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', 'Fira Sans', 'Droid Sans', Arial, sans-serif;
 }
 
-#ibvnccfcsg .gt_table {
+#ysgbxwrlkn .gt_table {
   display: table;
   border-collapse: collapse;
   margin-left: auto;
@@ -3028,7 +3035,7 @@ Show code
   border-left-color: #D3D3D3;
 }
 
-#ibvnccfcsg .gt_heading {
+#ysgbxwrlkn .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -3040,7 +3047,7 @@ Show code
   border-right-color: #D3D3D3;
 }
 
-#ibvnccfcsg .gt_title {
+#ysgbxwrlkn .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -3050,7 +3057,7 @@ Show code
   border-bottom-width: 0;
 }
 
-#ibvnccfcsg .gt_subtitle {
+#ysgbxwrlkn .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -3060,13 +3067,13 @@ Show code
   border-top-width: 0;
 }
 
-#ibvnccfcsg .gt_bottom_border {
+#ysgbxwrlkn .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#ibvnccfcsg .gt_col_headings {
+#ysgbxwrlkn .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -3081,7 +3088,7 @@ Show code
   border-right-color: #D3D3D3;
 }
 
-#ibvnccfcsg .gt_col_heading {
+#ysgbxwrlkn .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3101,7 +3108,7 @@ Show code
   overflow-x: hidden;
 }
 
-#ibvnccfcsg .gt_column_spanner_outer {
+#ysgbxwrlkn .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3113,15 +3120,15 @@ Show code
   padding-right: 4px;
 }
 
-#ibvnccfcsg .gt_column_spanner_outer:first-child {
+#ysgbxwrlkn .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#ibvnccfcsg .gt_column_spanner_outer:last-child {
+#ysgbxwrlkn .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#ibvnccfcsg .gt_column_spanner {
+#ysgbxwrlkn .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -3133,7 +3140,7 @@ Show code
   width: 100%;
 }
 
-#ibvnccfcsg .gt_group_heading {
+#ysgbxwrlkn .gt_group_heading {
   padding: 8px;
   color: #333333;
   background-color: #FFFFFF;
@@ -3155,7 +3162,7 @@ Show code
   vertical-align: middle;
 }
 
-#ibvnccfcsg .gt_empty_group_heading {
+#ysgbxwrlkn .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -3170,15 +3177,15 @@ Show code
   vertical-align: middle;
 }
 
-#ibvnccfcsg .gt_from_md > :first-child {
+#ysgbxwrlkn .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#ibvnccfcsg .gt_from_md > :last-child {
+#ysgbxwrlkn .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#ibvnccfcsg .gt_row {
+#ysgbxwrlkn .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3197,7 +3204,7 @@ Show code
   overflow-x: hidden;
 }
 
-#ibvnccfcsg .gt_stub {
+#ysgbxwrlkn .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3209,7 +3216,7 @@ Show code
   padding-left: 12px;
 }
 
-#ibvnccfcsg .gt_summary_row {
+#ysgbxwrlkn .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -3219,7 +3226,7 @@ Show code
   padding-right: 5px;
 }
 
-#ibvnccfcsg .gt_first_summary_row {
+#ysgbxwrlkn .gt_first_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3229,7 +3236,7 @@ Show code
   border-top-color: #D3D3D3;
 }
 
-#ibvnccfcsg .gt_grand_summary_row {
+#ysgbxwrlkn .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -3239,7 +3246,7 @@ Show code
   padding-right: 5px;
 }
 
-#ibvnccfcsg .gt_first_grand_summary_row {
+#ysgbxwrlkn .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3249,11 +3256,11 @@ Show code
   border-top-color: #D3D3D3;
 }
 
-#ibvnccfcsg .gt_striped {
+#ysgbxwrlkn .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#ibvnccfcsg .gt_table_body {
+#ysgbxwrlkn .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -3262,7 +3269,7 @@ Show code
   border-bottom-color: #D3D3D3;
 }
 
-#ibvnccfcsg .gt_footnotes {
+#ysgbxwrlkn .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -3276,13 +3283,13 @@ Show code
   border-right-color: #D3D3D3;
 }
 
-#ibvnccfcsg .gt_footnote {
+#ysgbxwrlkn .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding: 4px;
 }
 
-#ibvnccfcsg .gt_sourcenotes {
+#ysgbxwrlkn .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -3296,41 +3303,41 @@ Show code
   border-right-color: #D3D3D3;
 }
 
-#ibvnccfcsg .gt_sourcenote {
+#ysgbxwrlkn .gt_sourcenote {
   font-size: 90%;
   padding: 4px;
 }
 
-#ibvnccfcsg .gt_left {
+#ysgbxwrlkn .gt_left {
   text-align: left;
 }
 
-#ibvnccfcsg .gt_center {
+#ysgbxwrlkn .gt_center {
   text-align: center;
 }
 
-#ibvnccfcsg .gt_right {
+#ysgbxwrlkn .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#ibvnccfcsg .gt_font_normal {
+#ysgbxwrlkn .gt_font_normal {
   font-weight: normal;
 }
 
-#ibvnccfcsg .gt_font_bold {
+#ysgbxwrlkn .gt_font_bold {
   font-weight: bold;
 }
 
-#ibvnccfcsg .gt_font_italic {
+#ysgbxwrlkn .gt_font_italic {
   font-style: italic;
 }
 
-#ibvnccfcsg .gt_super {
+#ysgbxwrlkn .gt_super {
   font-size: 65%;
 }
 
-#ibvnccfcsg .gt_footnote_marks {
+#ysgbxwrlkn .gt_footnote_marks {
   font-style: italic;
   font-weight: normal;
   font-size: 65%;
@@ -3392,8 +3399,7 @@ Marginal means estimated at Covid_Timeline</td>
 </table>
 </div>
 </div>
-<p>Post-hoc contrasts</p>
-<div class="layout-chunk" data-layout="l-body">
+<div class="layout-chunk" data-layout="l-body-outset">
 <details>
 <summary>
 Show code
@@ -3406,12 +3412,12 @@ Show code
 </code></pre>
 </div>
 </details>
-<div id="ylmrppadem" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<div id="wvxntjhweg" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
 <style>html {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', 'Fira Sans', 'Droid Sans', Arial, sans-serif;
 }
 
-#ylmrppadem .gt_table {
+#wvxntjhweg .gt_table {
   display: table;
   border-collapse: collapse;
   margin-left: auto;
@@ -3436,7 +3442,7 @@ Show code
   border-left-color: #D3D3D3;
 }
 
-#ylmrppadem .gt_heading {
+#wvxntjhweg .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -3448,7 +3454,7 @@ Show code
   border-right-color: #D3D3D3;
 }
 
-#ylmrppadem .gt_title {
+#wvxntjhweg .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -3458,7 +3464,7 @@ Show code
   border-bottom-width: 0;
 }
 
-#ylmrppadem .gt_subtitle {
+#wvxntjhweg .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -3468,13 +3474,13 @@ Show code
   border-top-width: 0;
 }
 
-#ylmrppadem .gt_bottom_border {
+#wvxntjhweg .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#ylmrppadem .gt_col_headings {
+#wvxntjhweg .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -3489,7 +3495,7 @@ Show code
   border-right-color: #D3D3D3;
 }
 
-#ylmrppadem .gt_col_heading {
+#wvxntjhweg .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3509,7 +3515,7 @@ Show code
   overflow-x: hidden;
 }
 
-#ylmrppadem .gt_column_spanner_outer {
+#wvxntjhweg .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3521,15 +3527,15 @@ Show code
   padding-right: 4px;
 }
 
-#ylmrppadem .gt_column_spanner_outer:first-child {
+#wvxntjhweg .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#ylmrppadem .gt_column_spanner_outer:last-child {
+#wvxntjhweg .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#ylmrppadem .gt_column_spanner {
+#wvxntjhweg .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -3541,7 +3547,7 @@ Show code
   width: 100%;
 }
 
-#ylmrppadem .gt_group_heading {
+#wvxntjhweg .gt_group_heading {
   padding: 8px;
   color: #333333;
   background-color: #FFFFFF;
@@ -3563,7 +3569,7 @@ Show code
   vertical-align: middle;
 }
 
-#ylmrppadem .gt_empty_group_heading {
+#wvxntjhweg .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -3578,15 +3584,15 @@ Show code
   vertical-align: middle;
 }
 
-#ylmrppadem .gt_from_md > :first-child {
+#wvxntjhweg .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#ylmrppadem .gt_from_md > :last-child {
+#wvxntjhweg .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#ylmrppadem .gt_row {
+#wvxntjhweg .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3605,7 +3611,7 @@ Show code
   overflow-x: hidden;
 }
 
-#ylmrppadem .gt_stub {
+#wvxntjhweg .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3617,7 +3623,7 @@ Show code
   padding-left: 12px;
 }
 
-#ylmrppadem .gt_summary_row {
+#wvxntjhweg .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -3627,7 +3633,7 @@ Show code
   padding-right: 5px;
 }
 
-#ylmrppadem .gt_first_summary_row {
+#wvxntjhweg .gt_first_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3637,7 +3643,7 @@ Show code
   border-top-color: #D3D3D3;
 }
 
-#ylmrppadem .gt_grand_summary_row {
+#wvxntjhweg .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -3647,7 +3653,7 @@ Show code
   padding-right: 5px;
 }
 
-#ylmrppadem .gt_first_grand_summary_row {
+#wvxntjhweg .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3657,11 +3663,11 @@ Show code
   border-top-color: #D3D3D3;
 }
 
-#ylmrppadem .gt_striped {
+#wvxntjhweg .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#ylmrppadem .gt_table_body {
+#wvxntjhweg .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -3670,7 +3676,7 @@ Show code
   border-bottom-color: #D3D3D3;
 }
 
-#ylmrppadem .gt_footnotes {
+#wvxntjhweg .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -3684,13 +3690,13 @@ Show code
   border-right-color: #D3D3D3;
 }
 
-#ylmrppadem .gt_footnote {
+#wvxntjhweg .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding: 4px;
 }
 
-#ylmrppadem .gt_sourcenotes {
+#wvxntjhweg .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -3704,41 +3710,41 @@ Show code
   border-right-color: #D3D3D3;
 }
 
-#ylmrppadem .gt_sourcenote {
+#wvxntjhweg .gt_sourcenote {
   font-size: 90%;
   padding: 4px;
 }
 
-#ylmrppadem .gt_left {
+#wvxntjhweg .gt_left {
   text-align: left;
 }
 
-#ylmrppadem .gt_center {
+#wvxntjhweg .gt_center {
   text-align: center;
 }
 
-#ylmrppadem .gt_right {
+#wvxntjhweg .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#ylmrppadem .gt_font_normal {
+#wvxntjhweg .gt_font_normal {
   font-weight: normal;
 }
 
-#ylmrppadem .gt_font_bold {
+#wvxntjhweg .gt_font_bold {
   font-weight: bold;
 }
 
-#ylmrppadem .gt_font_italic {
+#wvxntjhweg .gt_font_italic {
   font-style: italic;
 }
 
-#ylmrppadem .gt_super {
+#wvxntjhweg .gt_super {
   font-size: 65%;
 }
 
-#ylmrppadem .gt_footnote_marks {
+#wvxntjhweg .gt_footnote_marks {
   font-style: italic;
   font-weight: normal;
   font-size: 65%;
@@ -3870,8 +3876,8 @@ p-value adjustment method: Bonferroni</td>
 </table>
 </div>
 </div>
-<p>Graph of the expected (marginal) means .</p>
-<div class="layout-chunk" data-layout="l-body">
+<p>Graph of the expected (marginal) means:</p>
+<div class="layout-chunk" data-layout="l-body-outset">
 <details>
 <summary>
 Show code
@@ -3880,14 +3886,14 @@ Show code
 <pre class="sourceCode r"><code class="sourceCode r"><span class='co'>#plot(means, alpha =.005) </span>
 <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/ggplot.html'>ggplot</a></span><span class='op'>(</span><span class='va'>cv19w</span>, <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/aes.html'>aes</a></span><span class='op'>(</span>x <span class='op'>=</span> <span class='va'>Covid_Timeline</span>, y <span class='op'>=</span> <span class='va'>SCIENCE.TRUST</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>+</span>
   <span class='co'># Add base data</span>
-  <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/geom_violin.html'>geom_violin</a></span><span class='op'>(</span><span class='fu'><a href='https://ggplot2.tidyverse.org/reference/aes.html'>aes</a></span><span class='op'>(</span>fill <span class='op'>=</span> <span class='va'>Covid_Timeline</span>, alpha<span class='op'>=</span><span class='fl'>.02</span><span class='op'>)</span>, color <span class='op'>=</span> <span class='st'>"white"</span><span class='op'>)</span> <span class='op'>+</span>
+  <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/geom_violin.html'>geom_violin</a></span><span class='op'>(</span><span class='fu'><a href='https://ggplot2.tidyverse.org/reference/aes.html'>aes</a></span><span class='op'>(</span>fill <span class='op'>=</span> <span class='va'>Covid_Timeline</span><span class='op'>)</span>, color <span class='op'>=</span> <span class='st'>"white"</span><span class='op'>)</span> <span class='op'>+</span>
   <span class='fu'>geom_jitter2</span><span class='op'>(</span>width <span class='op'>=</span> <span class='fl'>0.05</span>, alpha <span class='op'>=</span> <span class='fl'>0.005</span><span class='op'>)</span> <span class='op'>+</span>
   <span class='co'># Add pointrange and line from means </span>
-  <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/geom_path.html'>geom_line</a></span><span class='op'>(</span>data <span class='op'>=</span> <span class='va'>means</span>, <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/aes.html'>aes</a></span><span class='op'>(</span>y <span class='op'>=</span> <span class='va'>Mean</span>, group <span class='op'>=</span> <span class='fl'>1</span><span class='op'>)</span>, size <span class='op'>=</span> <span class='fl'>1</span><span class='op'>)</span> <span class='op'>+</span>
+  <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/geom_path.html'>geom_line</a></span><span class='op'>(</span>data <span class='op'>=</span> <span class='va'>means</span>, <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/aes.html'>aes</a></span><span class='op'>(</span>y <span class='op'>=</span> <span class='va'>Mean</span>, group <span class='op'>=</span> <span class='fl'>1</span><span class='op'>)</span>, size <span class='op'>=</span> <span class='fl'>.3</span><span class='op'>)</span> <span class='op'>+</span>
   <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/geom_linerange.html'>geom_pointrange</a></span><span class='op'>(</span>
     data <span class='op'>=</span> <span class='va'>means</span>,
     <span class='fu'><a href='https://ggplot2.tidyverse.org/reference/aes.html'>aes</a></span><span class='op'>(</span>y <span class='op'>=</span> <span class='va'>Mean</span>, ymin <span class='op'>=</span> <span class='va'>CI_low</span>, ymax <span class='op'>=</span> <span class='va'>CI_high</span><span class='op'>)</span>,
-    size <span class='op'>=</span> <span class='fl'>1</span>,
+    size <span class='op'>=</span> <span class='fl'>.3</span>,
     color <span class='op'>=</span> <span class='st'>"white"</span>
   <span class='op'>)</span> <span class='op'>+</span>
   <span class='co'># Improve colors</span>
@@ -3896,9 +3902,9 @@ Show code
 </code></pre>
 </div>
 </details>
-<p><img src="covsci_files/figure-html5/unnamed-chunk-9-1.png" width="624" /></p>
+<p><img src="covsci_files/figure-html5/unnamed-chunk-9-1.png" width="1536" /></p>
 </div>
-<div class="layout-chunk" data-layout="l-body">
+<div class="layout-chunk" data-layout="l-body-outset">
 <details>
 <summary>
 Show code
@@ -3910,8 +3916,9 @@ Show code
 </div>
 </details>
 </div>
-Trust in science increased, and then dropped. The key question, will it trust revert to baseline (or worse)? Below another graph of the same result.
-<div class="layout-chunk" data-layout="l-body">
+<p>Trust in science increased, and then dropped. The key question, will it trust revert to baseline (or worse)?</p>
+<p>Below another graph of the same result.</p>
+<div class="layout-chunk" data-layout="l-body-outset">
 <details>
 <summary>
 Show code
@@ -3921,7 +3928,7 @@ Show code
 </code></pre>
 </div>
 </details>
-<p><img src="covsci_files/figure-html5/unnamed-chunk-11-1.png" width="624" /></p>
+<p><img src="covsci_files/figure-html5/unnamed-chunk-11-1.png" width="1536" /></p>
 </div>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r distill-force-highlighting-css"><code class="sourceCode r"></code></pre></div>
 <!--radix_placeholder_article_footer-->

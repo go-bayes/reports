@@ -4,6 +4,7 @@ site: distill::distill_website
 listing: 
   posts:
     - nzavs
+    - covscience
     - nzavsnetwork
     - religious_simpsons_paradox
     - covid
