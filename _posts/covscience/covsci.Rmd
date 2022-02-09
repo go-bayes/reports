@@ -103,270 +103,27 @@ cv <- df %>%
     Partner,
     Employed,
     Sat.Government,
-    NZ.Business.Conditions,
-    NZ.Economic.Situation,
-    Rel.Conflict,
-    Rel.Satisfaction,
-    Hours.SocialMedia,
-    Hours.Exercise,
-    HoursCharity,
-    Hours.Internet,
-    Hours.News,
-    Hours.Family,
-    Hours.Friends,
-    Hours.Housework,
-    Hours.Children,
-    Hours.Religious,
-    Hours.Work,
-    Hours.Commute,
-    Hours.TV,
-    Hours.CompGames,
-    Hours.Community,
-    Family.Time,
-    Community.Time,
-    Friends.Time,
-    Family.Money,
-    Friends.Money,
-    Community.Money,
     Id,
-    Parent,
-    SWB.SatPWI02, # your health
-    Hours.Work,
-    Hours.Exercise,
-    LIFEMEANING,
-    KESSLER6,
-    KESSLER6sum,
     Age,
     Male,
-    Relid,
-    Pol.Orient,
     Urban,
-    GenCohort,
     Edu,
-    YearMeasured,
     Covid_Timeline,
-    HLTH.SleepHours,
-    HLTH.Fatigue,
-    LIFESAT,
-    PWI,
     EthnicCats,
-    NZdep,
-    Partner,
-    Pol.Orient,
-    Urban,
-    Euro,
-    Religious,
-    NZdep,
-    WSCORE,
-    Religion.Church,
-    Emp.JobSecure,
-    Emp.JobSat,
-    Emp.JobValued,
-    Alcohol.Intensity,
-    Alcohol.Frequency,
-    Your.Future.Security
+    Your.Personal.Relationships,
+    Urban
   ) %>%
   dplyr::mutate(
-    Urban = (Urban),
-    Euro = (Euro),
-    Religious = as.factor(Religious),
-    Your_Health = (SWB.SatPWI02),
-    Your_Future_Security = Your.Future.Security,
-    Covid_Timeline = as.factor(Covid_Timeline)
-  ) %>%
-  dplyr::mutate(
-    WSCORE = as.factor(WSCORE),
-    #EduC = scale(as.numeric(Edu), scale = F, center = TRUE),
-    Sat.Government = scale(Sat.Government),
-   # AgeDecadeC = scale(Age, scale = F, center = T) / 10,
-    Hours.Work10 = as.integer(Hours.Work) / 10,
-    Hours.Sleep = as.integer(HLTH.SleepHours),
-    Hours.Exercise = as.integer(Hours.Exercise),
-    Fatigue = as.integer(HLTH.Fatigue),
-    K6sum = as.integer(KESSLER6 * 6),
-    LIFEMEANING_S = scale(LIFEMEANING),
-    NZdepS = scale(NZdep),
-    PolOrientS = scale(Pol.Orient, scale = T, center = T),
-    Conservative = Pol.Orient,
-    logSM = log(Hours.SocialMedia + 1),
-    logINT = log(Hours.Internet + 1),
-    logEX = log(Hours.Exercise + 1),
-    logWK= log(Hours.Work + 1),
-    logCT = log(Hours.Commute + 1),
-    KESSLER6sum = as.integer(KESSLER6sum),
-    Alcohol.Intensity_S = scale(Alcohol.Intensity),
-    Alcohol.Frequency_S = scale(Alcohol.Frequency),
-    Hours.Work = as.integer(Hours.Work),
-    Hours.Exercise = as.integer(Hours.Exercise)  )%>%
-  dplyr::mutate(Covid_Timeline = forcats::fct_relevel(Covid_Timeline, ord_dates_class))
+    )%>%
+  dplyr::mutate(Covid_Timeline = forcats::fct_relevel(Covid_Timeline, ord_dates_class)) %>%
+  droplevels() %>%
+  drop_na() %>%
+  mutate(SCIENCE.TRUST_S = scale(SCIENCE.TRUST),
+         Sat.Government_S = scale(Sat.Government),
+         Your.Personal.Relationships_S = scale(Your.Personal.Relationships))
+
+
 ```
-
-
-```{r cache = TRUE}
-# covid timeline
-# 3665 days after 30 June 2009 Saturday 13 July 2019
-# 3842 days after 30 June 2009 Monday 6 January 2020
-# 3895 days after 30 June 2009 Friday 28 February 2020
-# 3921 days after 30 June 2009 WED MAR 25th
-library(lubridate)
-library(tidyverse)
-
-
-carep <- cv %>%
-  dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30) + TSCORE) %>%
-  count(day = floor_date(timeline, "day")) %>%
-dplyr::mutate(condition = ifelse(
-      day >= "2019-06-20" &
-        day < "2020-01-06",
-      "Baseline",
-      ifelse(
-        day >= "2020-01-06" & day < "2020-02-29",
-        "JanFeb",
-        ifelse(
-          day >= "2020-02-29" & day < "2020-03-25",
-          "EarlyMarch",
-          ifelse(
-            day >= "2020-03-25" &
-              day < "2020-04-28",
-            "Lockdown",
-            "PostLockdown"
-            ))))) %>%
-  dplyr::mutate(condition = forcats::fct_relevel(condition, ord_dates_class)) %>%
-  arrange(day)
-
-# get COVID date
-dates_vline1<- as.Date("2019-06-20")
-dates_vline2<- as.Date("2020-01-06")
-dates_vline3<- as.Date("2020-02-28")
-# get data of change of baseline
-dates_vline4<- as.Date("2020-03-25")
-dates_vline5 <- as.Date("2020-04-27")
-dates_vline6 <- as.Date("2020-10-15")
-# for line in a graph
-
-# for line in a graph
-#
-dates_vline1b <- which(carep$day %in% dates_vline1)
-dates_vline2b <- which(carep$day %in% dates_vline2)
-dates_vline3b <- which(carep$day %in% dates_vline3)
-dates_vline4b <- which(carep$day %in% dates_vline4)
-dates_vline5b <- which(carep$day %in% dates_vline5)
-dates_vline6b <- which(carep$day %in% dates_vline6)
-
-
-tline <- ggplot(carep, aes(day, n)) +
-  geom_col(aes(fill = condition)) + scale_x_date(date_labels = "%b/%Y", limits = c(as.Date("2019-06-20"), as.Date("2020-10-15")))  + 
-  scale_y_continuous(limits = c(0, 1000))  +
-  geom_vline(xintercept = as.numeric(carep$day[dates_vline1b]),
-             col = "red",
-             linetype = "dashed") +
-  geom_vline(xintercept = as.numeric(carep$day[dates_vline2b]),
-             col = "red") +
-  geom_vline(xintercept = as.numeric(carep$day[dates_vline3b]),
-             col = "red",
-             linetype = "dashed") +
-  geom_vline(xintercept = as.numeric(carep$day[dates_vline4b]),
-             col = "red",
-             linetype = "dashed") +
-  geom_vline(xintercept = as.numeric(carep$day[dates_vline5b]),
-             col = "red",
-             linetype = "dashed") + 
-  xlab("NZAVS Waves 10 and 11 daily counts: repeated measures") + ylab("Count of Responses")  + theme_classic() +   scale_fill_viridis_d() + theme(
-    legend.position = "top",
-    legend.text = element_text(size = 6),
-    legend.title = element_text(color = "Black", size = 8)
-  ) +
-  # annotate(
-  #   "rect",
-  #   xmin = as.Date("2019-06-20"),
-  #   xmax = dates_vline1,
-  #   ymin = 0,
-  #   ymax = 1000,
-  #   alpha = .1,
-  #   fill = "darkblue"
-  # )  +
-  # annotate(
-  #   "rect",
-  #   xmin = dates_vline1,
-  #   xmax = dates_vline6,
-  #   ymin = 0,
-  #   ymax = 1000,
-  #   alpha = .001
-  # ) +
-  # annotate(
-  #   geom = "curve",
-  #   x = as.Date("2019-06-20"),
-  #   y = 750,
-  #   xend = as.Date("2019-10-15"),
-  #   yend = 800,
-  #   curvature = -.2,
-  #   arrow = arrow(length = unit(2, "mm"))
-  # ) +
-  # annotate(
-  #   geom = "curve",
-  #   x = as.Date("2019-06-20"),
-  #   y = 750,
-  #   xend = as.Date("2020-01-30"),
-  #   yend = 850,
-  #   curvature = -.2,
-  #   arrow = arrow(length = unit(2, "mm"))
-  # ) +
-  # annotate(
-  #   geom = "curve",
-  #   x = as.Date("2019-06-20"),
-  #   y = 750,
-  #   xend = as.Date("2020-03-10"),
-  #   yend = 875,
-  #   curvature = -.2,
-  #   arrow = arrow(length = unit(2, "mm"))
-  # ) +
-  # annotate(
-  #   geom = "curve",
-  #   x = as.Date("2019-06-20"),
-  #   y = 750,
-  #   xend = as.Date("2020-04-10"),
-  #   yend = 900,
-  #   curvature = -.2,
-  #   arrow = arrow(length = unit(2, "mm"))
-  # ) +
-  # annotate(
-  #   geom = "curve",
-  #   x = as.Date("2019-06-20"),
-  #   y = 750,
-  #   xend = as.Date("2020-06-10"),
-  #   yend = 925,
-  #   curvature = -.2,
-  #   arrow = arrow(length = unit(2, "mm"))
-  # ) +
-  annotate("text",
-           x = as.Date("2019-06-20"),
-           y = 755,
-           label = "0") +
-  annotate("text",
-           x = as.Date("2019-10-25"),
-           y = 800,
-           label = "1") + 
-   annotate("text",
-           x = as.Date("2020-02-10"),
-           y = 850,
-           label = "2") + 
-  annotate("text",
-           x = as.Date("2020-03-15"),
-           y = 875,
-           label = "3") +
-  annotate("text",
-           x = as.Date("2020-04-20"),
-           y = 900,
-           label = "4") +
-  annotate("text",
-           x = as.Date("2020-06-10"),
-           y = 925,
-           label = "5")
-```
-
-
-
-
 
 
 ## The New Zealand Attitudes and Values Study
@@ -383,39 +140,37 @@ tline <- ggplot(carep, aes(day, n)) +
 -   Here, *N* = `r  length(unique(cv$Id))` longitudinal participants who responded
     to **both** 2019/20 NZAVS waves.
 
-## 
 
-```{r eval=FALSE}
-# GRAPH
-tline + plot_annotation(title = "NZAVS COVID timeline", 
-subtitle = "")
+
+# Table of participants per condition
+
+```{r}
+cv%>%
+  group_by(Covid_Timeline) %>%
+  count() %>%
+ kbl(caption = "NZAVS Respondents to Wave 11 of the NZAVS 2019-2020") %>%
+  kable_material(c("hover"))
 ```
 
 
 
+## Method
 
+### Inverse Probability Weighting
 
-## First we check for balance and generate IPW for the conditions
+To ensure balance across the condition in baseline covariates we use Inverse Probability Weighting. 
 
-There is some unbalence with respect to key indicators
-
-
-Weight data and check weights
 ```{r}
-cv19n <- cv%>%
-   dplyr::select(SCIENCE.TRUST, Sat.Government, Age,  Edu , EthnicCats , Male ,  Urban, Covid_Timeline, Id)%>%
-  droplevels() %>%
-  drop_na() %>%
-  mutate(SCIENCE.TRUST_S = scale(SCIENCE.TRUST),
-         Sat.Government_S = scale(Sat.Government))
 
+#IPW data and check weights
 
 cobalt::bal.tab(Covid_Timeline ~  Age + Edu + EthnicCats + Male  + Urban,
-        data = cv19n, estimand = "ATE", m.threshold = .05)
+        data = cv, estimand = "ATE", m.threshold = .05)
 
 
+# method by entropy balancing "which guarantees perfect balance on specified moments of the covariates while minimizing the entropy (a measure of dispersion) of the weights."
 w_out <- WeightIt::weightit(Covid_Timeline ~ Age + Edu + EthnicCats + Male + Urban,
-        data = cv19n, estimand = "ATE", method = "ebal", stabilize = TRUE)
+        data = cv, estimand = "ATE", method = "ebal")
 
 summary(w_out)
 ```
@@ -428,12 +183,12 @@ cobalt::bal.tab(w_out, m.threshold = .05, disp.v.ratio = TRUE)
 #sum(w_out$ipw.weights >= 10)
 
 # create data frame
-cv19w <- cv19n %>% 
+cv19w <- cv %>% 
   mutate(ipw = w_out$weights)
 ```
 
 
-## Estimate model
+### Estimate model
 
 Model 
 
@@ -446,6 +201,7 @@ SCIENCE.TRUST  <- glm(
 ```
 
 
+### Marginal means
 
 ```{r, eval=TRUE}
 # estimated marginal means
@@ -453,7 +209,7 @@ means <-  estimate_means(SCIENCE.TRUST, at = "Covid_Timeline")
 
 # print
 means%>%
-  print_html()
+  print_md()
 ```
 
 
@@ -461,7 +217,7 @@ means%>%
 #
 contrasts <-  estimate_contrasts(SCIENCE.TRUST, contrast = "Covid_Timeline", adjust = "bonferroni") 
 contrasts%>%
-  print_html()
+  print_md()
 ```
 
 
@@ -485,7 +241,9 @@ ggplot(cv19w, aes(x = Covid_Timeline, y = SCIENCE.TRUST)) +
   ) +
   # Improve colors
   scale_fill_material() +
-  theme_modern()
+  theme_modern() + 
+  scale_color_discrete()
+
 ```
 
 ```{r, eval = FALSE}
@@ -529,7 +287,6 @@ We observe that government satisfaction strongly mediates the effect of Lockdown
 
 ```{r eval=TRUE}
 med.out <- readRDS(here::here("_posts", "covscience","mods", "med.out.rds"))
-
 summary(med.out)
 ```
 
@@ -544,11 +301,11 @@ plot(med.out,
  We next contrast the Locdown with the period following lockdown in which there was declining trust in science. 
 
 
-## Sensitivity Analysis
+### Sensitivity Analysis
 
 
 ```{r eval=FALSE}
-sens.out <- medsens(med.out, rho.by = 0.25,  effect.type = "indirect", sims = 100)
+sens.out <- medsens(med.out, rho.by = 0.2,  effect.type = "indirect", sims = 100)
 # save sensitivity analysis
 saveRDS(sens.out, here::here("_posts", "covscience","mods", "sens.out.rds"))
 ```
@@ -558,7 +315,7 @@ Sensitivity plot reveals that for sequential ignorability to be violated, the co
 ```{r eval=FALSE}
 sens.out <- readRDS(sens.out, here::here("_posts", "covscience","mods", "sens.out.rds"))
 
-summary(sens.out)
+#summary(sens.out)
 plot(sens.out)
 #plot(sens.out, sens.par = "R2", r.type = "total", sign.prod = "positive")
 # This is the workhorse function for sensitivity analyses for average causal mediation effects. The sensitivity analysis can be used to assess the robustness of the findings from mediate to the violation of sequential ignorability, the crucial identification assumption necessary for the estimates to be valid. The analysis proceeds by quantifying the degree of sequential ignorability violation as the correlation between the error terms of the mediator and outcome models, and then calculating the true values of the average causal mediation effect for given values of this sensitivity parameter, rho. The original findings are deemed sensitive if the true effects are found to vary widely as function of rho.
@@ -567,7 +324,33 @@ plot(sens.out)
 ```
 
 
-We next investigate whether declining satisfaction with government caused a drop in trust in science
+### Negative Controls
+
+```{r, eval=F}
+
+med.fitR <- lm( Your.Personal.Relationships_S  ~ Covid_Timeline + Age + Edu + EthnicCats + Male  + Urban,  data = cv19w)
+out.fitR <- lm( SCIENCE.TRUST_S   ~ Your.Personal.Relationships_S  + Covid_Timeline +  Age + Edu + EthnicCats + Male + Urban,
+               data = cv19w)
+med.outR <- mediate(med.fitR, out.fitR, treat = "Covid_Timeline", mediator = "Your.Personal.Relationships_S",
+                   robustSE = TRUE, sims = 1000, control.value = "Baseline", treat.value = "Lockdown")
+
+# save model
+saveRDS(med.outR, here::here("_posts", "covscience","mods", "med.outR.rds"))
+```
+
+We do **not** find an effect for satisfaction with relationships
+
+```{r eval=TRUE}
+med.outR <- readRDS(here::here("_posts", "covscience","mods", "med.outR.rds"))
+summary(med.outR)
+plot(med.outR)
+```
+
+
+
+#### Reverse causation 
+
+We next investigate whether declining satisfaction with government caused a drop in trust in science (reverse causal model)
 
 ```{r eval=F}
 library(mediation)
@@ -687,6 +470,186 @@ summary(med.outb2)
 <!-- plot(sens.outb) -->
 <!-- plot(sens.outb2) -->
 <!-- ``` -->
+
+
+
+```{r cache = TRUE}
+# covid timeline
+# 3665 days after 30 June 2009 Saturday 13 July 2019
+# 3842 days after 30 June 2009 Monday 6 January 2020
+# 3895 days after 30 June 2009 Friday 28 February 2020
+# 3921 days after 30 June 2009 WED MAR 25th
+library(lubridate)
+library(tidyverse)
+
+carep <- cv %>%
+  dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30) + TSCORE) %>%
+  count(day = floor_date(timeline, "day")) %>%
+dplyr::mutate(condition = ifelse(
+  #    day >= "2019-06-20" &
+        day < "2020-01-06",
+      "Baseline",
+      ifelse(
+        day >= "2020-01-06" & day < "2020-02-29",
+        "JanFeb",
+        ifelse(
+          day >= "2020-02-29" & day < "2020-03-25",
+          "EarlyMarch",
+          ifelse(
+            day >= "2020-03-25" &
+              day < "2020-04-28",
+            "Lockdown",
+            "PostLockdown"
+            ))))) %>%
+  dplyr::mutate(condition = forcats::fct_relevel(condition, ord_dates_class)) %>%
+  arrange(day)
+
+
+# get COVID date
+minday <- min(carep$day) # min day
+dates_vline1<- as.Date(minday) # min day
+dates_vline2<- as.Date("2020-01-06")
+dates_vline3<- as.Date("2020-02-28")
+# get data of change of baseline
+dates_vline4<- as.Date("2020-03-25")
+dates_vline5 <- as.Date("2020-04-27")
+dates_vline6 <- as.Date("2020-10-15") # end day
+# for line in a graph
+
+# for line in a graph
+#
+dates_vline1b <- which(carep$day %in% dates_vline1)
+dates_vline2b <- which(carep$day %in% dates_vline2)
+dates_vline3b <- which(carep$day %in% dates_vline3)
+dates_vline4b <- which(carep$day %in% dates_vline4)
+dates_vline5b <- which(carep$day %in% dates_vline5)
+dates_vline6b <- which(carep$day %in% dates_vline6)
+
+
+tline <- ggplot(carep, aes(day, n)) +
+  geom_col(aes(fill = condition)) + scale_x_date(date_labels = "%b/%Y", limits = c(as.Date(minday), 
+                                                                                   as.Date("2020-10-15")))  + 
+  scale_y_continuous(limits = c(0, 1000))  +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline1b]),
+             col = "red",
+             linetype = "dashed") +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline2b]),
+             col = "red") +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline3b]),
+             col = "red",
+             linetype = "dashed") +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline4b]),
+             col = "red",
+             linetype = "dashed") +
+  geom_vline(xintercept = as.numeric(carep$day[dates_vline5b]),
+             col = "red",
+             linetype = "dashed") + 
+  xlab("NZAVS Waves 10 and 11 daily counts: repeated measures") + ylab("Count of Responses")  + theme_classic() +   scale_fill_viridis_d() + theme(
+    legend.position = "top",
+    legend.text = element_text(size = 6),
+    legend.title = element_text(color = "Black", size = 8)) +
+  # annotate(
+  #   "rect",
+  #   xmin = as.Date("2019-06-20"),
+  #   xmax = dates_vline1,
+  #   ymin = 0,
+  #   ymax = 1000,
+  #   alpha = .1,
+  #   fill = "darkblue"
+  # )  +
+  # annotate(
+  #   "rect",
+  #   xmin = dates_vline1,
+  #   xmax = dates_vline6,
+  #   ymin = 0,
+  #   ymax = 1000,
+  #   alpha = .001
+  # ) +
+  # annotate(
+  #   geom = "curve",
+  #   x = as.Date("2019-06-20"),
+  #   y = 750,
+  #   xend = as.Date("2019-10-15"),
+  #   yend = 800,
+  #   curvature = -.2,
+  #   arrow = arrow(length = unit(2, "mm"))
+  # ) +
+  # annotate(
+  #   geom = "curve",
+  #   x = as.Date("2019-06-20"),
+  #   y = 750,
+  #   xend = as.Date("2020-01-30"),
+  #   yend = 850,
+  #   curvature = -.2,
+  #   arrow = arrow(length = unit(2, "mm"))
+  # ) +
+  # annotate(
+  #   geom = "curve",
+  #   x = as.Date("2019-06-20"),
+  #   y = 750,
+  #   xend = as.Date("2020-03-10"),
+  #   yend = 875,
+  #   curvature = -.2,
+  #   arrow = arrow(length = unit(2, "mm"))
+  # ) +
+  # annotate(
+  #   geom = "curve",
+  #   x = as.Date("2019-06-20"),
+  #   y = 750,
+  #   xend = as.Date("2020-04-10"),
+  #   yend = 900,
+  #   curvature = -.2,
+  #   arrow = arrow(length = unit(2, "mm"))
+  # ) +
+  # annotate(
+  #   geom = "curve",
+  #   x = as.Date("2019-06-20"),
+  #   y = 750,
+  #   xend = as.Date("2020-06-10"),
+  #   yend = 925,
+  #   curvature = -.2,
+  #   arrow = arrow(length = unit(2, "mm"))
+  # ) +
+  annotate("text",
+           x = as.Date("2019-06-20"),
+           y = 755,
+           label = "0") +
+  annotate("text",
+           x = as.Date("2019-10-25"),
+           y = 800,
+           label = "1") + 
+   annotate("text",
+           x = as.Date("2020-02-10"),
+           y = 850,
+           label = "2") + 
+  annotate("text",
+           x = as.Date("2020-03-15"),
+           y = 875,
+           label = "3") +
+  annotate("text",
+           x = as.Date("2020-04-20"),
+           y = 900,
+           label = "4") +
+  annotate("text",
+           x = as.Date("2020-06-10"),
+           y = 925,
+           label = "5")
+```
+
+
+
+## Appendix
+
+Graph of timeline
+
+
+
+```{r eval=T}
+# GRAPH
+tline + plot_annotation(title = "Histogram of Responses During COVID timeline:2019-2020", 
+subtitle = "Focal contrast is pre-pandemic baseline (n= 22093) and stringent lockdown (n = 3189")
+```
+
 
 
 

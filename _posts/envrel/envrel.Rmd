@@ -1,0 +1,348 @@
+---
+title: "What is the difference between a causal effect and a time trend?"
+description: The case of religious change and environmental attitudes| 
+author:
+  - name: Joseph Bulbulia
+    url: https://josephbulbulia.netlify.app
+    affiliation: Victoria University of Wellington
+    affiliation_url: https://www.wgtn.ac.nz
+    orcid_id: 0000-0002-5861-2056
+date: 2022-FEB-10
+output:
+  distill::distill_article:
+    self_contained: false
+    toc: true
+    code_folding: true
+bibliography: bibliography.bib
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r load_libraries, include=FALSE}
+# setup
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  layout = "l-body-outset",
+  fig.width = 16,
+  fig.height = 9,
+  collapse = TRUE,
+  R.options = list(width = 60
+)
+  )
+
+
+library("tidyverse")
+library("easystats")
+library("ggeffects")
+library("geepack")
+library("easystats")
+library("lme4")
+
+```
+
+
+Causal estimate and an association 
+
+
+```{r cache=TRUE, echo = FALSE}
+# import data
+df <- readRDS(here::here("data", "df"))
+
+tf <- df %>%
+  dplyr::select(Id, Wave, TSCORE, Religious, Env.ClimateChgReal, YearMeasured, Male, GenCohort, Relid) %>%
+  dplyr::filter(YearMeasured == 1) %>%
+  dplyr::group_by(Id) %>% filter(n() > 2) %>%
+  dplyr::ungroup(Id)  %>%
+  group_by(Id) %>% # THIS GIVES DAY ZERO 
+    dplyr::mutate(
+    days = as.integer(TSCORE),
+    yr_0 = ((days - min(days)) / 365),
+    yrs = (days / 365),
+    yr_a = 3545 / 365,
+    wave0 = as.numeric(as.character(Wave)) - min(as.numeric(as.character(Wave)))
+  ) %>%   # THIS GIVES AN EVENT -- HERE THE MOSQUE SHOOTINGS
+  ungroup() %>%
+  dplyr::mutate(Pre_PostATTACK = factor(ifelse(
+    TSCORE >= 3545, "post_attack",
+    "pre_attack"
+  ))) %>%
+  dplyr::mutate(religious = as.numeric(Religious)-1) %>%
+  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack", "post_attack"))) %>%
+  dplyr::group_by(Id) %>% filter(n() > 1) %>%
+  drop_na() %>%
+   dplyr::mutate(across(
+    c(religious,
+      Env.ClimateChgReal, 
+      Male, 
+      Relid),
+    list(lag = lag)
+  )) %>% # get lag * 2
+  arrange(wave0,Id) %>%
+  dplyr::mutate(across( # sometimes useful
+    c(religious_lag,
+      Env.ClimateChgReal_lag,
+      Male_lag,
+      Relid),
+    list(lag = lag)
+  )) %>%
+  dplyr::mutate(across(
+    c(religious,
+      Env.ClimateChgReal),
+    list(lead = lead)
+  )) %>%
+  dplyr::ungroup(Id)  %>%
+  droplevels() %>%
+  dplyr::group_by(Id) %>% filter(n() > 1) %>%
+  dplyr::arrange(wave0,Id)
+```
+
+
+```{r cache=TRUE, echo = FALSE}
+length(unique(tf$Id))
+```
+
+## Latent growth model
+
+Everying is growing in environmental acceptance, religious people are growing more slowly
+
+```{r cache=TRUE}
+# This is one type of model 
+library(lme4)
+
+# Standard growth model
+mod00 <- lmer(Env.ClimateChgReal ~ # outcome (after exposure)
+               scale(yrs) * as.factor(religious) + #exposure 
+               Male + # 
+               GenCohort + # 
+               (1|Id),  # dependencies from the repeated measures 
+             data = tf)
+
+mod00%>%
+  parameters() %>%
+  print_html()
+```
+
+Graph
+
+```{r cache=TRUE}
+plot(ggeffects::ggemmeans(mod00, terms=c("yrs","religious")), add.data=TRUE, dot.alpha =.005)
+```
+
+## Causal estimation
+
+Here we attempt causal inference. 
+
+```{r}
+mod1 <- lmer(Env.ClimateChgReal_lead ~ # outcome (after exposure)
+               religious + #exposure 
+               religious_lag + # control for previous exposure + 
+              # religious_lag_lag + 
+               Env.ClimateChgReal_lag + #Control for previous outcome
+              # Env.ClimateChgReal_lag_lag + 
+               Male_lag_lag+ # baseline confounder control
+               GenCohort + # baseline confounder control
+               yrs + # year trend
+               (1|Id),  # dependencies from the repeated measures 
+             data = tf)
+```
+
+We find no causal effect 
+
+
+```{r}
+mod1%>%
+  parameters() %>%
+  print_html()
+
+plot(ggeffects::ggemmeans(mod1, terms=c("religious")), add.data=TRUE, dot.alpha =.005)
+```
+
+# Target trial
+
+We can emmulate a target trial...
+
+```{r}
+## CONDITIONS
+tf1<- tf %>%
+  arrange(Id,wave0) %>%
+  group_by(Id) %>%
+  mutate(always  = mean(religious, na.rm = TRUE) ) %>%# this is a hack, but works
+  filter(!always == 1) %>% # Get rid of people who were always religious 
+  mutate(convert = {
+    religious == 1 & religious_lag ==0 & religious_lag_lag == 0 & religious_lead !=0
+  } %>% {
+    . * !duplicated(.)
+  })%>%
+  mutate(trt = ifelse(
+    convert == 1,
+    1,
+     0))%>%
+  dplyr::mutate(
+                trt_lead2 = lead(trt,  n=2),
+                trt_lag = lag(trt)) %>%
+  dplyr::filter(!trt_lead2 == 1)  %>%
+            ungroup() %>%
+  arrange(Id, wave0)
+
+
+#table(tf1$trt)
+#sum(is.na(tf1$trt_lead2))
+
+# how many Id's
+#length(unique(tf1$Id))
+
+# How many trt vs contols? 
+#table(tf1$trt)
+
+#   mixed effects
+mod2 <- lmer(Env.ClimateChgReal_lead ~ # outcome (after exposure)
+               trt + #exposure 
+               # religious_lag + # control for previous exposure
+               Env.ClimateChgReal_lag + #Control for previous outcome
+               Male_lag + # baseline confounder control
+               GenCohort + # baseline confounder control
+               yrs + # year trend
+               (1|Id),  # dependencies from the repeated measures 
+             data = tf1)
+
+# Table
+mod2%>%
+  parameters() %>%
+  print_html()
+```
+
+No effect
+
+```{r}
+plot(ggeffects::ggemmeans(mod2, terms=c("trt")), add.data=TRUE, dot.alpha =.05) 
+```
+
+
+
+
+Similarly, we do not find an effect with a GEE model
+
+```{r, eval=FALSE}
+library(geepack)
+# need to drop nas
+ts<-tf1%>%
+  drop_na()
+
+## Nothing
+m0 <- geeglm(
+  Env.ClimateChgReal_lead ~ # outcome (after exposure)
+               trt + #exposure 
+               # religious_lag + # control for previous exposure
+               Env.ClimateChgReal_lag + #Control for previous outcome
+               Male_lag + # baseline confounder control
+               GenCohort + # baseline confounder control
+               yrs,
+  data = ts,
+  id = Id,
+  family = "gaussian",
+ # weights = ipw,
+  waves = wave0,
+  corstr = "ar1"
+)
+
+parameters(m0) %>%
+  print_html()
+```
+
+
+## Does loss of religion improve environmental attitudes
+
+Another target trial emulation
+
+```{r}
+tf2<- tf %>%
+  arrange(Id,wave0) %>%
+  group_by(Id) %>%
+  mutate(always  = mean(religious, na.rm = TRUE) ) %>%# this is a hack, but works
+  filter(!always == 0) %>% # Get rid of people who were always secular 
+  mutate(deconvert = {
+    religious == 0 & religious_lag ==1 & religious_lag_lag == 1 & religious_lead ==0
+  } %>% {
+    . * !duplicated(.)
+  })%>%
+  mutate(trt = ifelse(
+    deconvert == 1,
+    1,
+     0))%>%
+  dplyr::mutate(
+                trt_lead2 = lead(trt,  n=2),
+                trt_lag = lag(trt)) %>%
+  dplyr::filter(!trt_lead2 == 1)  %>%
+
+            ungroup() %>%
+  arrange(Id, wave0)
+
+
+#table(tf2$trt)
+#sum(is.na(tf2$trt_lead2))
+
+# how many Id's
+#length(unique(tf2$Id))
+
+# How many trt vs contols? 
+#table(tf2$trt)
+```
+
+We do not find a preservative effect of deconversion on environmental attitudes. 
+
+```{r}
+modD<- lmer(Env.ClimateChgReal_lead ~ # outcome (after exposure)
+               trt + #exposure 
+               # religious_lag + # control for previous exposure
+               Env.ClimateChgReal_lag + #Control for previous outcome
+               Male_lag + # baseline confounder control
+               GenCohort + # baseline confounder control
+               yrs + # year trend
+               (1|Id),  # dependencies from the repeated measures 
+             data = tf2)
+
+## Here we recover a stronger effect. 
+modD%>%
+  parameters() %>%
+  print_html()
+```
+
+GEE: same result
+
+```{r}
+ts2<-tf2%>%
+  drop_na()
+
+## Nothing
+m0d <- geeglm(
+  Env.ClimateChgReal_lead ~ # outcome (after exposure)
+               trt + #exposure 
+               Env.ClimateChgReal_lag + #Control for previous outcome
+               Male_lag + # baseline confounder control
+               GenCohort + # baseline confounder control
+               yrs,
+  data = ts2,
+  id = Id,
+  family = "gaussian",
+ # weights = ipw,
+  waves = wave0,
+  corstr = "exchangeable"
+)
+parameters(m0d) %>%
+  print_html()
+```
+
+
+## Conclusion
+
+There find no evidence that religion causally affects beliefs in the reality of climate change
+
+Need to investigate the causal effects of religion on other environmental attitudes and behaviours.  
+
+Warning to those who read causation from associations
+
+
+

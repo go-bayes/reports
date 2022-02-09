@@ -5,6 +5,7 @@ listing:
   posts:
     - nzavs
     - covscience
+    - envrel
     - nzavsnetwork
     - religious_simpsons_paradox
     - covid

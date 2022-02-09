@@ -48,9 +48,7 @@ library("ggeffects") # alluvial graphs
 
 
 ### Spirituality and Euthanasia Attitudes
-
-
-
+x
 We investigate the relationship between spirituality and attitudes to Euthanasia. 
 
 The New Zealand Attitudes and Values Study contains the following Questions, to which participants respond on a 1-7 scale from lowest to highest level of acceptance:
