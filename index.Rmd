@@ -12,7 +12,6 @@ listing:
     - police
     - spiriteuthanasia
     - k6-income
-
 ---
 
 ```{r setup, include=FALSE}

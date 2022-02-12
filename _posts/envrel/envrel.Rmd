@@ -51,28 +51,63 @@ Causal estimate and an association
 # import data
 df <- readRDS(here::here("data", "df"))
 
+#USEFUL
+
+sdf.0 <- df %>%
+  mutate(Wave = as.numeric(as.character(Wave))) %>%
+  arrange(Wave, Id) %>%
+  group_by(Id) %>%
+  mutate(first = {
+    YearMeasured == 1
+  } %>% {
+    . * !duplicated(.)
+  }) %>%
+  mutate(
+    value_tmp = if_else(first == 1, Wave, NA_real_),
+    firstwave  = mean(value_tmp, na.rm = TRUE) # this is a hack, but works
+  ) %>%
+  mutate(state  = ifelse(
+    YearMeasured == -1,
+    "deceased",
+    ifelse(
+      YearMeasured == 0 & Wave < firstwave,
+      "notyetmeasured",
+      ifelse(YearMeasured == 0 &
+               Wave > firstwave, "missing",
+             "measured")
+    )
+  )) %>%
+  dplyr::mutate(Wave = as.factor(Wave)) %>% # return Wave to a factor
+  dplyr::select(Wave, Id, state, YearMeasured, SampleOriginYear) %>%
+  dplyr::filter(state != "notyetmeasured") %>%
+  droplevels() %>%
+  arrange(Id, Wave)
+
+
+
+
+
 tf <- df %>%
   dplyr::select(Id, Wave, TSCORE, Religious, Env.ClimateChgReal, YearMeasured, Male, GenCohort, Relid) %>%
   dplyr::filter(YearMeasured == 1) %>%
   dplyr::group_by(Id) %>% filter(n() > 2) %>%
-  dplyr::ungroup(Id)  %>%
-  group_by(Id) %>% # THIS GIVES DAY ZERO 
     dplyr::mutate(
-    days = as.integer(TSCORE),
-    yr_0 = ((days - min(days)) / 365),
-    yrs = (days / 365),
-    yr_a = 3545 / 365,
+    days = as.integer(TSCORE),  # THIS GIVES DAY ZERO  THIS WON'T WORK
+    # yr_0 = ((days - min(days)) / 365),
+    # yrs = (days / 365),
+    # yr_a = 3545 / 365,
     wave0 = as.numeric(as.character(Wave)) - min(as.numeric(as.character(Wave)))
   ) %>%   # THIS GIVES AN EVENT -- HERE THE MOSQUE SHOOTINGS
   ungroup() %>%
-  dplyr::mutate(Pre_PostATTACK = factor(ifelse(
-    TSCORE >= 3545, "post_attack",
-    "pre_attack"
-  ))) %>%
+  # dplyr::mutate(Pre_PostATTACK = factor(ifelse(
+  #   TSCORE >= 3545, "post_attack",
+  #   "pre_attack"
+  # ))) %>%
   dplyr::mutate(religious = as.numeric(Religious)-1) %>%
-  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack", "post_attack"))) %>%
+ # dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack", "post_attack"))) %>%
   dplyr::group_by(Id) %>% filter(n() > 1) %>%
   drop_na() %>%
+  arrange(Id, wave0) %>%
    dplyr::mutate(across(
     c(religious,
       Env.ClimateChgReal, 
@@ -80,7 +115,6 @@ tf <- df %>%
       Relid),
     list(lag = lag)
   )) %>% # get lag * 2
-  arrange(wave0,Id) %>%
   dplyr::mutate(across( # sometimes useful
     c(religious_lag,
       Env.ClimateChgReal_lag,
@@ -95,8 +129,8 @@ tf <- df %>%
   )) %>%
   dplyr::ungroup(Id)  %>%
   droplevels() %>%
-  dplyr::group_by(Id) %>% filter(n() > 1) %>%
-  dplyr::arrange(wave0,Id)
+#  dplyr::group_by(Id) %>% filter(n() > 1) %>%
+  dplyr::arrange(Id,wave0)
 ```
 
 
