@@ -60,8 +60,8 @@ library("ggokabeito")   # color palette
 library("gghalves")     #  half geoms
 library("ggbeeswarm")   # Special distribution-shaped point jittering
 library("emmeans") # estimate marginal means
-library("table1")
-library("kableExtra")
+library("table1") # tables /now with latex
+library("kableExtra") # tables
 # rstan options
 rstan_options(auto_write = TRUE) # bayesian estimation
 options(mc.cores = parallel::detectCores ()) # use all course
@@ -123,14 +123,63 @@ dplyr::filter( Wave == 2018 & YearMeasured ==1 | Wave == 2019 & YearMeasured ==1
   # dplyr::mutate(daysAfter = as.integer(TSCORE - 3545),
   #               yearsAfter = daysAfter / 365) %>%
   dplyr::mutate(years = (TSCORE - min(TSCORE) / 365)) %>%
-  dplyr::ungroup() %>%
-    filter(n() == 2) %>%
-  dplyr::filter( Wave == 2018 & YearMeasured ==1 | Wave == 2019 & YearMeasured ==1 ) %>%
+  #dplyr::mutate(mw_lead = lead(Warm.Muslims))%>%
   drop_na()
  
-
-
+length(unique(km$Id))
 ```
+
+How many 90 days after the attacks? 
+
+```{r}
+3545 + 90
+
+
+ts<-df %>%
+  dplyr::filter(YearMeasured == 1)  %>%
+  dplyr::filter(Wave == 2018) %>%
+  dplyr::filter(TSCORE >= 3545) %>%
+  dplyr::filter(TSCORE <= 3635) %>%
+  dplyr::select(Id, TSCORE, Warm.Muslims) %>%
+  dplyr::filter(!is.na(Warm.Muslims)) 
+
+length(unique(ts$Id))
+
+  
+# dplyr::mutate(Pre_PostATTACK = factor(ifelse(
+  #   TSCORE >= 3545, "post_attack",
+  #   "pre_attack"
+  # )))%>%
+  # dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack","post_attack")))%>%
+
+
+    
+
+  
+  
+dm <- df %>%
+  dplyr::filter(YearMeasured == 1)  %>%
+  dplyr::filter(Wave == 2019 |
+                  Wave == 2018 |
+                  Wave == 2017 |
+                  Wave == 2016 |
+                  Wave == 2015|
+                  Wave == 2014|
+                  Wave == 2013|
+                  Wave == 2012) %>%
+  dplyr::group_by(Id) %>% filter(n() > 2) %>%
+  dplyr::ungroup(Id)  %>%
+  dplyr::select(Id, TSCORE, Warm.Maori)%>%
+  dplyr::filter(!is.na(Warm.Maori)) %>%
+  dplyr::mutate(
+    wm_s = scale(Warm.Maori),
+    days = as.integer(TSCORE),
+    yr_0 = ((days - min(days)) / 365),
+    yrs = (days / 365),
+    yr_a = 3545/365,
+  ) %>%
+```
+
 
 
 Participants
@@ -142,16 +191,10 @@ km0<-km%>%
 
 levels(km0$Attack) <- c('Pre', 'Post')
 
-
-x <- table1::table1(~Age + Male +Edu + EthnicCats  +  Religious + Pol.Orient + Urban + NZdep|Wave*Attack, data = km0, overall=FALSE)
+km0$Warm.Muslims
+x <- table1::table1(~ Warm.Muslims + Age + Male +Edu + EthnicCats  +  Religious + Pol.Orient + Urban + NZdep|Wave*Attack, data = km0, overall=FALSE)
 
 t1kable(x, format ="latex")
-
-
-
-    
-
-
 ```
 
 
@@ -172,16 +215,22 @@ w_ipw <- ipwtm(
   denominator = ~ Male + GenCohort + Edu + EthnicCats + Religious + Pol.Orient + Urban + NZdep,
   id = Id,
   timevar = Wave,
-  type = "all",
+  type = "first",
   data = as.data.frame(km)
 )
+
+
+
 
 #check no weights greater than 10
 max(w_ipw$ipw.weights) # max is 1.189481
 
 ## add weights to data frame. 
+km$Pol.Orient
+library(tidyverse)
 km <- km %>% 
-  mutate(ipw = w_ipw$ipw.weights)
+  mutate(ipw = w_ipw$ipw.weights,
+  Pol.Orient_S = scale(Pol.Orient))
 
 # make Attack a factor
 km$Attack <- as.factor(km$Attack) # mack attack a factor
@@ -194,11 +243,11 @@ We estimate a coefficient for attack of .26 [(95% CI = .22,.30]
 ```{r models, cache=TRUE}
 library(lme4)
 
-m00 <- lmer(Warm.Muslims ~ Attack + Wave  + (1|Id), 
-            weights = ipw,
+m0z <- lmer(Warm.Muslims ~ Attack  +  Wave + Pol.Orient_S + (1|Id),
+           # weights = ipw,
            data = km)
 
-parameters::model_parameters(m00)%>%
+parameters::model_parameters(m0z)%>%
   print_html()
 ```
 
@@ -209,30 +258,45 @@ We can estimate the expected means under three exposure conditions:
 1. The entire population never experiences an attack. 
 
 ```{r models, cache=TRUE}
-m00 <- lmer(Warm.Muslims ~ Attack + Wave  + (1|Id), 
-            weights = ipw,
+m00 <- lmer(Warm.Muslims ~ Attack + Pol.Orient_S  + Wave + (1|Id), 
+           weights = ipw,
            data = km)
 
 parameters::model_parameters(m00)%>%
   print_html()
 p0 <- ggeffects::ggemmeans(m00,
-                           terms = c("Wave[2018,2019]","Attack[0]"))
+                           terms = c( "Pol.Orient_S","Attack[0,1]","Wave[2018,2019]"))
 
 p0
 
 # for graph 
 pl0 <- plot(p0 ) +  scale_y_continuous(limits = c(3,6)) +
   labs(title = "Counterfactual Outcome:\nno attack exposure") + theme_pubclean()
+pl0
+
+
+
+estimate_contrasts(
+  m00,
+  contrast = c("Wave","Attack"),
+  at = c("Pol.Orient_S = -2"),
+  fixed = NULL,
+  transform = "none",
+  ci = 0.95,
+  adjust = "holm",
+)
+
 ```
 
 2. The entire population experiences the attack. 
 
 ```{r models, cache=TRUE}
-p1 <-  ggeffects::ggemmeans(m00,
-                           terms = c("Wave[2018,2019]", "Attack[1]"))
+p1 <-  ggeffects::ggemmeans(m0z,
+                           terms = c("Wave[2018,2019]", "Attack[0,1]"))
 p1
 pl1<- plot(p1) + scale_y_continuous(limits = c(3,6)) + 
   labs(title = "Counterfactual Outcome:\neveryone exposed both waves") + theme_pubclean()
+pl1
 ```
 
 We can graph these two counterfactual scenarios
@@ -268,20 +332,35 @@ m0 <- geeglm(
   waves = Wave,
   corstr = "ar1"
 )
-m0
+summary(m0)
+
+estimate_contrasts(
+  m0,
+  contrast = c("Wave","Attack"),
+  at = NULL,
+  fixed = NULL,
+  transform = "none",
+  ci = 0.95,
+  adjust = "holm",
+)
+%>%
+  slice(c(2.6,7) 
 ```
 
 
 ```{r models, cache=TRUE}
 
 p0 <- ggeffects::ggemmeans(m0,
-                           terms = c("Wave[2018,2019]","Attack[0]"))
+                           terms = c("Wave[2018]","Attack[0]"))
+p0 <- ggeffects::ggemmeans(m0,
+                           terms = c("Wave[2018,2019]","Attack[0,1]"))
 
 p0
 
 # for graph 
 pl0 <- plot(p0 ) +  scale_y_continuous(limits = c(4,5)) +
   labs(title = "Counterfactual Outcome:\nno attack exposure") + theme_pubclean()
+pl0
 ```
 
 2. The entire population experiences the attack. 
@@ -337,10 +416,32 @@ m1 <- brms::brm(
 
 library(lazerhawk)
 blh_tab <- brms_SummaryTable(m1, panderize=F)
-
+blh_tab
 blh_tab %>%
    kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims") %>%
     print()
+
+ec <- modelbased::estimate_contrasts(
+  m1,
+  contrast = c("Attack","Wave"),
+  at = "Attack",
+  #fixed = NA,
+  transform = "none",
+  ci = 0.95,
+  adjust = "holm",
+)
+#ec
+saveRDS(ec, here::here("_posts", "mus", "mods", "ec.rds"))
+
+tc<- as.data.frame(ec)
+library(dplyr)
+tc
+tc%>%
+  slice(c(1,3,5))%>%
+  select(Level1,Level2,Difference,CI_low,CI_high,pd)%>%
+  kbl(digits=3, booktabs=T, "latex")
+
+pec<-readRDS( here::here("_posts", "mus", "mods", "ec.rds"))
 ```
 
 ```{r designtable,  tab.cap="\\label{tab:designtable}"}
@@ -349,30 +450,29 @@ km %>%
   summarise(n = n()) %>%
   kbl(booktabs = T, "latex", caption = "Participant by exposure and wave") #%>%
   # kable_classic_2(c("striped", "hover"), full_width = TRUE) %>%
-  
 ```
 
 
 ```{r eval=FALSE}
 library(emmeans)
-d0 <-m1 %>% 
+#d0 <-m1 %>% 
   emmeans(~ Wave,
           at = list(Attack = 0,
-                    Wave = c("2018","2019")),
+                    Wave = c("2018")),
           epred = TRUE,
           re_formulat = NA )
-d0<- saveRDS(d0,  here::here("_posts", "mus", "mods", "d0.rds"))
+saveRDS(d0,  here::here("_posts", "mus", "mods", "d0.rds"))
 d0 <- readRDS(here::here("_posts", "mus", "mods", "d0.rds"))
 d0
 
 
-d1 <- m1 %>% emmeans(~ Wave,
+#d1 <- m1 %>% emmeans(~ Wave,
           at = list(Attack = 1,
                     Wave = c("2018","2019")),
           epred = TRUE,
           re_formula = NA)
 
-saveRDS(d1,  here::here("_posts", "mus", "mods", "d1.rds"))
+#saveRDS(d1,  here::here("_posts", "mus", "mods", "d1.rds"))
 d1<- readRDS(here::here("_posts", "mus", "mods", "d1.rds"))
 d1
 
@@ -384,7 +484,7 @@ d1 %>%
   contrast()
 
 
-library(emmeans)
+
 
 # attack_effect_draws <- pred01 %>%
 #   contrast() %>%
@@ -416,8 +516,7 @@ library(emmeans)
 
 
 ```{r}
-
-marg_eff_attack_0 <- m1 %>%
+#marg_eff_attack_0 <- m1 %>%
   epred_draws(newdata = expand.grid(Attack = c(0, 1),Wave = c("2018", "2019")),
               re_formula =NA)
            #   re_formula = NULL)  # or re_formula = ~ (1 | region)
@@ -425,8 +524,11 @@ marg_eff_attack_0 <- m1 %>%
 #saveRDS(marg_eff_attack_0,  here::here("_posts", "mus", "mods", "marg_eff_attack_0.rds"))
 marg_eff_attack_0 <- readRDS(here::here("_posts", "mus", "mods", "marg_eff_attack_0.rds"))
 
-marg_eff_attack_0
 
+# Obtain contrasts
+marg_eff_attack_0<- marg_eff_attack_0%>%
+  filter(Attack == 1 & Wave ==2019| Attack == 1 & Wave ==2018|  Attack == 0 & Wave ==2018)
+marg_eff_attack_0
 plot_all <- ggplot(
   marg_eff_attack_0,
   aes(
@@ -447,22 +549,26 @@ plot_all <- ggplot(
     theme_pubclean() +
     theme(legend.position = "bottom"
     )
-plot_all
-
-
-str(km$Attack)
+graph
+#plot_all
 
 
 grand_mean_ame <- m1 %>% 
   emmeans(~ Attack,
           epred = TRUE, re_formula = NA) %>% 
-  contrast(method = "revpairwise") %>% 
+  contrast() %>% 
   gather_emmeans_draws()
+
 #saveRDS(grand_mean_ame,  here::here("_posts", "mus", "mods", "grand_mean_ame.rds"))
 grand_mean_ame <- readRDS(here::here("_posts", "mus", "mods", "grand_mean_ame.rds"))
 
-grand_mean_ame
-plot_all__ame <- ggplot(grand_mean_ame,
+# remove erro contrasts / we don't observe 0 in year two 
+grand_mean_ame_0 <- grand_mean_ame%>%
+  filter(contrast != 0-0 |contrast != 1-0 )
+
+grand_mean_ame_0
+
+plot_all__ame <- ggplot(grand_mean_ame_0,
                                      aes(x = .value)) +
   stat_halfeye(slab_alpha = 0.75, fill = "grey") +
   scale_fill_okabe_ito(order = c(3, 4)) +
@@ -770,13 +876,16 @@ ggsave(
 ## 2017 as well
 
 ```{r danalysisdata, cache=TRUE}
-ord_attack <- c("bsline_w09","pre_w10", "pst_w10","pst_w11")
+ord_attack <- c("pre", "pst_w10","pst_w11")
 
-# dataset for models
+ # table1::table1(~ Warm.Muslims|Wave, data = ts,transpose = TRUE)
+
+  # dataset for models
 km2 <- df %>%
   dplyr::select(
     Id,
     Age,
+    Wave,
     EthnicCats,
     Urban,
     Edu,
@@ -802,90 +911,286 @@ km2 <- df %>%
     # Warm.Refugees,
     # Warm.Pacific,
     Muslim,
-    Wave,
     TSCORE,
     WSCORE,
     YearMeasured,
     Religious
   ) %>%
   dplyr::filter(
-    # Wave == 2017 &
-    #   YearMeasured == 1 |
+      Wave == 2012 &
+      YearMeasured == 1 |
+      Wave == 2013 &
+      YearMeasured == 1 |
+      Wave == 2014 &
+      YearMeasured == 1 |
+      Wave == 2016 &
+      YearMeasured == 1 |
+      Wave == 2017 &
+      YearMeasured == 1 |
       Wave == 2018 &
       YearMeasured == 1 |
-      Wave == 2019 & YearMeasured == 1
+      Wave == 2019 & 
+        YearMeasured == 1
   ) %>% 
   droplevels() %>%
+  arrange(Wave,Id) %>%
   group_by(Id) %>%
+  dplyr::group_by(Id) %>% filter(n() > 6) %>%
   dplyr::add_tally() %>%
-  filter(n == 2) %>%
-   ungroup() %>%
-  arrange(Wave, Id) %>%
+  filter(n == 7) %>%
+  arrange(Wave,Id) %>%
+  dplyr::mutate(Warm.Muslims_lag = lag(Warm.Muslims))%>%
+  droplevels() %>%
+  ungroup() %>%
   dplyr::mutate(Attack = ifelse(TSCORE >= 3545, 1, 0)) %>%
-# dplyr::mutate(Pre_PostATTACK = as.factor(ifelse(
-#   TSCORE >= 3545 & Wave == 2018,
-#   "pst_w10",
-#   ifelse(
-#     Wave == 2019,
-#     "pst_w11",
-#     ifelse(TSCORE < 3545 & Wave == 2018, "pre_w10",
-#            "bsline_w09") )
-# ))) %>%
-# dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, ord_attack)) %>%
-  mutate(wm_lead = lead(Warm.Muslims)) %>%
-  mutate(years = (TSCORE - min(TSCORE)/365)) 
+dplyr::mutate(Pre_PostATTACK = as.factor(ifelse(
+  TSCORE >= 3545 & Wave == 2018,
+  "pst_w10",
+  ifelse(
+    Wave == 2019,
+    "pst_w11",
+           "pre") )
+)) %>%
+dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, ord_attack)) %>%
+  dplyr::group_by(Id) %>% filter(n() > 5) %>% 
+  ungroup()%>%
+  dplyr::mutate(dys = (TSCORE - min(TSCORE)))%>% 
+  dplyr::mutate(yrs =  (dys/365))%>% 
+  arrange(Id,Wave) %>%
+  drop_na() 
 
- # filter(Wave == 2018) %>%
-#  drop_na()
+length(unique(km2$Id))
 
-length(km2$Id) # 34446
-str(km2$Pre_PostATTACK)
+w_ipw <- ipwtm(
+  exposure = yrs,
+  family = "gaussian",
+  # Time invariant 
+  numerator =  ~ Male + GenCohort + Edu + EthnicCats,
+  # Time invariant and non-invariant confounders
+  denominator = ~ Male + GenCohort + Edu + EthnicCats + Religious + Pol.Orient + Urban+NZdep,
+  id = Id,
+  timevar = Wave,
+  corstr = "exchangeable",
+  type = "all",
+  data = as.data.frame(km2)
+)
 
 
-# 
-#   # dplyr::mutate(Pre_PostATTACK = as.factor(ifelse(
-#   #   TSCORE >= 3545 & Wave == 2018,
-#   #   "pst_w10",
-#   #   ifelse(
-#   #     Wave == 2019,
-#   #     "pst_w11",
-#   #     ifelse(TSCORE < 3545 & Wave == 2018, "pre_w10",
-#   #            "bsline_w09") )
-#   # ))) %>%
-# #  dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, ord_attack)) %>%
-#  
-#    # dplyr::mutate(
-#   #   years = (TSCORE - min(TSCORE) / 365) %>%
-#   #     dplyr::mutate(Attack = ifelse(TSCORE >= 3545, 1, 0)) %>%
-#   #     dplyr::mutate(
-#   #       daysAfter = as.integer(TSCORE - 3545),
-#   #       yearsAfter = daysAfter / 365
-#   #     ) %>%
-#   #     # dplyr::filter(Muslim == 0) %>%
-#   #     dplyr::add_tally() %>%
-#   #     filter(n == 3) %>%
-#   #     dplyr::ungroup() %>%
-#       # mutate(value_tmp = if_else(Wave == "2017", Warm.Muslims, NA_real_))%>%
-#       #   fill(value_tmp) %>%
-#       #   mutate(bs_mw = value_tmp) %>%
-#     
-# m00 <- lmer(wm_lead ~   Wave + Attack +   (1|Id), 
-#            data = km2)
-# 
-# parameters::model_parameters(m00)%>%
-#   print_html()
-# p0 <- ggeffects::ggemmeans(m00,
-#                            terms = c("Wave[2019]","Attack[0,1]"))
-# p0
-# 
+
+
+#check no weights greater than 10
+max(w_ipw$ipw.weights) # max is 1.189481
+
+## add weights to data frame. 
+km$Pol.Orient
+library(tidyverse)
+km2 <- km2 %>% 
+  mutate(ipw = w_ipw$ipw.weights)
+
+
+library(splines)
+
+m00 <- lmer(Warm.Muslims ~   bs(yrs) + Warm.Muslims_lag +   (1|Id), weights=ipw,
+           data = km2)
+
+parameters::model_parameters(m00)%>%
+  print_html()
+p0 <- ggeffects::ggemmeans(m00,
+                           terms = c("yrs[all]"))
+p0
+
 # 
 # # for graph 
-# pl0 <- plot(p0 ) +  scale_y_continuous(limits = c(3,6)) +
-#   labs(title = "Counterfactual Outcome:\nno attack exposure") + theme_pubclean()
-#     
+pl0 <- plot(p0) +  scale_y_continuous(limits = c(3,6)) +
+  labs(title = "Marginal Trend in Muslim Acceptance") + theme_pubclean()  +
+  geom_vline(xintercept = 6.48, linetype="dashed", 
+                color = "red", size=.5)
+  
+pl0
+
+
+library(geepack)
+
+# No difference
+# m0 <- lmer(
+#   Warm.Muslims ~  bs(yrs) + (1|Id),
+#   data = km3
+#  # weights = ipw,
+# )
+
+
+m0 <- geeglm(
+  Warm.Muslims ~  bs(yrs),
+  data = km3,
+  id = Id,
+  family = "gaussian",
+  weights = ipw,
+  waves = Wave,
+  corstr = "ar1"
+)
+summary(m0)
+
+max(km3$yrs)
+p0 <- ggeffects::ggemmeans(m0,terms = c("yrs[all]"))
+
+length(unique(km3$Id))
+#
+# # for graph 
+marginal_trend <- plot(p0) +  scale_y_continuous(limits = c(3,6)) +
+  labs(title = "Marginal Trend in Muslim Acceptance", subtitle=
+         "N = 7920") + theme_pubclean()  +
+  geom_vline(xintercept = 5.49, linetype="dashed", 
+                color = "red", size=.5) + 
+    geom_vline(xintercept = 5.49,
+             col = "red",
+             linetype = "dashed") + xlab("Years before attack") + ylab("Warmth to Muslims")
+marginal_trend
+
+ggsave(
+  marginal_trend,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 10,
+  height = 5,
+  units = "in",
+  filename = "marginal_trend.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1200
+)
+
+
+km3 <- df %>%
+  dplyr::select(
+    Id,
+    Age,
+    Wave,
+    EthnicCats,
+    Urban,
+    Edu,
+    Male,
+    Pol.Orient,
+    NZdep,
+    GenCohort,
+    Urban,
+    TSCORE,
+    EthnicCats,
+    # Warm.Overweight,
+    # Warm.Elderly,
+    # Warm.MentalIllness,
+    Warm.Muslims,
+    # Warm.Immigrants,
+    # Warm.Asians,
+    # Warm.Refugees,
+    # Wave,
+    # Warm.Maori,
+    # Warm.NZEuro,
+    # Warm.Indians,
+    # Warm.Chinese,
+    # Warm.Refugees,
+    # Warm.Pacific,
+    Muslim,
+    TSCORE,
+    WSCORE,
+    YearMeasured,
+    Religious
+  ) %>%
+  dplyr::filter(
+      # Wave == 2012 &
+      # YearMeasured == 1 |
+      Wave == 2013 &
+      YearMeasured == 1 |
+      Wave == 2014 &
+      YearMeasured == 1 |
+      Wave == 2016 &
+      YearMeasured == 1 |
+      Wave == 2017 &
+      YearMeasured == 1 |
+      Wave == 2018 &
+      YearMeasured == 1 
+  ) %>% 
+  droplevels() %>%
+  arrange(Wave,Id) %>%
+  group_by(Id) %>%
+  dplyr::group_by(Id) %>% filter(n() > 4) %>%
+  dplyr::add_tally() %>%
+  filter(n == 5)%>%
+  arrange(Wave,Id) %>%
+  dplyr::mutate(Warm.Muslims_lag = lag(Warm.Muslims))%>%
+  droplevels() %>%
+  ungroup() %>%
+  dplyr::mutate(Attack = ifelse(TSCORE >= 3545, 1, 0)) %>%
+  dplyr::filter(Attack == 0) %>%
+  dplyr::mutate(dys = (TSCORE - min(TSCORE)))%>% 
+  dplyr::mutate(yrs =  (dys/365))%>% 
+  arrange(Id,Wave) %>%
+  drop_na() 
+
+length(unique(km3$Id))
+
+
+w_ipw <- ipwtm(
+  exposure = yrs,
+  family = "gaussian",
+  # Time invariant 
+  numerator =  ~ Male + GenCohort + Edu + EthnicCats,
+  # Time invariant and non-invariant confounders
+  denominator = ~ Male + GenCohort + Edu + EthnicCats + Religious + Pol.Orient + Urban+ NZdep,
+  id = Id,
+  timevar = Wave,
+  corstr = "exchangeable",
+  type = "all",
+  data = as.data.frame(km3)
+)
+
+
+
+
+#check no weights greater than 10
+max(w_ipw$ipw.weights) # max is 1.189481
+
+## add weights to data frame. 
+km$Pol.Orient
+library(tidyverse)
+km3 <- km3 %>% 
+  mutate(ipw = w_ipw$ipw.weights)
+
+
+max(km3$yrs)
+
+
+library(geepack)
+m0 <- geeglm(
+  Warm.Muslims ~ bs(yrs),
+  data = km3,
+  id = Id,
+  family = "gaussian",
+  waves = Wave,
+  weights = ipw,
+  corstr = "ar1"
+)
+summary(m0)
+
+
+p0 <- ggeffects::ggemmeans(m0,
+                           terms = c("yrs[all]"))
+p0
+
+# 
+# # for graph 
+pl0 <- plot(p0) +  scale_y_continuous(limits = c(3,6)) +
+  labs(title = "Effect of Time on Muslim Acceptance") + theme_pubclean()  +
+  geom_vline(xintercept = 5.49, linetype="dashed", 
+                color = "red", size=.5)
+pl0
+
+model_parameters(m0)%>%
+  kbl(booktabs = T, "latex", caption = "Marginal Structural Model (splines) of Year Trend on Muslim Warmth prior to Attacks") #%>%
+
+
+
+# 3545-1540 # rescakled date = 2005
 
 ```
-
 
 <!--   # dplyr::mutate(across( -->
 <!--   #   c(Attack, -->
