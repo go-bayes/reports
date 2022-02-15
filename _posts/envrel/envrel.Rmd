@@ -53,35 +53,35 @@ df <- readRDS(here::here("data", "df"))
 
 #USEFUL
 
-sdf.0 <- df %>%
-  mutate(Wave = as.numeric(as.character(Wave))) %>%
-  arrange(Wave, Id) %>%
-  group_by(Id) %>%
-  mutate(first = {
-    YearMeasured == 1
-  } %>% {
-    . * !duplicated(.)
-  }) %>%
-  mutate(
-    value_tmp = if_else(first == 1, Wave, NA_real_),
-    firstwave  = mean(value_tmp, na.rm = TRUE) # this is a hack, but works
-  ) %>%
-  mutate(state  = ifelse(
-    YearMeasured == -1,
-    "deceased",
-    ifelse(
-      YearMeasured == 0 & Wave < firstwave,
-      "notyetmeasured",
-      ifelse(YearMeasured == 0 &
-               Wave > firstwave, "missing",
-             "measured")
-    )
-  )) %>%
-  dplyr::mutate(Wave = as.factor(Wave)) %>% # return Wave to a factor
-  dplyr::select(Wave, Id, state, YearMeasured, SampleOriginYear) %>%
-  dplyr::filter(state != "notyetmeasured") %>%
-  droplevels() %>%
-  arrange(Id, Wave)
+# sdf.0 <- df %>%
+#   mutate(Wave = as.numeric(as.character(Wave))) %>%
+#   arrange(Wave, Id) %>%
+#   group_by(Id) %>%
+#   mutate(first = {
+#     YearMeasured == 1
+#   } %>% {
+#     . * !duplicated(.)
+#   }) %>%
+#   mutate(
+#     value_tmp = if_else(first == 1, Wave, NA_real_),
+#     firstwave  = mean(value_tmp, na.rm = TRUE) # this is a hack, but works
+#   ) %>%
+#   mutate(state  = ifelse(
+#     YearMeasured == -1,
+#     "deceased",
+#     ifelse(
+#       YearMeasured == 0 & Wave < firstwave,
+#       "notyetmeasured",
+#       ifelse(YearMeasured == 0 &
+#                Wave > firstwave, "missing",
+#              "measured")
+#     )
+#   )) %>%
+#   dplyr::mutate(Wave = as.factor(Wave)) %>% # return Wave to a factor
+#   dplyr::select(Wave, Id, state, YearMeasured, SampleOriginYear) %>%
+#   dplyr::filter(state != "notyetmeasured") %>%
+#   droplevels() %>%
+#   arrange(Id, Wave)
 
 
 
@@ -217,7 +217,7 @@ tf1<- tf %>%
   dplyr::mutate(
                 trt_lead2 = lead(trt,  n=2),
                 trt_lag = lag(trt)) %>%
-  dplyr::filter(!trt_lead2 == 1)  %>%
+  dplyr::filter(!trt_lead2 == 1)  %>%  ## 
             ungroup() %>%
   arrange(Id, wave0)
 
