@@ -1418,19 +1418,42 @@ amelia.list <- list(imputed$imputations$imp1,
                     imputed$imputations$imp10)
 
 #saveRDS(amelia.list,here::here("_posts","mus", "mods", "amelia.list"))
-amelia.list<-readRDS("amelia.list")
+amelia.list<-readRDS(here::here("_posts","mus", "mods", "amelia.list"))
 
-m3b <- brms::brm_multiple(
+library(future)
+m3ab <- brms::brm_multiple(
   Ys ~ As *  Wave + (1|Id), 
   seed = 1234,
   warmup = 500,
-  iter = 1000,
+  iter = 1500,
   chains = 4,
-  backend = "cmdstanr",
+ # backend = "cmdstanr",
   data = amelia.list,
   file = here::here("_posts", "mus", "mods", "m3ab.rds"))
 
-summary(m3a)
+summary(m3ab)
+plot(m3ab)
+
+m3ac <- brms::brm_multiple(
+  Ys ~ As *  Wave + (1|Id), 
+  seed = 1234,
+  warmup = 1000,
+  iter = 2000,
+  chains = 4,
+ # backend = "cmdstanr",
+  data = amelia.list,
+  file = here::here("_posts", "mus", "mods", "m3ac.rds"))
+summary(m3ac)
+
+
+
+
+
+
+plot(m3ac)
+
+
+
 ```
 
 
