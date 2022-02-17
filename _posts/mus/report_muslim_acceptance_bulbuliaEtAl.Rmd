@@ -563,8 +563,8 @@ grand_mean_ame <- m1 %>%
 #saveRDS(grand_mean_ame,  here::here("_posts", "mus", "mods", "grand_mean_ame.rds"))
 grand_mean_ame <- readRDS(here::here("_posts", "mus", "mods", "grand_mean_ame.rds"))
 
-# remove erro contrasts / we don't observe 0 in year two 
-grand_mean_ame_0 <- grand_mean_ame%>%
+# remove erro contrasts / 
+grand_mean_ame_0 <- grand_mean_ame_0%>%
   filter(contrast != 0-0 |contrast != 1-0 )
 
 grand_mean_ame_0
@@ -1255,7 +1255,7 @@ km4 <- df %>%
   # dplyr::mutate(Attack_lag = lag(Attack))%>%
   ungroup() %>%
   arrange(Wave,Id) %>%
-  dplyr::mutate(Attack = (ifelse(TSCORE >= 3545, 1, 0))) %>%
+  dplyr::mutate(Attack = factor((ifelse(TSCORE >= 3545, 1, 0)))) %>%
  # dplyr::filter(Attack == 0) %>%
   dplyr::mutate(dys = (TSCORE - min(TSCORE)))%>% 
   dplyr::mutate(Ys = Warm.Muslims, 
@@ -1266,6 +1266,11 @@ km4 <- df %>%
 
 length(unique(km4$Id))
 head(km4)
+
+
+x <- table1::table1(~ Warm.Muslims + Age + Male + GenCohort + Edu + Employed + EthnicCats  +  Religious + Pol.Orient + NZdep + Urban|Wave*As, data = km4, overall=FALSE)
+
+t1kable(x, format ="latex")
 
 # # impute 
 # library(Amelia)
@@ -1356,6 +1361,11 @@ imputed2<- imputed$imputations$imp2
 imputed3<- imputed$imputations$imp3
 imputed4<- imputed$imputations$imp4
 imputed5<- imputed$imputations$imp5
+imputed6<- imputed$imputations$imp6
+imputed7<- imputed$imputations$imp7
+imputed8<- imputed$imputations$imp8
+imputed9<- imputed$imputations$imp9
+imputed10<- imputed$imputations$imp10
 str(imputed1)
 hist(imputed1$Ys, col = "grey", border = "white")
 hist(imputed2$Ys, col = "grey", border = "white")
@@ -1394,15 +1404,54 @@ plot(pred, facets = F) #  +  theme_classic() + ggtitle("") # title to be suppled
 
 ```{r}
 ## FULL BAYES
-m3a <- brms::brm( 
-  Ys ~ As *  Wave + (1|Id), 
+m_direct <- brms::brm( 
+  Ys ~ As +  Wave + (1|Id), 
   data = imputed1, 
- # seed = 1234,
+  seed = 1234,
   warmup = 1000,
   iter = 2000,
   chains = 4,
   backend = "cmdstanr",
-  file = here::here("_posts", "mus", "mods", "m3a.rds"))
+  file = here::here("_posts", "mus", "mods", "m_direct.rds"))
+
+
+
+# Print Table
+ouput <- tidy(m_direct)
+str(ouput)
+ouput
+#output<- as.data.frame(ouput)
+
+
+# ouput%>%
+#   dplyr::select(-c("effect","component", "group"))
+
+
+# t_results_m = m_direct %>% 
+#   emmeans(~ As+Wave) %>% 
+#   tidy(conf.int = TRUE) 
+# 
+# t_results_m
+# t_results
+# 
+# saveRDS(t_results_m,  here::here("_posts", "mus", "mods", "t_results_m"))
+
+
+
+
+t_results
+saveRDS(t_results,  here::here("_posts", "mus", "mods", "t_results"))
+library(lazerhawk)
+brms_SummaryTable(m3a)
+
+library(lazerhawk)
+blh_tab <- brms_SummaryTable(m3a, panderize=F)
+blh_tab
+blh_tab %>%
+   kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims") %>%
+    print()
+
+
 
 ## prior = c(prior(normal(0, 1), class = b)),
 
@@ -1468,40 +1517,223 @@ summary(m3a)
 
 
 ### omni-model  ### 
-
-m3a <- brms(Ys ~ As *  Wave + (1|Id), 
-  data = list(imputed$imputations$imp1), 
- # seed = 1234,
-  warmup = 1000,
-  iter = 2000,
-  chains = 4,
-  backend = "cmdstanr",
-  file = here::here("_posts", "mus", "mods", "m3a.rds"))
-
-m3aa <- brm_multiple(Ys ~ As +  Wave + (1|Id), 
-  data = list(imputed$imputations$imp1,imputed$imputations$imp2), 
- # seed = 1234,
-  warmup = 1000,
-  iter = 2000,
-  chains = 4,
-  backend = "cmdstanr",
-  file = here::here("_posts", "mus", "mods", "m3aa.rds"))
+# 
+# m3aa <- brms(Ys ~ As *  Wave + (1|Id), 
+#   data = list(imputed$imputations$imp1), 
+#  # seed = 1234,
+#   warmup = 1000,
+#   iter = 2000,
+#   chains = 4,
+#   backend = "cmdstanr",
+#   file = here::here("_posts", "mus", "mods", "m3a.rds"))
 
 
-library(lazerhawk)
-brms_SummaryTable(m3)
+marg_eff_attack_0a <- m_direct %>%
+  epred_draws(newdata = expand.grid(As = c(0, 1),Wave = c("2018", "2019")),
+              re_formula =NA)
+           #   re_formula = NULL)  # or re_formula = ~ (1 | region)
+
+#saveRDS(marg_eff_attack_0a,  here::here("_posts", "mus", "mods", "marg_eff_attack_0a.rds"))
+marg_eff_attack_0a <- readRDS(here::here("_posts", "mus", "mods", "marg_eff_attack_0a.rds"))
+
+marg_eff_attack_0a
+# Obtain contrasts
+# marg_eff_attack_0a<- marg_eff_attack_0a%>%
+#   filter(As == 1 & Wave ==2019) #Attack == 1 & Wave ==2018|  Attack == 0 & Wave ==2018)
+
+# marg_eff_attack_0
+plot_all <- ggplot(
+  marg_eff_attack_0a,
+  aes(
+    x = .epred,
+    y = Wave,
+    fill = as.factor(As)
+  ) ) + 
+#  scale_y_discrete(limits=rev) +
+    stat_halfeye() +
+    scale_fill_okabe_ito() +
+    labs(
+      x = "Predicted Warmth Response",
+      y = "w2018(years 2018-2019); w2019 (years 2019-2020)",
+      fill = "Conterfactual Contrasts",
+      subtitle = "Bayesian posterior locations of potential outcomes"
+    ) +
+  #  scale_x_continuous(limits=c(4.0,4.6)) +
+    theme_pubclean() +
+    theme(legend.position = "bottom"
+    )
+plot_all
+#plot_all
 
 
-pred <- ggeffects::ggemmeans(m3, terms = c("As","Wave"))
+# not working
+grand_mean_ame_a <- m3a %>%
+  emmeans(~ As*Wave,
+          epred = TRUE, re_formula = NA) %>%
+  contrast() %>%
+  gather_emmeans_draws() 
 
-.26-4.44+4.41
+grand_mean_ame_a
+#   filter(As == 1 & Wave ==2019) #Attack == 1 & Wave ==2018|  Attack == 0 & Wave ==2018)
 
--4.44 
+#saveRDS(grand_mean_ame_a,  here::here("_posts", "mus", "mods", "grand_mean_ame_a.rds"))
+#grand_mean_ame_a <- readRDS(here::here("_posts", "mus", "mods", "grand_mean_ame_a.rds"))
+
+# remove erro contrasts / we don't observe 0 in year two 
+
+
+
+
+plot_all__ame <- ggplot(grand_mean_ame_a,
+                                     aes(x = .value)) +
+  stat_halfeye(slab_alpha = 0.75, fill = "grey") +
+  scale_fill_okabe_ito(order = c(3, 4)) +
+  labs(x = "Average marginal effect of attack on warmth to Muslims",
+       y = "Density") +
+  #facet_wrap(vars(region)) +
+  theme_classic() + 
+  theme(legend.position = "bottom") + labs(title= "Marginal effect of attack on warmth to Muslims")
+plot_all__ame 
+# Try
+library(patchwork)
+bayes_plots_a <- plot_all + plot_all__ame + plot_annotation(tag_levels = 'a')
+bayes_plots_a
+
+ggsave(
+  bayes_plots_a,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 10,
+  height = 5,
+  units = "in",
+  filename = "bayes_plots_a.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1200
+)
+
+
 # 
 # blh_tab %>%
 #    kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims") %>%
 #     print()
 ```
+
+## MI Bayes
+
+```{r}
+## Run on my other mac, cmdstanr was ausing problems
+gc()
+m3ab <- readRDS(here::here("_posts", "mus", "mods", "m3ab.rds"))
+
+summary(m3ab)
+
+# Model was as below, called Rstand
+# m3ab <- brms::brm_multiple(Ys ~ As *  Wave + (1|Id), 
+#   seed = 1234,
+#   warmup = 500,
+#   iter = 1500,
+#   chains = 4,
+#  # backend = "cmdstanr",
+#    data = imputed, 
+#   file = here::here("_posts", "mus", "mods", "m3ab.rds"))
+
+
+
+plot_bayes <- m3ab %>%
+  emmeans( ~ As * Wave) %>%
+  contrast(method = "pairwise") %>%
+  gather_emmeans_draws() %>%
+  ggplot(aes(x = .value, y = contrast)) +
+  stat_halfeye()
+
+
+
+marg_eff_attack_0ab <- m3ab %>%
+  epred_draws(newdata = expand.grid(As = c(0, 1),Wave = c("2018", "2019")),
+              re_formula =NA)
+
+saveRDS(marg_eff_attack_0ab,  here::here("_posts", "mus", "mods", "marg_eff_attack_0ab.rds"))
+#marg_eff_attack_0ab <- readRDS(here::here("_posts", "mus", "mods", "marg_eff_attack_0ab.rds"))
+
+
+# Obtain contrasts
+
+marg_eff_attack_0ab
+plot_all <- ggplot(
+  marg_eff_attack_0ab,
+  aes(
+    x = .epred,
+    y = Wave,
+    fill = as.factor(As)
+  ) ) + 
+#  scale_y_discrete(limits=rev) +
+    stat_halfeye() +
+    scale_fill_okabe_ito() +
+    labs(
+      x = "Predicted Warmth Response",
+      y = "w2018(years 2018-2019); w2019 (years 2019-2020)",
+      fill = "Conterfactual Contrasts",
+      subtitle = "Bayesian posterior locations of potential outcomes"
+    ) +
+  #  scale_x_continuous(limits=c(4.0,4.6)) +
+    theme_pubclean() +
+    theme(legend.position = "bottom"
+    )
+plot_all
+#plot_all
+
+
+grand_mean_ame_ab <- m3ab %>% 
+  emmeans(~ As*Wave,
+          epred = TRUE, re_formula = NA) %>% 
+  gather_emmeans_draws() 
+   
+grand_mean_ame_ab
+grand_mean_ame_ab
+saveRDS(grand_mean_ame_ab,  here::here("_posts", "mus", "mods", "grand_mean_ame_ab.rds"))
+grand_mean_ame_ab <- readRDS(here::here("_posts", "mus", "mods", "grand_mean_ame_ab.rds"))
+grand_mean_ame_ab%>%
+  slice(10000)
+# remove erro contrasts / we don't observe 0 in year two 
+test <- grand_mean_ame_ab
+
+
+plot_all__ame_ab <- ggplot(grand_mean_ame_ab,
+                                     aes(x = .value)) +
+  stat_halfeye(slab_alpha = 0.75, fill = "grey") +
+  scale_fill_okabe_ito(order = c(3, 4)) +
+  labs(x = "Average marginal effect of attack on warmth to Muslims",
+       y = "Density") +
+  #facet_wrap(vars(region)) +
+  theme_classic() + 
+  theme(legend.position = "bottom") + labs(title= "Marginal effect of attack on warmth to Muslims")
+plot_all__ame_ab 
+library(patchwork)
+bayes_plots_a <- plot_all + plot_all__ame + plot_annotation(tag_levels = 'a')
+bayes_plots_a
+
+ggsave(
+  bayes_plots_a,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 10,
+  height = 5,
+  units = "in",
+  filename = "bayes_plots_a.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1200
+)
+
+
+
+
+
+```
+
+
+
+
+
 
 
 
