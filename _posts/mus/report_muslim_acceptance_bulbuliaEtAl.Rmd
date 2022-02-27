@@ -70,8 +70,15 @@ theme_set(theme_pubclean()) # nice theme
 #theme_set(theme_classic())
 ```
 
+```{r}
+cite_packages()
+```
+
+
 ```{r data, cache = TRUE}
 #import data
+library(report)
+library(dplyr)
 df <- readRDS(here::here("data", "df"))
 ```
 
@@ -782,6 +789,9 @@ p1pp <- plot(p1,
   # geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed") +
   theme_classic()
 ```
+
+
+## Weights graph 
 
 ```{r}
 km$attack <- as.numeric(km$Attack)-1
