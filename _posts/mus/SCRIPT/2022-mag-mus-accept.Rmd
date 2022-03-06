@@ -666,7 +666,8 @@ km_all <- df %>%
   dplyr::mutate(Ys = Warm.Muslims, 
                 As = Attack)%>%
   dplyr::mutate(yrs =  (dys/365))%>% 
-  dplyr::mutate(wave = as.numeric(Wave)-1) %>% select(Id, Wave, Ys, As, Warm.Muslims, Attack, Age, EthnicCats, Edu, Employed, Urban, Male, GenCohort, Religious, Pol.Orient, Parent, Partner, Urban, NZdep) %>%
+  dplyr::mutate(wave = as.numeric(Wave)-1) %>% 
+  select(Id, Wave, Ys, As, Warm.Muslims, Attack, Age, EthnicCats, Edu, Employed, Urban, Male, GenCohort, Religious, Pol.Orient, Parent, Partner, Urban, NZdep,wave) %>%
   dplyr::mutate(pol_bz = if_else(Wave == "2018", scale(Pol.Orient), NA_real_)) %>%
   fill(pol_bz) %>%
   dplyr::mutate(rel_bz = if_else(Wave == "2018", scale(as.numeric(Religious)), NA_real_)) %>%
@@ -693,10 +694,11 @@ km_all <- df %>%
   arrange(Wave,Id) 
 
 length(unique(km_all$Id))
+km_all$wave
 
+# correct
 table1::table1(~ Warm.Muslims|Wave*as.factor(Attack), data = km_all, overall=FALSE)
 
-head(km_all)
 
 obtl<-table1::table1(~ Attack|Wave, data = km_all, overall=FALSE)
 kable(obtl, format ="latex", booktabs = TRUE)
@@ -722,12 +724,12 @@ kf  <- km_all %>%
 
 
   
-# Test
+# Test  = Correct
 table1::table1(~Ys|Wave *as.factor(As), data =kf ,overall=F)
 
 
 
-## Bind
+## Bind - double dataset to creat missing values
 ka <- km_all %>%
 bind_rows(kf)%>%
   arrange(Id,Wave) %>%
@@ -743,51 +745,56 @@ table1::table1( ~Ys | Wave*As, data = ka)
 
 # avoid collineraity
 ka2<-ka%>%
-  select(Id,Wave,wave,As,Ys,Edu,EthnicCats,Employed,Urban,Male,GenCohort,Religious,Pol.Orient,NZdep)
+  select(Id,Wave,wave,As,Ys,pol_bz,rel_bz,partner_bz,parent_bz,age_bz,nzdep_bz,male_2z,employed_bz,edu_bz,ubran_bz,EthnicCats_b)
 
-library(Amelia)
 ka2<-as.data.frame(ka2) 
-ka2$wave<-as.numeric(ka2$Wave)-1
-ka2$wave
-set.seed=1234
-imputed <- amelia(
-  ka2, #dataset to impute
-  m = 10, # number of imputations
-  cs= c("Id"),
-  ts= c("yrs"),
-  noms = c(
-    "As",
-    "EthnicCats",
-    "Employed",
-    "Pol.Orient",
-    "Urban",
-    "Male",
-    "GenCohort",
-    "Religious"),
- idvars=c("Wave")) #, # do not impute outcome
-library(Amelia)
-ka3<-as.data.frame(ka2)     
 
 
 ### WITHOUT JOINT ASSUMPTION 
 # filter only 0s and only 1s for the As
-d0 <- ka3 %>%
+d0 <- ka2 %>%
   filter(As==0)
 
-d1 <- ka3 %>%
-  filter(As==1 )
+d18 <- ka2 %>%
+  filter(As==1 & Wave ==2018)
+
+# need full distribution to obtain correct marginal for 19 = 1 (because we have 2018=0, and 2018=1)
+d19 <- ka2 
 
 
 
 #ka3$Wave<-as.numeric(ka3$Wave)
 
-
+library(Amelia)
+d0<-as.data.frame(d0)
 imputed_0<- amelia(
   set.seed=1234,
   d0, #dataset to impute
+  m = 10, # number of imputations
+  noms = c(
+    "EthnicCats_b"
+  ),
+   idvars=c("Wave","As","Id","wave")) #, # do 
+
+
+d18<-as.data.frame(d18)
+imputed_18<- amelia(
+  d18, #dataset to impute
+  m = 10, # number of imputations
+  noms = c(
+    "EthnicCats_b"
+  ),
+   idvars=c("Wave","As","Id","wave")) #, # do 
+
+
+
+
+imputed_19<- amelia(
+  set.seed=14321,
+  d1_19, #dataset to impute
   m = 20, # number of imputations
  # cs= c("Id"),
-#  ts= c("yrs"),
+ # ts= c("yrs"),
   noms = c(
     "EthnicCats",
     "Employed",
@@ -796,44 +803,9 @@ imputed_0<- amelia(
    # "Ys",
     "GenCohort",
     "Religious"),
-   idvars=c("Wave","As","Id","yrs","wave")) #, # do 
+   idvars=c("Wave","As","Id","yrs","wave")) #, # do
+# function for combining dataframes
 
-
-
-imputed_1<- amelia(
-  d1, #dataset to impute
-  m = 20, # number of imputations
-  # cs= c("Id"),
-  # ts= c("wave"),
-  noms = c(
-    "EthnicCats",
-    "Employed",
-    "Pol.Orient",
-    "Urban",
-    "Male",
-    "GenCohort",
-    "Religious"),
- idvars=c("As","yrs","Wave","Id")) #, # do not impute outcome
-
-
-
-# imputed_19<- amelia(
-#   set.seed=14321,
-#   d1_19, #dataset to impute
-#   m = 20, # number of imputations
-#  # cs= c("Id"),
-#  # ts= c("yrs"),
-#   noms = c(
-#     "EthnicCats",
-#     "Employed",
-#     "Urban",
-#     "Male",
-#    # "Ys",
-#     "GenCohort",
-#     "Religious"),
-#    idvars=c("Wave","As","Id","yrs","wave")) #, # do 
-# # function for combining dataframes
-# 
 
 
 m<-20
@@ -1063,7 +1035,7 @@ unnest(all_imputations_d) %>%
 ```{r}
 ## FULL BAYES
 datlist<-readRDS(here::here("_posts","mus","mods","datlist"))
-
+datlist
 
 m_us <- brms::brm( 
   Ys ~ As *  Wave + (1|Id), 
