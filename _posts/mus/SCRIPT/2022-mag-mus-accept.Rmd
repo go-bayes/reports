@@ -799,12 +799,22 @@ imputed_19<- amelia(
   noms = c(
     "EthnicCats_b"
   ),
-   idvars=c("Wave","As")) #, # do 
-# function for combining dataframes
+   idvars=c("Wave","As")) # correct
 
 
+# filter only the 2019 
 
-m<-20
+m<-10
+imputed_19s<-NULL
+imputed_19$imputations
+
+for(i in 1:m) {
+  imputed_19s$imputations$imp[[i]] <- imputed_19$imputations[[i]] %>%
+    dplyr::filter(Wave == 2019 & As == 1) %>%
+    arrange(Wave, Id)
+}
+
+m<-10
 imps <-NULL
 impsL <-NULL
 for(i in 1:m) {
@@ -812,8 +822,6 @@ for(i in 1:m) {
                                      imputed_1$imputations[[i]])
   imps$imputations$imp[[i]] <- imps$imputations$imp[[i]] %>% arrange(Wave,Id)
   impsL <- as.list
-          
-  
 }
 
 
