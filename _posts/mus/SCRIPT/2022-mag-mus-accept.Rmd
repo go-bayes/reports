@@ -778,6 +778,7 @@ imputed_0<- amelia(
 
 
 d18<-as.data.frame(d18)
+
 imputed_18<- amelia(
   d18, #dataset to impute
   m = 10, # number of imputations
@@ -788,22 +789,17 @@ imputed_18<- amelia(
 
 
 
-
+d19<-as.data.frame(d19)
 imputed_19<- amelia(
   set.seed=14321,
-  d1_19, #dataset to impute
-  m = 20, # number of imputations
- # cs= c("Id"),
- # ts= c("yrs"),
+  d19, #dataset to impute
+  m = 10, # number of imputations
+ cs= c("Id"),
+ ts= c("wave"),
   noms = c(
-    "EthnicCats",
-    "Employed",
-    "Urban",
-    "Male",
-   # "Ys",
-    "GenCohort",
-    "Religious"),
-   idvars=c("Wave","As","Id","yrs","wave")) #, # do
+    "EthnicCats_b"
+  ),
+   idvars=c("Wave","As")) #, # do 
 # function for combining dataframes
 
 
