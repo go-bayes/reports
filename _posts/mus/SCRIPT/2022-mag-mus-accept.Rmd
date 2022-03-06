@@ -34,6 +34,7 @@ knitr::opts_chunk$set(
 
 ```{r libs, include=FALSE}
 #libraries
+
 library("tidyverse") # data wrangling
 library("here") # file management
 library("equatiomatic") # equations
@@ -86,6 +87,7 @@ We prepare data by selecting data from wave 2018 (years 2018-19) and wave 2019 (
 
 ```{r danalysisdata, cache=TRUE}
 # dataset for models
+
 km <- df %>%
   dplyr::select(
     Id,
@@ -118,13 +120,14 @@ km <- df %>%
     YearMeasured,
     Religious
   ) %>%
-dplyr::filter( Wave == 2018 & YearMeasured ==1 | Wave == 2019 & YearMeasured ==1 ) %>%
+#dplyr::filter( Wave == 2018 & YearMeasured ==1 | Wave == 2019 & YearMeasured ==1 ) %>%
+  dplyr::filter( (Wave == 2018 & YearMeasured == 1 ) | Wave == 2019 )%>%  # Account for missingness
    droplevels() %>%
-  group_by(Id)%>%
-  filter(n() == 2) %>%
-  dplyr::add_tally() %>%
-  filter(n == 2 ) %>%
-  dplyr::ungroup() %>%
+#  group_by(Id)%>%
+#  filter(n() == 2) %>%
+#  dplyr::add_tally() %>%
+ # filter(n == 2 ) %>%
+ # dplyr::ungroup() %>%
   dplyr::mutate(Attack = ifelse(TSCORE >= 3545, 1, 0)) %>%
   #dplyr::mutate(Attack2 = factor(ifelse(Attack == 1 & Wave ==2019, 3, Attack)))%>%
   # dplyr::mutate(daysAfter = as.integer(TSCORE - 3545),
@@ -136,56 +139,56 @@ dplyr::filter( Wave == 2018 & YearMeasured ==1 | Wave == 2019 & YearMeasured ==1
 
 Number of participants
 ```{r}
-length(unique(km$Id))
+length(unique(km$Id)) # 40785
 ```
 
 How many 90 days after the attacks? 
 
-```{r}
-# 3545 + 90
-ts<-df %>%
-  dplyr::filter(YearMeasured == 1)  %>%
-  dplyr::filter(Wave == 2018) %>%
-  dplyr::filter(TSCORE >= 3545) %>%
-  dplyr::filter(TSCORE <= 3635) %>%
-  dplyr::select(Id, TSCORE, Warm.Muslims) %>%
-  dplyr::filter(!is.na(Warm.Muslims)) 
+<!-- ```{r} -->
+<!-- # 3545 + 90 -->
+<!-- ts<-df %>% -->
+<!--   dplyr::filter(YearMeasured == 1)  %>% -->
+<!--   dplyr::filter(Wave == 2018) %>% -->
+<!--   dplyr::filter(TSCORE >= 3545) %>% -->
+<!--   dplyr::filter(TSCORE <= 3635) %>% -->
+<!--   dplyr::select(Id, TSCORE, Warm.Muslims) %>% -->
+<!--   dplyr::filter(!is.na(Warm.Muslims))  -->
 
-length(unique(ts$Id))
+<!-- length(unique(ts$Id)) -->
 
-  
-# dplyr::mutate(Pre_PostATTACK = factor(ifelse(
-  #   TSCORE >= 3545, "post_attack",
-  #   "pre_attack"
-  # )))%>%
-  # dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack","post_attack")))%>%
-```
 
-Data preparation
+<!-- # dplyr::mutate(Pre_PostATTACK = factor(ifelse( -->
+<!--   #   TSCORE >= 3545, "post_attack", -->
+<!--   #   "pre_attack" -->
+<!--   # )))%>% -->
+<!--   # dplyr::mutate(Pre_PostATTACK = forcats::fct_relevel(Pre_PostATTACK, c("pre_attack","post_attack")))%>% -->
+<!-- ``` -->
 
-```{r}
-dm <- df %>%
-  dplyr::filter(YearMeasured == 1)  %>%
-  dplyr::filter(Wave == 2019 |
-                  Wave == 2018 |
-                  Wave == 2017 |
-                  Wave == 2016 |
-                  Wave == 2015|
-                  Wave == 2014|
-                  Wave == 2013|
-                  Wave == 2012) %>%
-  dplyr::group_by(Id) %>% filter(n() > 2) %>%
-  dplyr::ungroup(Id)  %>%
-  dplyr::select(Id, TSCORE, Warm.Maori)%>%
-  dplyr::filter(!is.na(Warm.Maori)) %>%
-  dplyr::mutate(
-    wm_s = scale(Warm.Maori),
-    days = as.integer(TSCORE),
-    yr_0 = ((days - min(days)) / 365),
-    yrs = (days / 365),
-    yr_a = 3545/365,
-  ) 
-```
+<!-- Data preparation -->
+
+<!-- ```{r} -->
+<!-- dm <- df %>% -->
+<!--   dplyr::filter(YearMeasured == 1)  %>% -->
+<!--   dplyr::filter(Wave == 2019 | -->
+<!--                   Wave == 2018 | -->
+<!--                   Wave == 2017 | -->
+<!--                   Wave == 2016 | -->
+<!--                   Wave == 2015| -->
+<!--                   Wave == 2014| -->
+<!--                   Wave == 2013| -->
+<!--                   Wave == 2012) %>% -->
+<!--   dplyr::group_by(Id) %>% filter(n() > 2) %>% -->
+<!--   dplyr::ungroup(Id)  %>% -->
+<!--   dplyr::select(Id, TSCORE, Warm.Maori)%>% -->
+<!--   dplyr::filter(!is.na(Warm.Maori)) %>% -->
+<!--   dplyr::mutate( -->
+<!--     wm_s = scale(Warm.Maori), -->
+<!--     days = as.integer(TSCORE), -->
+<!--     yr_0 = ((days - min(days)) / 365), -->
+<!--     yrs = (days / 365), -->
+<!--     yr_a = 3545/365, -->
+<!--   )  -->
+<!-- ``` -->
 
 
 
@@ -199,8 +202,8 @@ km0<-km%>%
 levels(km0$Attack) <- c('Pre', 'Post')
 
 km0$Warm.Muslims
-x <- table1::table1(~ Warm.Muslims + Age + Male +Edu + EthnicCats  +  Religious + Pol.Orient + Urban + NZdep|Wave*Attack, data = km0, overall=FALSE)
-
+x <- table1::table1(~ Warm.Muslims + Age + Male +Edu + EthnicCats  +  Religious + Pol.Orient + Urban + NZdep|Wave*Attack, data = km0)
+x
 t1kable(x, format ="latex")
 ```
 
@@ -1483,11 +1486,80 @@ obtl
 t1kable(obtl, format ="latex", booktabs = TRUE)
 
 
-
-
 x <- table1::table1(~ Warm.Muslims + Age + Male + GenCohort + Edu + Employed + EthnicCats  +  Religious + Pol.Orient + NZdep + Urban|Wave*As, data = km4, overall=FALSE)
 x
 t1kable(x, format ="latex")
+
+
+
+### ALL
+
+library(tidyverse)
+km_all <- df %>%
+  dplyr::select(
+    Id,
+    Age,
+    Wave,
+    EthnicCats,
+    Employed,
+    Urban,
+    Edu,
+    Male,
+    Pol.Orient,
+    NZdep,
+    Religious,
+    GenCohort,
+    Urban,
+    TSCORE,
+    # Warm.Overweight,
+    # Warm.Elderly,
+    # Warm.MentalIllness,
+    Warm.Muslims,
+    # Warm.Immigrants,
+    # Warm.Asians,
+    # Warm.Refugees,
+    # Wave,
+    # Warm.Maori,
+    # Warm.NZEuro,
+    # Warm.Indians,
+    # Warm.Chinese,
+    # Warm.Refugees,
+    # Warm.Pacific,
+    YearMeasured
+  ) %>%
+  dplyr::filter(Wave == 2018 | Wave ==2019) %>%
+  droplevels() %>%
+  dplyr::mutate(org2018 =  ifelse(Wave == 2018 & YearMeasured ==1,1,0 ))%>%
+  group_by(Id) %>%
+  dplyr::mutate(hold = mean(org2018, na.rm = TRUE)) %>%  # Hack
+  filter(hold>0) %>% # hack!
+  dplyr::mutate(Edu = as.numeric(Edu))%>%
+  arrange(Wave,Id) %>%
+  dplyr::mutate(Attack = as.numeric((ifelse(TSCORE >= 3545|Wave ==2019, 1, 0)))) %>%
+ # dplyr::filter(Attack == 0) %>%
+  dplyr::mutate(dys = (TSCORE - min(TSCORE)))%>% 
+  dplyr::mutate(Ys = Warm.Muslims, 
+                As = Attack)%>%
+  dplyr::mutate(yrs =  (dys/365))%>% 
+  select(Id, Wave, yrs,Ys, As, Warm.Muslims,Attack, Age, EthnicCats, Edu, Employed, Urban, Male, GenCohort, Religious,Pol.Orient,Urban,NZdep)%>%
+  arrange(Wave,Id) 
+
+length(unique(km_all$Id))
+
+table1::table1(~ Warm.Muslims|Wave*as.factor(Attack), data = km_all, overall=FALSE)
+
+
+head(km_all)
+
+obtl<-table1::table1(~ Attack|Wave, data = km_all, overall=FALSE)
+kable(obtl, format ="latex", booktabs = TRUE)
+
+
+x <- table1::table1(~ Warm.Muslims + Age + Male + GenCohort + Edu + Employed + EthnicCats  +  Religious + Pol.Orient + NZdep + Urban|Wave*As, data = km_all, overall=FALSE)
+x
+t1kable(x, format ="latex")
+
+
 
 # # impute 
 # library(Amelia)
@@ -1514,9 +1586,10 @@ t1kable(x, format ="latex")
 
 # create new data set
 library(tidyverse)
-kf  <-km4 %>%
+kf  <-km_all %>%
   group_by(Id) %>%  # All ZEROS
-  mutate(As = (ifelse(Wave==2018 & Attack == 1|Wave ==2019, 0, 
+ # mutate(Attack == as.numeric(Attack))%>%
+  mutate(As = (ifelse(Wave==2018 & Attack == 1|Wave == 2019, 0, 
                      ifelse(Wave==2018 & Attack == 0, 1, Attack)))) %>%
   mutate(Ys = ifelse(Wave==2018 & Attack == 1|Wave ==2019, NA, 
                      ifelse(Wave==2018 & Attack == 0, NA, Warm.Muslims)))%>%
@@ -1525,10 +1598,43 @@ kf  <-km4 %>%
 
 
   
- # Test
-table1::table1(~Ys|Wave *As, data =kf ,overall=F)
+# Test
+table1::table1(~Ys|Wave *as.factor(As), data =kf ,overall=F)
 
-ka <- km4 %>%
+k0 <- km_all %>%
+  arrange(Id,Wave) 
+
+### ORDINARY TEST
+library(Amelia)
+k0<-as.data.frame(k0) 
+k0$wave <-as.numeric(k0$Wave)-1
+set.seed=1234
+
+imputed_test<- amelia(
+  k0, #dataset to impute
+  m = 10, # number of imputations
+  cs= c("Id"),
+  ts= c("wave"),
+  noms = c(
+    "As",
+    "EthnicCats",
+    "Employed",
+    "Pol.Orient",
+    "Urban",
+    "Male",
+    "GenCohort",
+    "Religious"),
+ idvars=c("yrs","Wave")) #, # do not impute outcome
+library(Amelia)
+ka3<-as.data.frame(ka2)  
+
+
+
+
+
+
+
+ka <- km_all %>%
 bind_rows(kf)%>%
   arrange(Id,Wave) %>%
   mutate(As = as.factor(As)) %>%
@@ -1540,7 +1646,7 @@ ka
 table1::table1( ~Ys | Wave*As, data = ka)
 
 # looks good
-km4%>%
+km_all%>%
   select(Id,Wave,As,Ys,yrs)
 
 # impute missing data
@@ -1551,41 +1657,43 @@ ka2<-ka%>%
 
 library(Amelia)
 ka2<-as.data.frame(ka2) 
-
+ka2$wave<-as.numeric(ka2$Wave)-1
+ka2$wave
 set.seed=1234
 imputed <- amelia(
   ka2, #dataset to impute
-  m = 20, # number of imputations
+  m = 10, # number of imputations
   cs= c("Id"),
   ts= c("yrs"),
   noms = c(
     "As",
     "EthnicCats",
     "Employed",
+    "Pol.Orient",
     "Urban",
     "Male",
     "GenCohort",
     "Religious"),
  idvars=c("Wave")) #, # do not impute outcome
-
 library(Amelia)
 ka3<-as.data.frame(ka2)     
 
+
+### WITHOUT JOINT ASSUMPTION 
 # filter only 0s and only 1s for the As
 d0 <- ka3 %>%
   filter(As==0)
 
-d1_18 <- ka3 %>%
-  filter(As==1 & Wave == 2018)
+d1 <- ka3 %>%
+  filter(As==1 )
 
-d1_19 <- ka3 %>%
-  filter(As== 1& Wave == 2019)
+
 
 #ka3$Wave<-as.numeric(ka3$Wave)
-set.seed=14321
+
 
 imputed_0<- amelia(
-  set.seed=14321,
+  set.seed=1234,
   d0, #dataset to impute
   m = 20, # number of imputations
  # cs= c("Id"),
@@ -1598,42 +1706,44 @@ imputed_0<- amelia(
    # "Ys",
     "GenCohort",
     "Religious"),
-   idvars=c("Wave","As","Id","yrs")) #, # do 
+   idvars=c("Wave","As","Id","yrs","wave")) #, # do 
 
 
-imputed_18<- amelia(
-  set.seed=14321,
-  d1_18, #dataset to impute
+
+imputed_1<- amelia(
+  d1, #dataset to impute
   m = 20, # number of imputations
- # cs= c("Id"),
- # ts= c("yrs"),
+  # cs= c("Id"),
+  # ts= c("wave"),
   noms = c(
     "EthnicCats",
     "Employed",
+    "Pol.Orient",
     "Urban",
     "Male",
-   # "Ys",
     "GenCohort",
     "Religious"),
-   idvars=c("Wave","As","Id","yrs")) #, # do 
+ idvars=c("As","yrs","Wave","Id")) #, # do not impute outcome
 
-imputed_19<- amelia(
-  set.seed=14321,
-  d1_19, #dataset to impute
-  m = 20, # number of imputations
- # cs= c("Id"),
- # ts= c("yrs"),
-  noms = c(
-    "EthnicCats",
-    "Employed",
-    "Urban",
-    "Male",
-   # "Ys",
-    "GenCohort",
-    "Religious"),
-   idvars=c("Wave","As","Id","yrs")) #, # do 
-# function for combining dataframes
 
+
+# imputed_19<- amelia(
+#   set.seed=14321,
+#   d1_19, #dataset to impute
+#   m = 20, # number of imputations
+#  # cs= c("Id"),
+#  # ts= c("yrs"),
+#   noms = c(
+#     "EthnicCats",
+#     "Employed",
+#     "Urban",
+#     "Male",
+#    # "Ys",
+#     "GenCohort",
+#     "Religious"),
+#    idvars=c("Wave","As","Id","yrs","wave")) #, # do 
+# # function for combining dataframes
+# 
 
 
 m<-20
@@ -1641,8 +1751,7 @@ imps <-NULL
 impsL <-NULL
 for(i in 1:m) {
   imps$imputations$imp[[i]] <- dplyr::bind_rows(imputed_0$imputations[[i]], 
-                                     imputed_18$imputations[[i]],
-                                     imputed_19$imputations[[i]])
+                                     imputed_1$imputations[[i]])
   imps$imputations$imp[[i]] <- imps$imputations$imp[[i]] %>% arrange(Wave,Id)
   impsL <- as.list
           
@@ -1654,12 +1763,10 @@ m<-20
 imps<-NULL
 for(i in 1:m) {
   imps$imputations$imp[[i]] <- dplyr::bind_rows(imputed_0$imputations[[i]], 
-                                     imputed_18$imputations[[i]],
-                                     imputed_19$imputations[[i]])
+                                     imputed_1$imputations[[i]])
   imps$imputations$imp[[i]] <- imps$imputations$imp[[i]] %>% arrange(Wave,Id)
   
 }
- imps$imputations$imp[[1]]
 
  
  
@@ -1671,10 +1778,10 @@ for(i in 1:m) {
   impsL$imputations[[i]]<- as.data.frame(imps$imputations$imp[[i]])
 }
 
-datlist <-impsL$imputations
-#saveRDS(datlist, here::here("_posts","mus","mods","datlist"))
-#saveRDS(impsL, here::here("_posts","mus","mods","imps"))
-#saveRDS(imps, here::here("_posts","mus","mods","imps"))
+# datlist <- impsL$imputations
+# saveRDS(datlist, here::here("_posts", "mus", "mods", "datlist"))
+# saveRDS(impsL, here::here("_posts", "mus", "mods", "imps"))
+# saveRDS(imps, here::here("_posts", "mus", "mods", "imps"))
 
 
 m<-20
@@ -1685,7 +1792,7 @@ for(i in 1:m) {
 
 pool_parameters(models)
 
-pred <- ggeffects::ggemmeans(models[[3]], terms = c("Wave","As"))
+pred <- ggeffects::ggemmeans(models[[1]], terms = c("Wave","As"))
 pred
 
 plot(pred, facets = F) #  +  theme_classic() + ggtitle("") # title to be suppled
@@ -1695,7 +1802,7 @@ pool_parameters(models)
 
 
 
-pred <- ggeffects::ggemmeans(models[[1]], terms = c("Wave","As"))
+pred <- ggeffects::ggemmeans(models[[3]], terms = c("Wave","As"))
 pred
 
 plot(pred, facets = F) #  +  theme_classic() + ggtitle("") # title to be suppled
@@ -1724,22 +1831,7 @@ imputed_d<- amelia(
    idvars=c("Wave")) #, # do not impute outcome
 
 
-## Create weights for each imputed data set
-m<-20
-models<-NULL
-for(i in 1:m) {
-  models[[i]] <- lmer(Ys ~ As + Wave  + (1|Id), data=imputed_d$imputations[[i]])
-}
 
-pool_parameters(models)
-
-pred <- ggeffects::ggemmeans(models[[1]], terms = c("Wave","As"))
-pred
-
-plot(pred, facets = F) #  +  theme_classic() + ggtitle("") # title to be suppled
-
-
-summary(test)
 
 #polytime = 3) #https://stackoverflow.com/questions/56218702/missing-data-warning-r
 #saveRDS(imputed,here::here("_posts","mus","mods","imputed.rds"))
@@ -1747,7 +1839,7 @@ imputed<- readRDS(here::here("_posts","mus","mods","imputed.rds"))
 
 
 
-tscsPlot(imputed_d, var = "Ys", cs =c(2,4,491,564,76,582), draws = 100, conf = 0.9, misscol = "red",
+tscsPlot(imputed, var = "Ys", cs =c(2,4,491,564,76,582), draws = 100, conf = 0.9, misscol = "red",
   obscol = "black")
 
 
@@ -1776,16 +1868,15 @@ table1::table1(~Ys| Wave*As, data = imputed5)
 
 
 m<-10
-models<-NULL
+models1<-NULL
 for(i in 1:m) {
-  models[[i]] <- lmer(Ys ~ As * Wave  + (1|Id), data=imputed$imputations[[i]])
+  models1[[i]] <- lmer(Ys ~ As * Wave  + (1|Id), data=imputed$imputations[[i]])
 }
 
-pool_parameters(models)
-pred <- ggeffects::ggemmeans(models[[1]], terms = c("Wave","As"))
-pred
+pool_parameters(models1)
+pred1<- ggeffects::ggemmeans(models1[[2]], terms = c("Wave","As"))
+pred1
 
-plot(pred, facets = F) #  +  theme_classic() + ggtitle("") # title to be suppled
 
 
 
@@ -1877,7 +1968,6 @@ unnest(all_imputations_d) %>%
 
 ## FULL BAYES
 
-## USE THIS 
 
 
 ```{r}
@@ -1955,14 +2045,14 @@ m3b <- brms::brm_multiple(
   file = here::here("_posts", "mus", "mods", "m3ab.rds"))
 
 summary(m3a)
-prior_summary(m_)
+brms_SummaryTable(m3a)
 ```
 
 
 ### USE THIS
 
 ```{r}
-amelia.list<-readRDS(here::here("_posts","mus", "mods", "amelia.list"))
+#amelia.list<-readRDS(here::here("_posts","mus", "mods", "amelia.list"))
 
 m_us <- brms::brms(
   Ys ~ As +  Wave + (1|Id), 
@@ -2248,7 +2338,7 @@ bm_c <- brm_multiple(
   prior = c(
     prior(student_t(3, 0, .5), class = Intercept),
     prior(student_t(3, 0, 1), class = "b")),
-  data = datlist,
+  data = datlist, # correct data
   seed = 1234,
   warmup = 1000,
   iter = 2000,
@@ -2256,10 +2346,15 @@ bm_c <- brm_multiple(
   backend = "cmdstanr",
   file = here::here("_posts", "mus", "mods", "bm_c"))
 
-summary(med2)
+#summary(bm_c)
 
-lazerhawk::brms_SummaryTable(med2, panderize=F)
-plot(med2)
+lazerhawk::brms_SummaryTable(bm_c, panderize=F)
+plot(bm_c)
+
+
+
+
+
 ```
 
 

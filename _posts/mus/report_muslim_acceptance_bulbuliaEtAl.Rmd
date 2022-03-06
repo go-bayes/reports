@@ -62,7 +62,7 @@ library("gghalves")     #  half geoms
 library("ggbeeswarm")   # Special distribution-shaped point jittering
 library("emmeans") # estimate marginal means
 library("table1") # tables /now with latex
-library("kableExtra") # tables
+
 # rstan options
 rstan_options(auto_write = TRUE) # bayesian estimation
 options(mc.cores = parallel::detectCores ()) # use all course
