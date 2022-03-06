@@ -666,11 +666,10 @@ km_all <- df %>%
   dplyr::mutate(Ys = Warm.Muslims, 
                 As = Attack)%>%
   dplyr::mutate(yrs =  (dys/365))%>% 
-  dplyr::mutate(wave = as.numeric())
-  select(Id, Wave, Ys, As, Warm.Muslims, Attack, Age, EthnicCats, Edu, Employed, Urban, Male, GenCohort, Religious, Pol.Orient, Parent, Partner, Urban, NZdep) %>%
+  dplyr::mutate(wave = as.numeric(Wave)-1) %>% select(Id, Wave, Ys, As, Warm.Muslims, Attack, Age, EthnicCats, Edu, Employed, Urban, Male, GenCohort, Religious, Pol.Orient, Parent, Partner, Urban, NZdep) %>%
   dplyr::mutate(pol_bz = if_else(Wave == "2018", scale(Pol.Orient), NA_real_)) %>%
   fill(pol_bz) %>%
-  dplyr::mutate(rel_bz = if_else(Wave == "2018", scale(Religious), NA_real_)) %>%
+  dplyr::mutate(rel_bz = if_else(Wave == "2018", scale(as.numeric(Religious)), NA_real_)) %>%
   fill(rel_bz) %>%
   dplyr::mutate(partner_bz = if_else(Wave == "2018", scale(as.numeric(Partner)), NA_real_)) %>%
   fill(partner_bz) %>%
@@ -688,7 +687,7 @@ km_all <- df %>%
   fill(edu_bz) %>%
   dplyr::mutate(ubran_bz = if_else(Wave == "2018", scale(as.numeric(Urban)), NA_real_)) %>%
   fill(ubran_bz) %>%
-  dplyr::mutate(EthnicCats_b = if_else(Wave == "2018", EthnicCats, NA_real_)) %>%
+  dplyr::mutate(EthnicCats_b = if_else(Wave == "2018", as.numeric(EthnicCats), NA_real_)) %>%
   fill(EthnicCats_b) %>% 
   dplyr::mutate(EthnicCats_b, as.factor(EthnicCats_b)) %>%
   arrange(Wave,Id) 
@@ -697,7 +696,6 @@ length(unique(km_all$Id))
 
 table1::table1(~ Warm.Muslims|Wave*as.factor(Attack), data = km_all, overall=FALSE)
 
-head(datlist)
 head(km_all)
 
 obtl<-table1::table1(~ Attack|Wave, data = km_all, overall=FALSE)
@@ -712,7 +710,7 @@ t1kable(x, format ="latex")
 
 # create new data set
 library(tidyverse)
-kf  <-km_all %>%
+kf  <- km_all %>%
   group_by(Id) %>%  # All ZEROS
  # mutate(Attack == as.numeric(Attack))%>%
   mutate(As = (ifelse(Wave==2018 & Attack == 1|Wave == 2019, 0, 
