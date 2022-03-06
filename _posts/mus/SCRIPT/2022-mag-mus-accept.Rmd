@@ -39,6 +39,7 @@ library("here") # file management
 library("lubridate") # working with dates
 library("ggplot2") # graphs
 library("ggthemes") #themes
+library("Amelia") # missing data imputation 
 library("ggpubr") # graphs
 library("viridis") # colours
 library("patchwork") # combine graphs
@@ -71,7 +72,8 @@ theme_set(theme_pubclean()) # nice theme
 ```
 
 
-```{}
+```{eval=F}
+# cite packages
 cite_packages()
 ```
 
@@ -89,11 +91,15 @@ We prepare data by selecting data from wave 2018 (years 2018-19) and wave 2019 (
 ## timeline
 rarep<-df%>%
   dplyr::filter(YearMeasured == 1) %>%
-  dplyr::filter(Wave == 2018 | Wave == 2019) %>%
-  dplyr::group_by(Id) %>% filter(n() == 2) %>%
-  dplyr::filter(Wave == 2018 | Wave == 2019) %>%
+  #dplyr::filter(Wave == 2018 | Wave == 2019) %>%
+ # dplyr::group_by(Id) %>% filter(n() == 2) %>%
+  dplyr::filter(Wave == 2018 | Wave ==2019) %>%
   droplevels() %>%
-  dplyr::ungroup(Id) %>%
+  dplyr::mutate(org2018 =  ifelse(Wave == 2018 & YearMeasured ==1,1,0 ))%>%
+  group_by(Id) %>%
+  dplyr::mutate(hold = mean(org2018, na.rm = TRUE)) %>%  # Hack
+  filter(hold>0) %>% # hack!
+  ungroup(Id) %>%
   dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30)+ TSCORE)%>%
   dplyr:::count(day = floor_date(timeline, "day"))%>%
   dplyr::mutate(Condition = factor(ifelse(day >="2018-06-18" & day < "2019-03-15", 0,
@@ -185,46 +191,46 @@ lds2 <- ggplot(rarep, aes(day, n)) + geom_col(aes(fill = Condition)) + scale_x_d
   annotate(
     geom = "curve",
     x = as.Date("2018-02-15"),
-    y = 950,
+    y = 1100,
     xend = as.Date("2018-10-15"),
-    yend = 950,
+    yend = 1100,
     curvature = -.3,
     arrow = arrow(length = unit(2, "mm"))
   ) +
   annotate(
     geom = "curve",
     x = as.Date("2018-02-15"),
-    y = 950,
+    y = 1100,
     xend = as.Date("2019-05-15"),
-    yend = 950,
+    yend = 1100,
     curvature = -.3,
     arrow = arrow(length = unit(2, "mm"))
   ) +
   annotate("text",
            x = as.Date("2018-11-05"),
-           y = 950,
+           y = 1000,
            label = "Control") +
   annotate(
     geom = "curve",
     x = as.Date("2019-05-15"),
-    y = 1000,
+    y = 1100,
     xend = as.Date("2020-05-15"),
-    yend = 1000,
+    yend = 1100,
     curvature = -.3,
     arrow = arrow(length = unit(2, "mm"))
   ) +
   annotate("text",
            x = as.Date("2019-06-05"),
-           y = 950,
+           y = 1000,
            label = "Attack") +
   annotate("text",
            x = as.Date("2020-07-30"),
-           y = 1000,
+           y = 1050,
            label = "Year\nFollowing") +
   annotate(
     geom = "curve",
     x = as.Date("2018-11-15"),
-    y = 1000,
+    y = 1100,
     xend = as.Date("2020-05-15"),
     yend = 1000,
     curvature = -.3,
@@ -254,6 +260,8 @@ ggsave(
 )
 ```
 
+Graph
+
 ```{r}
 ## For intro
 p1pp <- plot(p1,
@@ -267,6 +275,589 @@ p1pp <- plot(p1,
   # geom_vline(xintercept = c(2.8), colour = "red", linetype = "dashed") +
   theme_classic()
 ```
+
+
+
+## Missing data imputation
+
+```{r}
+# select variables
+library(tidyverse)
+km_all <- df %>%
+  dplyr::select(
+    Id,
+    Age,
+    Wave,
+    EthnicCats,
+    Employed,
+    Urban,
+    Edu,
+    Male,
+    Pol.Orient,
+    NZdep,
+    Religious,
+    GenCohort,
+    Urban,
+    TSCORE,
+    Partner,
+    Parent,
+    # Warm.Overweight,
+    # Warm.Elderly,
+    # Warm.MentalIllness,
+    Warm.Muslims,
+    # Warm.Immigrants,
+    # Warm.Asians,
+    # Warm.Refugees,
+    # Wave,
+    # Warm.Maori,
+    # Warm.NZEuro,
+    # Warm.Indians,
+    # Warm.Chinese,
+    # Warm.Refugees,
+    # Warm.Pacific,
+    YearMeasured
+  ) %>%
+  dplyr::filter(Wave == 2018 | Wave ==2019) %>%
+  droplevels() %>%
+  dplyr::mutate(org2018 =  ifelse(Wave == 2018 & YearMeasured ==1,1,0 ))%>%
+  group_by(Id) %>%
+  dplyr::mutate(hold = mean(org2018, na.rm = TRUE)) %>%  # Hack
+  filter(hold>0) %>% # hack to enable repeate of baseline in 2019 
+    ungroup(Id) %>%
+  dplyr::mutate(Edu = as.numeric(Edu))%>%
+  arrange(Wave,Id) %>%
+  dplyr::mutate(Attack = as.numeric((ifelse(
+    (TSCORE >= 3545 & Wave == 2018)|(Wave==2019), 1, 0)))) %>% # All 2019s even if NA need to be 1
+ # dplyr::filter(Attack == 0) %>%
+  dplyr::mutate(dys = (TSCORE - min(TSCORE)))%>% 
+  dplyr::mutate(Ys = Warm.Muslims, 
+                As = Attack)%>%
+  dplyr::mutate(yrs =  (dys/365))%>% 
+  dplyr::mutate(wave = as.numeric(Wave)-1) %>% 
+  select(Id, Wave, Ys, As, Warm.Muslims, Attack, Age, EthnicCats, Edu, Employed, Urban, Male, GenCohort, Religious, Pol.Orient, Parent, Partner, Urban, NZdep,wave) %>%
+  group_by(Id)%>% # need to fill this way
+  dplyr::mutate(pol_bz = if_else(Wave == "2018", (Pol.Orient), NA_real_)) %>%
+  fill(pol_bz) %>%
+  dplyr::mutate(rel_bz = if_else(Wave == "2018", (as.numeric(Religious)), NA_real_)) %>%
+  fill(rel_bz) %>%
+  dplyr::mutate(partner_bz = if_else(Wave == "2018", (as.numeric(Partner)), NA_real_)) %>%
+  fill(partner_bz) %>%
+  dplyr::mutate(parent_bz = if_else(Wave == "2018", (as.numeric(Parent)), NA_real_)) %>%
+  fill(parent_bz) %>%
+  dplyr::mutate(age_bz = if_else(Wave == "2018", (Age), NA_real_)) %>%
+  fill(age_bz) %>%
+    dplyr::mutate(nzdep_bz = if_else(Wave == "2018", (NZdep), NA_real_)) %>%
+  fill(nzdep_bz) %>%
+  dplyr::mutate(male_2z = if_else(Wave == "2018", (as.numeric(Male))/2, NA_real_)) %>%
+  fill(male_2z) %>%
+  dplyr::mutate(employed_bz = if_else(Wave == "2018", (as.numeric(Employed)), NA_real_)) %>%
+  fill(employed_bz) %>%
+  dplyr::mutate(edu_bz = if_else(Wave == "2018", (Edu), NA_real_)) %>%
+  fill(edu_bz) %>%
+  dplyr::mutate(ubran_bz = if_else(Wave == "2018", (as.numeric(Urban)), NA_real_)) %>%
+  fill(ubran_bz) %>%
+  dplyr::mutate(EthnicCats_b = if_else(Wave == "2018", as.numeric(EthnicCats), NA_real_)) %>%
+  fill(EthnicCats_b) %>% 
+  dplyr::mutate(EthnicCats_b, as.factor(EthnicCats_b)) %>%
+  ungroup()%>%
+  arrange(Id,Wave) 
+
+# check N
+length(unique(km_all$Id))
+# correct
+table1::table1(~ Warm.Muslims|Wave*as.factor(Attack), data = km_all, overall=FALSE)
+
+
+obtl<-table1::table1(~ Attack|Wave, data = km_all, overall=FALSE)
+kable(obtl, format ="latex", booktabs = TRUE)
+
+
+x <- table1::table1(~ Warm.Muslims + Age + Male + GenCohort + Edu + Employed + EthnicCats  + NZdep + Parent + Partner + Religious + Pol.Orient  + Urban|Wave*As, data = km_all, overall=FALSE)
+
+t1kable(x, format ="latex")
+
+
+
+# create new data set
+library(tidyverse)
+kf  <- km_all %>%
+  group_by(Id) %>%  # All ZEROS
+ # mutate(Attack == as.numeric(Attack))%>%
+  mutate(As = (ifelse(Wave==2018 & Attack == 1|Wave == 2019, 0, 
+                     ifelse(Wave==2018 & Attack == 0, 1, Attack)))) %>%
+  mutate(Ys = ifelse(Wave==2018 & Attack == 1|Wave ==2019, NA, 
+                     ifelse(Wave==2018 & Attack == 0, NA, Warm.Muslims)))%>%
+  ungroup() %>%
+  arrange(Wave,Id) 
+
+
+  
+# Test  = Correct
+table1::table1(~Ys|Wave *as.factor(As), data =kf ,overall=F)
+
+
+
+## Bind - double dataset to creat missing values
+ka <- km_all %>%
+bind_rows(kf)%>%
+  arrange(Id,Wave) %>%
+  mutate(As = as.factor(As)) %>%
+  select(-c(Warm.Muslims,Attack))
+
+head(ka)
+# Check 
+table1::table1( ~Ys | Wave*As, data = ka)
+
+# impute missing data
+# avoid collineraity
+ka2<-ka%>%
+  select(Id,Wave,wave,As,Ys,pol_bz,rel_bz,partner_bz,parent_bz,age_bz,nzdep_bz,male_2z,employed_bz,edu_bz,ubran_bz,EthnicCats_b)
+
+ka2<-as.data.frame(ka2) 
+
+
+### WITHOUT JOINT ASSUMPTION 
+# filter only 0s and only 1s for the As
+d0 <- ka2 %>%
+  filter(As==0 )
+
+d18 <- ka2 %>%
+  filter(As==1 & Wave ==2018)
+
+# need full distribution to obtain correct marginal for 19 = 1 (because we have 2018=0, and 2018=1)
+d19 <- ka2 
+
+
+
+#ka3$Wave<-as.numeric(ka3$Wave)
+
+# Amelia will center and scale continuous variables during the MI process. 
+
+library(Amelia)
+
+# data needs to be a data frame if passed to Amelia
+d0 <-as.data.frame(d0)
+
+
+# We impute the entire distribution of Attack = 0, on the assumption that there 2018 and 2019 have an identical distribution. 
+
+# assume Y^0|A=2018 = Y^0 2019
+
+imputed_0<- amelia(
+  set.seed=1234,
+  d0, #dataset to impute
+  cs= c("Id"),
+  ts= c("wave"),
+  m = 10, # number of imputations
+  noms = c(
+    "EthnicCats_b"
+  ),
+   idvars=c("Wave","As")) 
+
+head(d0)
+
+
+
+# we impute all the 1s from 2018 seperately.  Y^1|A=2018 \ne Y^1 2019
+d18<-as.data.frame(d18)
+
+imputed_18<- amelia(
+  d18, #dataset to impute
+  m = 10, # number of imputations
+  noms = c(
+    "EthnicCats_b"
+  ),
+   idvars=c("Wave","As","Id","wave")) #, # do 
+
+
+# This is tricky. We impute all the 1s from 2019 with the 1s from the joint distribution of 2018 & 2018 seperately.  
+# Y^1|A=2018,A=2019 \ne Y^1 2018.  We will need to filter the 2019 Ys later. 
+
+d19<-as.data.frame(d19)
+imputed_19<- amelia(
+  set.seed=14321,
+  d19, #dataset to impute
+  m = 10, # number of imputations
+ cs= c("Id"),
+ ts= c("wave"),
+  noms = c(
+    "EthnicCats_b"
+  ),
+   idvars=c("Wave","As")) # correct
+
+
+# Here filter only the 2019 Y^1s
+
+m<-10
+imputed_19s<-NULL
+
+for(i in 1:m) {
+  imputed_19s$imputations$imp[[i]] <- imputed_19$imputations[[i]] %>%
+    dplyr::filter(Wave == 2019 & As == 1) %>%
+    arrange(Wave, Id)
+}
+
+# check
+
+imputed_19s$imputations$imp[[1]]
+ 
+ 
+m<-10
+imps <-NULL
+for(i in 1:m) {
+  imps$imputations$imp[[i]] <- dplyr::bind_rows(imputed_0$imputations[[i]], 
+                                     imputed_18$imputations[[i]],
+                                     imputed_19s$imputations$imp[[i]])
+  imps$imputations$imp[[i]] <- imps$imputations$imp[[i]] %>% arrange(Wave,Id)
+}
+
+# 
+# m<-20
+# imps<-NULL
+# for(i in 1:m) {
+#   imps$imputations$imp[[i]] <- dplyr::bind_rows(imputed_0$imputations[[i]], 
+#                                      imputed_1$imputations[[i]])
+#   imps$imputations$imp[[i]] <- imps$imputations$imp[[i]] %>% arrange(Wave,Id)
+#   
+# }
+
+ 
+ 
+m<-10
+impsL <-NULL
+datlist <- NULL
+
+for(i in 1:m) {
+  impsL$imputations[[i]]<- as.data.frame(imps$imputations$imp[[i]])
+}
+
+# datlist <- impsL$imputations
+# saveRDS(datlist, here::here("_posts", "mus", "mods", "datlist"))
+# saveRDS(impsL, here::here("_posts", "mus", "mods", "imps"))
+# saveRDS(imps, here::here("_posts", "mus", "mods", "imps"))
+
+
+tscsPlot(imputed, var = "Ys", cs =c(2,4,491,564,76,582), draws = 100, conf = 0.9, misscol = "red",
+  obscol = "black")
+
+
+m<-10
+models1<-NULL
+for(i in 1:m) {
+  models1[[i]] <- lmer(Ys ~ As * Wave  + (1|Id), data=impsL$imputations[[i]])
+}
+
+pool_parameters(models1)
+pred1<- ggeffects::ggemmeans(models1[[2]], terms = c("Wave","As"))
+plot(pred1)
+
+
+
+
+
+
+
+library(Amelia)
+# see: https://www.andrewheiss.com/blog/2018/03/07/amelia-tidy-melding/, who writes:
+# unclass() is necessary because bind_rows() will complain when dealing with
+# lists with the "amelia" class, which is what amelia() returns
+
+
+
+all_imputations <- bind_rows(unclass(imputed$imputations), .id = "m") %>%
+  group_by(m) %>%
+  nest()
+
+all_imputations <- bind_rows(unclass(imps$imputations), .id = "m") %>%
+  group_by(m) %>%
+  nest()
+
+unnest(all_imputations) %>%
+  select(m, Wave, As,Ys )%>%
+   arrange((m), Wave) %>%
+   group_by(m,Wave,As) %>%
+  rename( Dataset = m,
+          Muslim_Warmth = Ys,
+          Exposure = As) %>%
+   summarise(mean = mean(Muslim_Warmth), sd = sd(Muslim_Warmth) )%>%
+  pivot_wider(names_from = c("Exposure","Wave"), values_from = c(mean,sd))%>%
+  mutate( across(where(is.numeric), round, 3)) 
+%>%
+   kbl("latex",booktabs =T, caption = "Imputed mean/sd for warmth to Muslims by condition and wave")
+           
+   
+unnest(all_imputations) %>%
+  select(m, Wave, As,Ys )%>%
+   group_by(Wave,As) %>%
+  rename( Dataset = m,
+          Muslim_Warmth = Ys,
+          Exposure = As) %>%
+   summarise(n = n(), mean = mean(Muslim_Warmth), sd = sd(Muslim_Warmth) )%>%
+  mutate( across(where(is.numeric), round, 3)) %>%
+   kbl("latex",booktabs =T, caption = "Overall imputed mean/sd for warmth to Muslims by condition and wave")
+
+
+# This doesn't work
+# all_imputations_d <- bind_rows(unclass(imputed_d$imputations), .id = "m") %>%
+#   group_by(m) %>%
+#   nest()
+# 
+# unnest(all_imputations_d) %>%
+#   select(m, Wave, As,Ys )%>%
+#    group_by(Wave,As) %>%
+#   rename( Dataset = m,
+#           Muslim_Warmth = Ys,
+#           Exposure = As) %>%
+#    summarise(n = n(), mean = mean(Muslim_Warmth), sd = sd(Muslim_Warmth) )%>%
+#   mutate( across(where(is.numeric), round, 3)) %>%
+#    kbl("latex",booktabs =T, caption = "Overall imputed mean/sd for warmth to Muslims by condition and wave")
+
+unnest(all_imputations_d) %>%
+  select(m, Wave, As,Ys )%>%
+   arrange((m), Wave) %>%
+   group_by(m,Wave,As) %>%
+  rename( Dataset = m,
+          Muslim_Warmth = Ys,
+          Exposure = As) %>%
+   summarise(mean = mean(Muslim_Warmth), sd = sd(Muslim_Warmth) )%>%
+  pivot_wider(names_from = c("Exposure","Wave"), values_from = c(mean,sd))%>%
+  mutate( across(where(is.numeric), round, 3)) 
+```
+
+## FULL BAYES
+
+
+
+```{r}
+## FULL BAYES
+datlist<-readRDS(here::here("_posts","mus","mods","datlist"))
+datlist
+
+m_us <- brms::brm( 
+  Ys ~ As *  Wave + (1|Id), 
+  data = imputed1, 
+  seed = 1234,
+  warmup = 1000,
+  iter = 2000,
+  chains = 4,
+  backend = "cmdstanr",
+  file = here::here("_posts", "mus", "mods", "m_us.rds"))
+
+m_us <-readRDS(here::here("_posts","mus","mods","m_us.rds"))
+
+lazerhawk::brms_SummaryTable(m_us)
+prior_summary(m_us)
+
+# Print Table
+ouput <- tidy(m_us)
+str(ouput)
+ouput
+#output<- as.data.frame(ouput)
+
+
+library(lazerhawk)
+blh_tab <- brms_SummaryTable(m_us, panderize=F)
+blh_tab
+blh_tab %>%
+   kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims") %>%
+    print()
+
+
+
+## prior = c(prior(normal(0, 1), class = b)),
+
+#amelia.list<-readRDS(here::here("_posts","mus", "mods", "amelia.list"))
+
+```
+
+
+### Graphs 
+
+```{r}
+#### GRAPH
+
+marg_eff_attack_0a <- m_us %>%
+  epred_draws(newdata = expand.grid(As = c(0, 1), Wave = c("2018", "2019")),
+              re_formula = NA)
+
+saveRDS(marg_eff_attack_0a,  here::here("_posts", "mus", "mods", "marg_eff_attack_0a.rds"))
+#marg_eff_attack_0a <- readRDS(here::here("_posts", "mus", "mods", "marg_eff_attack_0a.rds"))
+
+#marg_eff_attack_0a
+# Obtain contrasts
+# marg_eff_attack_0a<- marg_eff_attack_0a%>%
+#   filter(As == 1 & Wave ==2019) #Attack == 1 & Wave ==2018|  Attack == 0 & Wave ==2018)
+
+# marg_eff_attack_0
+plot_all <- ggplot(
+  marg_eff_attack_0a,
+  aes(
+    x = .epred,
+    y = Wave,
+    fill = as.factor(As)
+  ) ) + 
+#  scale_y_discrete(limits=rev) +
+    stat_halfeye() +
+    scale_fill_okabe_ito() +
+    labs(
+      x = "Predicted Warmth Response",
+      y = "w2018(years 2018-2019); w2019 (years 2019-2020)",
+      fill = "Conterfactual Contrasts",
+      subtitle = "Bayesian posterior locations of potential outcomes"
+    ) +
+  #  scale_x_continuous(limits=c(4.0,4.6)) +
+    theme_pubclean() +
+    theme(legend.position = "bottom"
+    )
+plot_all
+#plot_all
+
+
+# 
+grand_mean_ame_a <- m_us %>%
+  emmeans(~ As*Wave,
+          epred = TRUE, re_formula = NA) %>%
+  contrast() %>%
+  gather_emmeans_draws() 
+
+grand_mean_ame_a
+#   filter(As == 1 & Wave ==2019) #Attack == 1 & Wave ==2018|  Attack == 0 & Wave ==2018)
+
+saveRDS(grand_mean_ame_a,  here::here("_posts", "mus", "mods", "grand_mean_ame_a.rds"))
+#grand_mean_ame_a <- readRDS(here::here("_posts", "mus", "mods", "grand_mean_ame_a.rds"))
+
+# remove erro contrasts / we don't observe 0 in year two 
+
+
+
+
+plot_all__ame <- ggplot(grand_mean_ame_a,
+                                     aes(x = .value)) +
+  stat_halfeye(slab_alpha = 0.75, fill = "grey") +
+  scale_fill_okabe_ito(order = c(3, 4)) +
+  labs(x = "Average marginal effect of attack on warmth to Muslims",
+       y = "Density") +
+  #facet_wrap(vars(region)) +
+  theme_classic() + 
+  theme(legend.position = "bottom") + labs(title= "Marginal effect of attack on warmth to Muslims")
+plot_all__ame 
+# Try
+library(patchwork)
+bayes_plots_a <- plot_all + plot_all__ame + plot_annotation(tag_levels = 'a')
+bayes_plots_a
+
+ggsave(
+  bayes_plots_a,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 10,
+  height = 5,
+  units = "in",
+  filename = "bayes_plots_a.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1200
+)
+
+
+# 
+# blh_tab %>%
+#    kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims") %>%
+#     print()
+```
+
+## MI Bayes
+
+```{r}
+## Run on my other mac, cmdstanr was ausing problems
+gc()
+
+plot_bayes <- m_us %>%
+  emmeans( ~ As * Wave) %>%
+  contrast(method = "pairwise") %>%
+  gather_emmeans_draws() %>%
+  ggplot(aes(x = .value, y = contrast)) +
+  stat_halfeye()
+
+
+
+marg_eff_attack_0ab <- m_us %>%
+  epred_draws(newdata = expand.grid(As = c(0, 1),Wave = c("2018", "2019")),
+              re_formula =NA)
+
+saveRDS(marg_eff_attack_0ab,  here::here("_posts", "mus", "mods", "marg_eff_attack_0ab.rds"))
+#marg_eff_attack_0ab <- readRDS(here::here("_posts", "mus", "mods", "marg_eff_attack_0ab.rds"))
+
+
+# Obtain contrasts
+
+marg_eff_attack_0ab
+plot_all <- ggplot(
+  marg_eff_attack_0ab,
+  aes(
+    x = .epred,
+    y = Wave,
+    fill = as.factor(As)
+  ) ) + 
+#  scale_y_discrete(limits=rev) +
+    stat_halfeye() +
+    scale_fill_okabe_ito() +
+    labs(
+      x = "Predicted Warmth Response",
+      y = "w2018(years 2018-2019); w2019 (years 2019-2020)",
+      fill = "Conterfactual Contrasts",
+      subtitle = "Bayesian posterior locations of potential outcomes"
+    ) +
+  #  scale_x_continuous(limits=c(4.0,4.6)) +
+    theme_pubclean() +
+    theme(legend.position = "bottom"
+    )
+plot_all
+#plot_all
+
+
+grand_mean_ame_ab <- m_us %>% 
+  emmeans(~ As*Wave,
+          epred = TRUE, re_formula = NA) %>% 
+  gather_emmeans_draws() 
+   
+grand_mean_ame_ab
+grand_mean_ame_ab
+saveRDS(grand_mean_ame_ab,  here::here("_posts", "mus", "mods", "grand_mean_ame_ab.rds"))
+grand_mean_ame_ab <- readRDS(here::here("_posts", "mus", "mods", "grand_mean_ame_ab.rds"))
+grand_mean_ame_ab%>%
+  slice(10000)
+# remove erro contrasts / we don't observe 0 in year two 
+
+
+plot_all__ame_ab <- ggplot(grand_mean_ame_ab,
+                                     aes(x = .value)) +
+  stat_halfeye(slab_alpha = 0.75, fill = "grey") +
+  scale_fill_okabe_ito(order = c(3, 4)) +
+  labs(x = "Average marginal effect of attack on warmth to Muslims",
+       y = "Density") +
+  #facet_wrap(vars(region)) +
+  theme_classic() + 
+  theme(legend.position = "bottom") + labs(title= "Marginal effect of attack on warmth to Muslims")
+plot_all__ame_ab 
+library(patchwork)
+bayes_plots_a <- plot_all + plot_all__ame + plot_annotation(tag_levels = 'a')
+bayes_plots_a
+
+ggsave(
+  bayes_plots_a,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 10,
+  height = 5,
+  units = "in",
+  filename = "bayes_plots_a.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1200
+)
+
+```
+
+
 
 
 <!-- ## Weights graph  -->
@@ -604,658 +1195,6 @@ p1pp <- plot(p1,
 
 
 <!-- ``` -->
-
-
-## MI
-
-```{r}
-library(tidyverse)
-
-
-### ALL
-str(datlist)
-
-library(tidyverse)
-km_all <- df %>%
-  dplyr::select(
-    Id,
-    Age,
-    Wave,
-    EthnicCats,
-    Employed,
-    Urban,
-    Edu,
-    Male,
-    Pol.Orient,
-    NZdep,
-    Religious,
-    GenCohort,
-    Urban,
-    TSCORE,
-    Partner,
-    Parent,
-    # Warm.Overweight,
-    # Warm.Elderly,
-    # Warm.MentalIllness,
-    Warm.Muslims,
-    # Warm.Immigrants,
-    # Warm.Asians,
-    # Warm.Refugees,
-    # Wave,
-    # Warm.Maori,
-    # Warm.NZEuro,
-    # Warm.Indians,
-    # Warm.Chinese,
-    # Warm.Refugees,
-    # Warm.Pacific,
-    YearMeasured
-  ) %>%
-  dplyr::filter(Wave == 2018 | Wave ==2019) %>%
-  droplevels() %>%
-  dplyr::mutate(org2018 =  ifelse(Wave == 2018 & YearMeasured ==1,1,0 ))%>%
-  group_by(Id) %>%
-  dplyr::mutate(hold = mean(org2018, na.rm = TRUE)) %>%  # Hack
-  filter(hold>0) %>% # hack!
-    ungroup(Id) %>%
-  dplyr::mutate(Edu = as.numeric(Edu))%>%
-  arrange(Wave,Id) %>%
-  dplyr::mutate(Attack = as.numeric((ifelse(
-    (TSCORE >= 3545 & Wave == 2018)|(Wave==2019), 1, 0)))) %>% # All 2019s even if NA need to be 1
- # dplyr::filter(Attack == 0) %>%
-  dplyr::mutate(dys = (TSCORE - min(TSCORE)))%>% 
-  dplyr::mutate(Ys = Warm.Muslims, 
-                As = Attack)%>%
-  dplyr::mutate(yrs =  (dys/365))%>% 
-  dplyr::mutate(wave = as.numeric(Wave)-1) %>% 
-  select(Id, Wave, Ys, As, Warm.Muslims, Attack, Age, EthnicCats, Edu, Employed, Urban, Male, GenCohort, Religious, Pol.Orient, Parent, Partner, Urban, NZdep,wave) %>%
-  group_by(Id)%>%
-  dplyr::mutate(pol_bz = if_else(Wave == "2018", (Pol.Orient), NA_real_)) %>%
-  fill(pol_bz) %>%
-  dplyr::mutate(rel_bz = if_else(Wave == "2018", (as.numeric(Religious)), NA_real_)) %>%
-  fill(rel_bz) %>%
-  dplyr::mutate(partner_bz = if_else(Wave == "2018", (as.numeric(Partner)), NA_real_)) %>%
-  fill(partner_bz) %>%
-  dplyr::mutate(parent_bz = if_else(Wave == "2018", (as.numeric(Parent)), NA_real_)) %>%
-  fill(parent_bz) %>%
-  dplyr::mutate(age_bz = if_else(Wave == "2018", (Age), NA_real_)) %>%
-  fill(age_bz) %>%
-    dplyr::mutate(nzdep_bz = if_else(Wave == "2018", (NZdep), NA_real_)) %>%
-  fill(nzdep_bz) %>%
-  dplyr::mutate(male_2z = if_else(Wave == "2018", (as.numeric(Male))/2, NA_real_)) %>%
-  fill(male_2z) %>%
-  dplyr::mutate(employed_bz = if_else(Wave == "2018", (as.numeric(Employed)), NA_real_)) %>%
-  fill(employed_bz) %>%
-  dplyr::mutate(edu_bz = if_else(Wave == "2018", (Edu), NA_real_)) %>%
-  fill(edu_bz) %>%
-  dplyr::mutate(ubran_bz = if_else(Wave == "2018", (as.numeric(Urban)), NA_real_)) %>%
-  fill(ubran_bz) %>%
-  dplyr::mutate(EthnicCats_b = if_else(Wave == "2018", as.numeric(EthnicCats), NA_real_)) %>%
-  fill(EthnicCats_b) %>% 
-  dplyr::mutate(EthnicCats_b, as.factor(EthnicCats_b)) %>%
-  ungroup()%>%
-  arrange(Id,Wave) 
-
-length(unique(km_all$Id))
-km_all
-head(km_all[,12:25])
-# correct
-table1::table1(~ Warm.Muslims|Wave*as.factor(Attack), data = km_all, overall=FALSE)
-
-
-obtl<-table1::table1(~ Attack|Wave, data = km_all, overall=FALSE)
-kable(obtl, format ="latex", booktabs = TRUE)
-
-
-x <- table1::table1(~ Warm.Muslims + Age + Male + GenCohort + Edu + Employed + EthnicCats  +  Religious + Pol.Orient + NZdep + Urban|Wave*As, data = km_all, overall=FALSE)
-x
-t1kable(x, format ="latex")
-
-
-
-# create new data set
-library(tidyverse)
-kf  <- km_all %>%
-  group_by(Id) %>%  # All ZEROS
- # mutate(Attack == as.numeric(Attack))%>%
-  mutate(As = (ifelse(Wave==2018 & Attack == 1|Wave == 2019, 0, 
-                     ifelse(Wave==2018 & Attack == 0, 1, Attack)))) %>%
-  mutate(Ys = ifelse(Wave==2018 & Attack == 1|Wave ==2019, NA, 
-                     ifelse(Wave==2018 & Attack == 0, NA, Warm.Muslims)))%>%
-  ungroup() %>%
-  arrange(Wave,Id) 
-
-
-  
-# Test  = Correct
-table1::table1(~Ys|Wave *as.factor(As), data =kf ,overall=F)
-
-
-
-## Bind - double dataset to creat missing values
-ka <- km_all %>%
-bind_rows(kf)%>%
-  arrange(Id,Wave) %>%
-  mutate(As = as.factor(As)) %>%
-  select(-c(Warm.Muslims,Attack))
-
-head(ka)
-ka
-# Check 
-table1::table1( ~Ys | Wave*As, data = ka)
-
-# impute missing data
-
-# avoid collineraity
-ka2<-ka%>%
-  select(Id,Wave,wave,As,Ys,pol_bz,rel_bz,partner_bz,parent_bz,age_bz,nzdep_bz,male_2z,employed_bz,edu_bz,ubran_bz,EthnicCats_b)
-
-ka2<-as.data.frame(ka2) 
-
-
-### WITHOUT JOINT ASSUMPTION 
-# filter only 0s and only 1s for the As
-d0 <- ka2 %>%
-  filter(As==0 )
-
-d18 <- ka2 %>%
-  filter(As==1 & Wave ==2018)
-
-# need full distribution to obtain correct marginal for 19 = 1 (because we have 2018=0, and 2018=1)
-d19 <- ka2 
-
-
-
-#ka3$Wave<-as.numeric(ka3$Wave)
-
-library(Amelia)
-d0 <-as.data.frame(d0)
-
-head(d0)
-imputed_0<- amelia(
-  set.seed=1234,
-  d0, #dataset to impute
-  cs= c("Id"),
-  ts= c("wave"),
-  m = 10, # number of imputations
-  noms = c(
-    "EthnicCats_b"
-  ),
-   idvars=c("Wave","As")) #, # do 
-
-head(d0)
-
-
-
-d18<-as.data.frame(d18)
-
-imputed_18<- amelia(
-  d18, #dataset to impute
-  m = 10, # number of imputations
-  noms = c(
-    "EthnicCats_b"
-  ),
-   idvars=c("Wave","As","Id","wave")) #, # do 
-
-
-
-d19<-as.data.frame(d19)
-imputed_19<- amelia(
-  set.seed=14321,
-  d19, #dataset to impute
-  m = 10, # number of imputations
- cs= c("Id"),
- ts= c("wave"),
-  noms = c(
-    "EthnicCats_b"
-  ),
-   idvars=c("Wave","As")) # correct
-
-datlist
-# filter only the 2019 
-
-m<-10
-imputed_19s<-NULL
-
-for(i in 1:m) {
-  imputed_19s$imputations$imp[[i]] <- imputed_19$imputations[[i]] %>%
-    dplyr::filter(Wave == 2019 & As == 1) %>%
-    arrange(Wave, Id)
-}
-
- tail(imputed_0$imputations$imp1)
- 
- imputed_19s$imputations$imp[[1]]
- 
- 
-m<-10
-imps <-NULL
-for(i in 1:m) {
-  imps$imputations$imp[[i]] <- dplyr::bind_rows(imputed_0$imputations[[i]], 
-                                     imputed_18$imputations[[i]],
-                                     imputed_19s$imputations$imp[[i]])
-  imps$imputations$imp[[i]] <- imps$imputations$imp[[i]] %>% arrange(Wave,Id)
-}
-
-# 
-# m<-20
-# imps<-NULL
-# for(i in 1:m) {
-#   imps$imputations$imp[[i]] <- dplyr::bind_rows(imputed_0$imputations[[i]], 
-#                                      imputed_1$imputations[[i]])
-#   imps$imputations$imp[[i]] <- imps$imputations$imp[[i]] %>% arrange(Wave,Id)
-#   
-# }
-
- 
- 
-m<-10
-impsL <-NULL
-datlist <- NULL
-
-for(i in 1:m) {
-  impsL$imputations[[i]]<- as.data.frame(imps$imputations$imp[[i]])
-}
-
-# datlist <- impsL$imputations
-# saveRDS(datlist, here::here("_posts", "mus", "mods", "datlist"))
-# saveRDS(impsL, here::here("_posts", "mus", "mods", "imps"))
-# saveRDS(imps, here::here("_posts", "mus", "mods", "imps"))
-
-
-tscsPlot(imputed, var = "Ys", cs =c(2,4,491,564,76,582), draws = 100, conf = 0.9, misscol = "red",
-  obscol = "black")
-
-
-m<-10
-models1<-NULL
-for(i in 1:m) {
-  models1[[i]] <- lmer(Ys ~ As * Wave  + (1|Id), data=impsL$imputations[[i]])
-}
-
-pool_parameters(models1)
-pred1<- ggeffects::ggemmeans(models1[[2]], terms = c("Wave","As"))
-plot(pred1)
-
-
-
-
-
-
-
-library(Amelia)
-# see: https://www.andrewheiss.com/blog/2018/03/07/amelia-tidy-melding/, who writes:
-# unclass() is necessary because bind_rows() will complain when dealing with
-# lists with the "amelia" class, which is what amelia() returns
-
-
-
-all_imputations <- bind_rows(unclass(imputed$imputations), .id = "m") %>%
-  group_by(m) %>%
-  nest()
-
-all_imputations <- bind_rows(unclass(imps$imputations), .id = "m") %>%
-  group_by(m) %>%
-  nest()
-
-unnest(all_imputations) %>%
-  select(m, Wave, As,Ys )%>%
-   arrange((m), Wave) %>%
-   group_by(m,Wave,As) %>%
-  rename( Dataset = m,
-          Muslim_Warmth = Ys,
-          Exposure = As) %>%
-   summarise(mean = mean(Muslim_Warmth), sd = sd(Muslim_Warmth) )%>%
-  pivot_wider(names_from = c("Exposure","Wave"), values_from = c(mean,sd))%>%
-  mutate( across(where(is.numeric), round, 3)) 
-%>%
-   kbl("latex",booktabs =T, caption = "Imputed mean/sd for warmth to Muslims by condition and wave")
-           
-   
-unnest(all_imputations) %>%
-  select(m, Wave, As,Ys )%>%
-   group_by(Wave,As) %>%
-  rename( Dataset = m,
-          Muslim_Warmth = Ys,
-          Exposure = As) %>%
-   summarise(n = n(), mean = mean(Muslim_Warmth), sd = sd(Muslim_Warmth) )%>%
-  mutate( across(where(is.numeric), round, 3)) %>%
-   kbl("latex",booktabs =T, caption = "Overall imputed mean/sd for warmth to Muslims by condition and wave")
-
-
-# This doesn't work
-# all_imputations_d <- bind_rows(unclass(imputed_d$imputations), .id = "m") %>%
-#   group_by(m) %>%
-#   nest()
-# 
-# unnest(all_imputations_d) %>%
-#   select(m, Wave, As,Ys )%>%
-#    group_by(Wave,As) %>%
-#   rename( Dataset = m,
-#           Muslim_Warmth = Ys,
-#           Exposure = As) %>%
-#    summarise(n = n(), mean = mean(Muslim_Warmth), sd = sd(Muslim_Warmth) )%>%
-#   mutate( across(where(is.numeric), round, 3)) %>%
-#    kbl("latex",booktabs =T, caption = "Overall imputed mean/sd for warmth to Muslims by condition and wave")
-
-unnest(all_imputations_d) %>%
-  select(m, Wave, As,Ys )%>%
-   arrange((m), Wave) %>%
-   group_by(m,Wave,As) %>%
-  rename( Dataset = m,
-          Muslim_Warmth = Ys,
-          Exposure = As) %>%
-   summarise(mean = mean(Muslim_Warmth), sd = sd(Muslim_Warmth) )%>%
-  pivot_wider(names_from = c("Exposure","Wave"), values_from = c(mean,sd))%>%
-  mutate( across(where(is.numeric), round, 3)) 
-```
-
-## FULL BAYES
-
-
-
-```{r}
-## FULL BAYES
-datlist<-readRDS(here::here("_posts","mus","mods","datlist"))
-datlist
-
-m_us <- brms::brm( 
-  Ys ~ As *  Wave + (1|Id), 
-  data = imputed1, 
-  seed = 1234,
-  warmup = 1000,
-  iter = 2000,
-  chains = 4,
-  backend = "cmdstanr",
-  file = here::here("_posts", "mus", "mods", "m_us.rds"))
-
-lazerhawk::brms_SummaryTable(m_us)
-prior_summary(m_us)
-
-# Print Table
-ouput <- tidy(m_us)
-str(ouput)
-ouput
-#output<- as.data.frame(ouput)
-
-
-library(lazerhawk)
-blh_tab <- brms_SummaryTable(m_us, panderize=F)
-blh_tab
-blh_tab %>%
-   kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims") %>%
-    print()
-
-
-
-## prior = c(prior(normal(0, 1), class = b)),
-
-#amelia.list<-readRDS(here::here("_posts","mus", "mods", "amelia.list"))
-
-```
-
-
-### Graphs 
-
-```{r}
-#### BRMS MODEL
-
-marg_eff_attack_0a <- m_us %>%
-  epred_draws(newdata = expand.grid(As = c(0, 1),Wave = c("2018", "2019")),
-              re_formula =NA)
-           #   re_formula = NULL)  # or re_formula = ~ (1 | region)
-
-saveRDS(marg_eff_attack_0a,  here::here("_posts", "mus", "mods", "marg_eff_attack_0a.rds"))
-marg_eff_attack_0a <- readRDS(here::here("_posts", "mus", "mods", "marg_eff_attack_0a.rds"))
-
-#marg_eff_attack_0a
-# Obtain contrasts
-# marg_eff_attack_0a<- marg_eff_attack_0a%>%
-#   filter(As == 1 & Wave ==2019) #Attack == 1 & Wave ==2018|  Attack == 0 & Wave ==2018)
-
-# marg_eff_attack_0
-plot_all <- ggplot(
-  marg_eff_attack_0a,
-  aes(
-    x = .epred,
-    y = Wave,
-    fill = as.factor(As)
-  ) ) + 
-#  scale_y_discrete(limits=rev) +
-    stat_halfeye() +
-    scale_fill_okabe_ito() +
-    labs(
-      x = "Predicted Warmth Response",
-      y = "w2018(years 2018-2019); w2019 (years 2019-2020)",
-      fill = "Conterfactual Contrasts",
-      subtitle = "Bayesian posterior locations of potential outcomes"
-    ) +
-  #  scale_x_continuous(limits=c(4.0,4.6)) +
-    theme_pubclean() +
-    theme(legend.position = "bottom"
-    )
-plot_all
-#plot_all
-
-
-# not working
-grand_mean_ame_a <- m_us %>%
-  emmeans(~ As*Wave,
-          epred = TRUE, re_formula = NA) %>%
-  contrast() %>%
-  gather_emmeans_draws() 
-
-grand_mean_ame_a
-#   filter(As == 1 & Wave ==2019) #Attack == 1 & Wave ==2018|  Attack == 0 & Wave ==2018)
-
-#saveRDS(grand_mean_ame_a,  here::here("_posts", "mus", "mods", "grand_mean_ame_a.rds"))
-#grand_mean_ame_a <- readRDS(here::here("_posts", "mus", "mods", "grand_mean_ame_a.rds"))
-
-# remove erro contrasts / we don't observe 0 in year two 
-
-
-
-
-plot_all__ame <- ggplot(grand_mean_ame_a,
-                                     aes(x = .value)) +
-  stat_halfeye(slab_alpha = 0.75, fill = "grey") +
-  scale_fill_okabe_ito(order = c(3, 4)) +
-  labs(x = "Average marginal effect of attack on warmth to Muslims",
-       y = "Density") +
-  #facet_wrap(vars(region)) +
-  theme_classic() + 
-  theme(legend.position = "bottom") + labs(title= "Marginal effect of attack on warmth to Muslims")
-plot_all__ame 
-# Try
-library(patchwork)
-bayes_plots_a <- plot_all + plot_all__ame + plot_annotation(tag_levels = 'a')
-bayes_plots_a
-
-ggsave(
-  bayes_plots_a,
-  path = here::here(here::here("_posts", "mus", "figs")),
-  width = 10,
-  height = 5,
-  units = "in",
-  filename = "bayes_plots_a.jpg",
-  device = 'jpeg',
-  limitsize = FALSE,
-  dpi = 1200
-)
-
-
-# 
-# blh_tab %>%
-#    kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims") %>%
-#     print()
-```
-
-## MI Bayes
-
-```{r}
-## Run on my other mac, cmdstanr was ausing problems
-gc()
-
-plot_bayes <- m_us %>%
-  emmeans( ~ As * Wave) %>%
-  contrast(method = "pairwise") %>%
-  gather_emmeans_draws() %>%
-  ggplot(aes(x = .value, y = contrast)) +
-  stat_halfeye()
-
-
-
-marg_eff_attack_0ab <- m_us %>%
-  epred_draws(newdata = expand.grid(As = c(0, 1),Wave = c("2018", "2019")),
-              re_formula =NA)
-
-saveRDS(marg_eff_attack_0ab,  here::here("_posts", "mus", "mods", "marg_eff_attack_0ab.rds"))
-#marg_eff_attack_0ab <- readRDS(here::here("_posts", "mus", "mods", "marg_eff_attack_0ab.rds"))
-
-
-# Obtain contrasts
-
-marg_eff_attack_0ab
-plot_all <- ggplot(
-  marg_eff_attack_0ab,
-  aes(
-    x = .epred,
-    y = Wave,
-    fill = as.factor(As)
-  ) ) + 
-#  scale_y_discrete(limits=rev) +
-    stat_halfeye() +
-    scale_fill_okabe_ito() +
-    labs(
-      x = "Predicted Warmth Response",
-      y = "w2018(years 2018-2019); w2019 (years 2019-2020)",
-      fill = "Conterfactual Contrasts",
-      subtitle = "Bayesian posterior locations of potential outcomes"
-    ) +
-  #  scale_x_continuous(limits=c(4.0,4.6)) +
-    theme_pubclean() +
-    theme(legend.position = "bottom"
-    )
-plot_all
-#plot_all
-
-
-grand_mean_ame_ab <- m3ab %>% 
-  emmeans(~ As*Wave,
-          epred = TRUE, re_formula = NA) %>% 
-  gather_emmeans_draws() 
-   
-grand_mean_ame_ab
-grand_mean_ame_ab
-saveRDS(grand_mean_ame_ab,  here::here("_posts", "mus", "mods", "grand_mean_ame_ab.rds"))
-grand_mean_ame_ab <- readRDS(here::here("_posts", "mus", "mods", "grand_mean_ame_ab.rds"))
-grand_mean_ame_ab%>%
-  slice(10000)
-# remove erro contrasts / we don't observe 0 in year two 
-test <- grand_mean_ame_ab
-
-
-plot_all__ame_ab <- ggplot(grand_mean_ame_ab,
-                                     aes(x = .value)) +
-  stat_halfeye(slab_alpha = 0.75, fill = "grey") +
-  scale_fill_okabe_ito(order = c(3, 4)) +
-  labs(x = "Average marginal effect of attack on warmth to Muslims",
-       y = "Density") +
-  #facet_wrap(vars(region)) +
-  theme_classic() + 
-  theme(legend.position = "bottom") + labs(title= "Marginal effect of attack on warmth to Muslims")
-plot_all__ame_ab 
-library(patchwork)
-bayes_plots_a <- plot_all + plot_all__ame + plot_annotation(tag_levels = 'a')
-bayes_plots_a
-
-ggsave(
-  bayes_plots_a,
-  path = here::here(here::here("_posts", "mus", "figs")),
-  width = 10,
-  height = 5,
-  units = "in",
-  filename = "bayes_plots_a.jpg",
-  device = 'jpeg',
-  limitsize = FALSE,
-  dpi = 1200
-)
-
-```
-
-
-
-## Experimental
-
-```{r}
-path_m <- bf(
-  yrs ~  As + Wave + (1 | c | Id)
-  )
-path_y <- bf(
-  Ys|mi() ~ As + Wave + yrs + (1 | c | Id)
-  )
-
-med1 <- brm(
-  path_m + path_y + set_rescor(FALSE)
-  data = ka2,
-  seed = 1234,
-  warmup = 1000,
-  iter = 2000,
-  chains = 4,
-  backend = "cmdstanr",
-  file = here::here("_posts", "mus", "mods", "med1")
-)
-
-summary(med1)
-prior_summary(med1)
-lazerhawk::brms_SummaryTable(med1, panderize=F)
-
-
-## Correct model 
-bm_c <- brm_multiple(
-  Ys|mi() ~ As * Wave + (1 |  Id),
-  prior = c(
-    prior(student_t(3, 0, .5), class = Intercept),
-    prior(student_t(3, 0, 1), class = "b")),
-  data = datlist, # correct data
-  seed = 1234,
-  warmup = 1000,
-  iter = 2000,
-  chains = 4,
-  backend = "cmdstanr",
-  file = here::here("_posts", "mus", "mods", "bm_c"))
-
-#summary(bm_c)
-
-lazerhawk::brms_SummaryTable(bm_c, panderize=F)
-plot(bm_c)
-
-
-
-
-
-```
-
-
-```{r echo=FALSE, cache = FALSE}
-post1F <- brms::posterior_samples(f1a)
-post_marF <- post1F %>% 
-  transmute(
-    a = b_mF_xEarly_March_2020,
-    b = b_y_mF_w,
-    cp = b_y_xEarly_March_2020,
-    me = a * b,
-    c = cp + me#,
-   # pme = me / c
-  )
-# posterior_summary(post_marF)
-```
-```{r}
-mcmc_intervals(post_marF)
-??mcmc_intervals
-```
-
-```
-
 
 
 
