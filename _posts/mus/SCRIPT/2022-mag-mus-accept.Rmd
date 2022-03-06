@@ -753,7 +753,7 @@ ka2<-as.data.frame(ka2)
 ### WITHOUT JOINT ASSUMPTION 
 # filter only 0s and only 1s for the As
 d0 <- ka2 %>%
-  filter(As==0)
+  filter(As==0 )
 
 d18 <- ka2 %>%
   filter(As==1 & Wave ==2018)
@@ -766,15 +766,21 @@ d19 <- ka2
 #ka3$Wave<-as.numeric(ka3$Wave)
 
 library(Amelia)
-d0<-as.data.frame(d0)
+d0 <-as.data.frame(d0)
+
+head(d0)
 imputed_0<- amelia(
   set.seed=1234,
   d0, #dataset to impute
+  cs= c("Id"),
+  ts= c("wave"),
   m = 10, # number of imputations
   noms = c(
     "EthnicCats_b"
   ),
-   idvars=c("Wave","As","Id","wave")) #, # do 
+   idvars=c("Wave","As")) #, # do 
+
+
 
 
 d18<-as.data.frame(d18)
@@ -801,12 +807,11 @@ imputed_19<- amelia(
   ),
    idvars=c("Wave","As")) # correct
 
-
+datlist
 # filter only the 2019 
 
 m<-10
 imputed_19s<-NULL
-imputed_19$imputations
 
 for(i in 1:m) {
   imputed_19s$imputations$imp[[i]] <- imputed_19$imputations[[i]] %>%
@@ -814,29 +819,33 @@ for(i in 1:m) {
     arrange(Wave, Id)
 }
 
+ tail(imputed_0$imputations$imp1)
+ 
+ imputed_19s$imputations$imp[[1]]
+ 
+ 
 m<-10
 imps <-NULL
-impsL <-NULL
 for(i in 1:m) {
   imps$imputations$imp[[i]] <- dplyr::bind_rows(imputed_0$imputations[[i]], 
-                                     imputed_1$imputations[[i]])
+                                     imputed_18$imputations[[i]],
+                                     imputed_19s$imputations$imp[[i]])
   imps$imputations$imp[[i]] <- imps$imputations$imp[[i]] %>% arrange(Wave,Id)
-  impsL <- as.list
 }
 
-
-m<-20
-imps<-NULL
-for(i in 1:m) {
-  imps$imputations$imp[[i]] <- dplyr::bind_rows(imputed_0$imputations[[i]], 
-                                     imputed_1$imputations[[i]])
-  imps$imputations$imp[[i]] <- imps$imputations$imp[[i]] %>% arrange(Wave,Id)
-  
-}
+# 
+# m<-20
+# imps<-NULL
+# for(i in 1:m) {
+#   imps$imputations$imp[[i]] <- dplyr::bind_rows(imputed_0$imputations[[i]], 
+#                                      imputed_1$imputations[[i]])
+#   imps$imputations$imp[[i]] <- imps$imputations$imp[[i]] %>% arrange(Wave,Id)
+#   
+# }
 
  
  
-m<-20
+m<-10
 impsL <-NULL
 datlist <- NULL
 
@@ -850,120 +859,25 @@ for(i in 1:m) {
 # saveRDS(imps, here::here("_posts", "mus", "mods", "imps"))
 
 
-m<-20
-models<-NULL
-for(i in 1:m) {
-  models[[i]] <- lmer(Ys ~ As * Wave  + (1|Id), data= imps$imputations$imp[[i]])
-}
-
-pool_parameters(models)
-
-pred <- ggeffects::ggemmeans(models[[1]], terms = c("Wave","As"))
-pred
-
-plot(pred, facets = F) #  +  theme_classic() + ggtitle("") # title to be suppled
-
-pool_parameters(models)
-
-
-
-
-pred <- ggeffects::ggemmeans(models[[3]], terms = c("Wave","As"))
-pred
-
-plot(pred, facets = F) #  +  theme_classic() + ggtitle("") # title to be suppled
-
-
-
-test <- lmer(Ys ~ As * Wave  + (1|Id), data=imp)
-## Ordinal
-
-
-
-ka3$wave<-as.numeric(ka3$Wave)
-imputed_d<- amelia(
-  ka3, #dataset to impute
-  m = 20, # number of imputations
-  cs= c("Id"),
-  ts= c("yrs"),
-  noms = c(
-    "As",
-    "EthnicCats",
-    "Employed",
-    "Urban",
-    "Male",
-    "GenCohort",
-    "Religious"),
-   idvars=c("Wave")) #, # do not impute outcome
-
-
-
-
-#polytime = 3) #https://stackoverflow.com/questions/56218702/missing-data-warning-r
-#saveRDS(imputed,here::here("_posts","mus","mods","imputed.rds"))
-imputed<- readRDS(here::here("_posts","mus","mods","imputed.rds"))
-
-
-
 tscsPlot(imputed, var = "Ys", cs =c(2,4,491,564,76,582), draws = 100, conf = 0.9, misscol = "red",
   obscol = "black")
-
-
-imputed1<- imputed$imputations$imp1
-imputed2<- imputed$imputations$imp2
-imputed3<- imputed$imputations$imp3
-imputed4<- imputed$imputations$imp4
-imputed5<- imputed$imputations$imp5
-imputed6<- imputed$imputations$imp6
-imputed7<- imputed$imputations$imp7
-imputed8<- imputed$imputations$imp8
-imputed9<- imputed$imputations$imp9
-imputed10<- imputed$imputations$imp10
-str(imputed1)
-hist(imputed1$Ys, col = "grey", border = "white")
-hist(imputed2$Ys, col = "grey", border = "white")
-hist(imputed3$Ys, col = "grey", border = "white")
-hist(imputed4$Ys, col = "grey", border = "white")
-hist(imputed5$Ys, col = "grey", border = "white")
-
-table1::table1(~Ys| Wave*As, data = imputed1)
-table1::table1(~Ys| Wave*As, data = imputed2)
-table1::table1(~Ys| Wave*As, data = imputed3)
-table1::table1(~Ys| Wave*As, data = imputed4)
-table1::table1(~Ys| Wave*As, data = imputed5)
 
 
 m<-10
 models1<-NULL
 for(i in 1:m) {
-  models1[[i]] <- lmer(Ys ~ As * Wave  + (1|Id), data=imputed$imputations[[i]])
+  models1[[i]] <- lmer(Ys ~ As * Wave  + (1|Id), data=impsL$imputations[[i]])
 }
 
 pool_parameters(models1)
 pred1<- ggeffects::ggemmeans(models1[[2]], terms = c("Wave","As"))
-pred1
+plot(pred1)
 
 
 
 
 
 
-
-ct<-table1::table1(~ As|Wave, data = imputed1, overall=FALSE)
-
-ct<-table1::table1(~ Ys|As*Wave, data = imputed1, overall=FALSE)
-ct2<-table1::table1(~ Ys|As*Wave, data = imputed2, overall=FALSE)
-
-
-t1kable(out, format ="latex")
-
-plot(imputed)
-
-
-str(imputed)
-
-??mi.meld
-x<- mi.meld(imputed$imputations, se)
 
 library(Amelia)
 # see: https://www.andrewheiss.com/blog/2018/03/07/amelia-tidy-melding/, who writes:
