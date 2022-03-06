@@ -656,6 +656,7 @@ km_all <- df %>%
   group_by(Id) %>%
   dplyr::mutate(hold = mean(org2018, na.rm = TRUE)) %>%  # Hack
   filter(hold>0) %>% # hack!
+    ungroup(Id) %>%
   dplyr::mutate(Edu = as.numeric(Edu))%>%
   arrange(Wave,Id) %>%
   dplyr::mutate(Attack = as.numeric((ifelse(
@@ -665,14 +666,34 @@ km_all <- df %>%
   dplyr::mutate(Ys = Warm.Muslims, 
                 As = Attack)%>%
   dplyr::mutate(yrs =  (dys/365))%>% 
-  select(Id, Wave, yrs,Ys, As, Warm.Muslims,Attack, Age, EthnicCats, Edu, Employed, Urban, Male, GenCohort, Religious,Pol.Orient,Urban,NZdep)%>%
+  select(Id, Wave, Ys, As, Warm.Muslims, Attack, Age, EthnicCats, Edu, Employed, Urban, Male, GenCohort, Religious, Pol.Orient, Parent, Partner, Urban, NZdep)%>%
+  dplyr::mutate(pol_bz = if_else(Wave == "2018",scale(Pol.Orient), NA_real_))%>%
+    fill(pol_bz) %>%
+    dplyr::mutate(pol_bz = if_else(Wave == "2018",scale(Pol.Orient), NA_real_))%>%
+    fill(pol_bz) %>%
+
+
+
+),
+                rel_bz = (),
+                partner_bz = (),
+                age_bz = (),
+                male_2z = (),
+                edu_bz = (),
+                EthnicCats_b = (),
+                employed_bz = (),
+                parent_bz = (),
+                ubran_bz = ())
+
+
+km_all$pol_bz
   arrange(Wave,Id) 
 
 length(unique(km_all$Id))
 
 table1::table1(~ Warm.Muslims|Wave*as.factor(Attack), data = km_all, overall=FALSE)
 
-
+head(datlist)
 head(km_all)
 
 obtl<-table1::table1(~ Attack|Wave, data = km_all, overall=FALSE)
