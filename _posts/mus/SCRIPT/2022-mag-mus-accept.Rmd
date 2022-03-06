@@ -1004,7 +1004,7 @@ marg_eff_attack_0a <- m_us %>%
               re_formula =NA)
            #   re_formula = NULL)  # or re_formula = ~ (1 | region)
 
-#saveRDS(marg_eff_attack_0a,  here::here("_posts", "mus", "mods", "marg_eff_attack_0a.rds"))
+saveRDS(marg_eff_attack_0a,  here::here("_posts", "mus", "mods", "marg_eff_attack_0a.rds"))
 marg_eff_attack_0a <- readRDS(here::here("_posts", "mus", "mods", "marg_eff_attack_0a.rds"))
 
 #marg_eff_attack_0a
@@ -1094,23 +1094,8 @@ ggsave(
 ```{r}
 ## Run on my other mac, cmdstanr was ausing problems
 gc()
-m3ab <- readRDS(here::here("_posts", "mus", "mods", "m3ab.rds"))
 
-summary(m3ab)
-
-# Model was as below, called Rstand
-# m3ab <- brms::brm_multiple(Ys ~ As *  Wave + (1|Id), 
-#   seed = 1234,
-#   warmup = 500,
-#   iter = 1500,
-#   chains = 4,
-#  # backend = "cmdstanr",
-#    data = imputed, 
-#   file = here::here("_posts", "mus", "mods", "m3ab.rds"))
-
-
-
-plot_bayes <- m3ab %>%
+plot_bayes <- m_us %>%
   emmeans( ~ As * Wave) %>%
   contrast(method = "pairwise") %>%
   gather_emmeans_draws() %>%
@@ -1119,7 +1104,7 @@ plot_bayes <- m3ab %>%
 
 
 
-marg_eff_attack_0ab <- m3ab %>%
+marg_eff_attack_0ab <- m_us %>%
   epred_draws(newdata = expand.grid(As = c(0, 1),Wave = c("2018", "2019")),
               re_formula =NA)
 
