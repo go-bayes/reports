@@ -525,15 +525,15 @@ for(i in 1:m) {
  
 m<-10
 impsL <-NULL
-datlist <- NULL
+dat <- NULL
 
 for(i in 1:m) {
   impsL$imputations[[i]]<- as.data.frame(imps$imputations$imp[[i]])
 }
 
-# datlist <- impsL$imputations
-# saveRDS(datlist, here::here("_posts", "mus", "mods", "datlist"))
-# saveRDS(impsL, here::here("_posts", "mus", "mods", "imps"))
+# dat <- impsL$imputations
+# saveRDS(dat, here::here("_posts", "mus", "mods", "dat"))
+# saveRDS(impsL, here::here("_posts", "mus", "mods", "impsL"))
 # saveRDS(imps, here::here("_posts", "mus", "mods", "imps"))
 
 
@@ -629,21 +629,47 @@ unnest(all_imputations_d) %>%
 
 
 ```{r}
-## FULL BAYES
-datlist<-readRDS(here::here("_posts","mus","mods","datlist"))
-datlist
+dat <-readRDS(here::here("_posts","mus","mods","dat.rds"))
 
-m_us <- brms::brm( 
+## Do not save residuals
+m_bayes <- brms::brm( 
   Ys ~ As *  Wave + (1|Id), 
-  data = imputed1, 
+  data = dat, 
+  seed = 1234,
+  warmup = 1000,
+  iter = 2000,
+  chains = 4,
+ # backend = "cmdstanr",
+  save_pars=save_pars(group=FALSE))
+  file = here::here("_posts", "mus", "mods", "m_bayes.rds"))
+
+
+m_bayesR <- brms::brm( 
+  Ys ~ As *  Wave + (1|Id), 
+  data = dat, 
   seed = 1234,
   warmup = 1000,
   iter = 2000,
   chains = 4,
   backend = "cmdstanr",
-  file = here::here("_posts", "mus", "mods", "m_us.rds"))
+  #save_pars=save_pars(group=FALSE))
+  file = here::here("_posts", "mus", "mods", "m_bayesR.rds"))
 
-m_us <-readRDS(here::here("_posts","mus","mods","m_us.rds"))
+
+
+# 
+# 
+# m_us <- brms::brm( 
+#   Ys ~ As *  Wave + (1|Id), 
+#   data = imputed1, 
+#   seed = 1234,
+#   warmup = 1000,
+#   iter = 2000,
+#   chains = 4,
+#   backend = "cmdstanr",
+#   file = here::here("_posts", "mus", "mods", "m_us.rds"))
+# 
+# m_us <-readRDS(here::here("_posts","mus","mods","m_us.rds"))
 
 lazerhawk::brms_SummaryTable(m_us)
 prior_summary(m_us)
@@ -663,6 +689,9 @@ blh_tab %>%
     print()
 
 
+# smaller file
+save_pars=save_pars(group=FALSE)
+
 
 ## prior = c(prior(normal(0, 1), class = b)),
 
@@ -675,7 +704,8 @@ blh_tab %>%
 
 ```{r}
 #### GRAPH
-
+library(tidybayes)
+library(emmeans)
 marg_eff_attack_0a <- m_us %>%
   epred_draws(newdata = expand.grid(As = c(0, 1), Wave = c("2018", "2019")),
               re_formula = NA)
