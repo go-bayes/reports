@@ -377,7 +377,7 @@ x <- table1::table1(~ Warm.Muslims + Age + Male + GenCohort + Edu + Employed + E
 t1kable(x, format ="latex")
 
 
-
+km_all$As
 # create new data set
 library(tidyverse)
 kf  <- km_all %>%
@@ -535,7 +535,7 @@ for(i in 1:m) {
 # saveRDS(dat, here::here("_posts", "mus", "mods", "dat"))
 # saveRDS(impsL, here::here("_posts", "mus", "mods", "impsL"))
 # saveRDS(imps, here::here("_posts", "mus", "mods", "imps"))
-
+imps <- readRDS(here::here("_posts", "mus", "mods", "imps"))
 
 tscsPlot(imputed, var = "Ys", cs =c(2,4,491,564,76,582), draws = 100, conf = 0.9, misscol = "red",
   obscol = "black")
@@ -629,7 +629,7 @@ unnest(all_imputations_d) %>%
 
 
 ```{r}
-dat <-readRDS(here::here("_posts","mus","mods","dat.rds"))
+dat <-readRDS(here::here("_posts","mus","mods","dat"))
 
 ## Do not save residuals
 m_bayes <- brms::brm( 
@@ -671,8 +671,8 @@ m_bayesR <- brms::brm(
 # 
 # m_us <-readRDS(here::here("_posts","mus","mods","m_us.rds"))
 
-lazerhawk::brms_SummaryTable(m_us)
-prior_summary(m_us)
+lazerhawk::brms_SummaryTable(m_bayesR)
+prior_summary(m_bayesR)
 
 # Print Table
 ouput <- tidy(m_us)
@@ -706,11 +706,11 @@ save_pars=save_pars(group=FALSE)
 #### GRAPH
 library(tidybayes)
 library(emmeans)
-marg_eff_attack_0a <- m_us %>%
+marg_eff_attack_0a <- m_bayesR %>%
   epred_draws(newdata = expand.grid(As = c(0, 1), Wave = c("2018", "2019")),
               re_formula = NA)
 
-saveRDS(marg_eff_attack_0a,  here::here("_posts", "mus", "mods", "marg_eff_attack_0a.rds"))
+#saveRDS(marg_eff_attack_0a,  here::here("_posts", "mus", "mods", "marg_eff_attack_0a.rds"))
 #marg_eff_attack_0a <- readRDS(here::here("_posts", "mus", "mods", "marg_eff_attack_0a.rds"))
 
 #marg_eff_attack_0a
@@ -731,7 +731,7 @@ plot_all <- ggplot(
     scale_fill_okabe_ito() +
     labs(
       x = "Predicted Warmth Response",
-      y = "w2018(years 2018-2019); w2019 (years 2019-2020)",
+      #y = "wave 2018(yrs 2018-2019) & wave 2018 (yrs 2019-2020)",
       fill = "Conterfactual Contrasts",
       subtitle = "Bayesian posterior locations of potential outcomes"
     ) +
@@ -740,53 +740,66 @@ plot_all <- ggplot(
     theme(legend.position = "bottom"
     )
 plot_all
+
+ggsave(
+  plot_all,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 8,
+  height = 8,
+  units = "in",
+  filename = "plot_all.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1200
+)
+
 #plot_all
 
-
 # 
-grand_mean_ame_a <- m_us %>%
-  emmeans(~ As*Wave,
-          epred = TRUE, re_formula = NA) %>%
-  contrast() %>%
-  gather_emmeans_draws() 
+# # 
+# grand_mean_ame_a <- m_bayesR %>%
+#   emmeans(~ As*Wave,
+#           epred = TRUE, re_formula = NA) %>%
+#   contrast() %>%
+#   gather_emmeans_draws() 
+# 
+# grand_mean_ame_a
+# #   filter(As == 1 & Wave ==2019) #Attack == 1 & Wave ==2018|  Attack == 0 & Wave ==2018)
+# 
+# saveRDS(grand_mean_ame_a,  here::here("_posts", "mus", "mods", "grand_mean_ame_a.rds"))
+# #grand_mean_ame_a <- readRDS(here::here("_posts", "mus", "mods", "grand_mean_ame_a.rds"))
+# 
+# # remove erro contrasts / we don't observe 0 in year two 
+# 
 
-grand_mean_ame_a
-#   filter(As == 1 & Wave ==2019) #Attack == 1 & Wave ==2018|  Attack == 0 & Wave ==2018)
+# does not
 
-saveRDS(grand_mean_ame_a,  here::here("_posts", "mus", "mods", "grand_mean_ame_a.rds"))
-#grand_mean_ame_a <- readRDS(here::here("_posts", "mus", "mods", "grand_mean_ame_a.rds"))
-
-# remove erro contrasts / we don't observe 0 in year two 
-
-
-
-
-plot_all__ame <- ggplot(grand_mean_ame_a,
-                                     aes(x = .value)) +
-  stat_halfeye(slab_alpha = 0.75, fill = "grey") +
-  scale_fill_okabe_ito(order = c(3, 4)) +
-  labs(x = "Average marginal effect of attack on warmth to Muslims",
-       y = "Density") +
-  #facet_wrap(vars(region)) +
-  theme_classic() + 
-  theme(legend.position = "bottom") + labs(title= "Marginal effect of attack on warmth to Muslims")
-plot_all__ame 
+# plot_all__ame <- ggplot(grand_mean_ame_a,
+#                                      aes(x = .value)) +
+#   stat_halfeye(slab_alpha = 0.75, fill = "grey") +
+#   scale_fill_okabe_ito(order = c(3, 4)) +
+#   labs(x = "Average marginal effect of attack on warmth to Muslims",
+#        y = "Density") +
+#   #facet_wrap(vars(region)) +
+#   theme_classic() + 
+#   theme(legend.position = "bottom") + labs(title= "Marginal effect of attack on warmth to Muslims")
+# plot_all__ame 
 # Try
 library(patchwork)
 bayes_plots_a <- plot_all + plot_all__ame + plot_annotation(tag_levels = 'a')
 bayes_plots_a
 
-ggsave(
-  bayes_plots_a,
-  path = here::here(here::here("_posts", "mus", "figs")),
-  width = 10,
-  height = 5,
-  units = "in",
-  filename = "bayes_plots_a.jpg",
-  device = 'jpeg',
-  limitsize = FALSE,
-  dpi = 1200
-)
+# ggsave(
+#   bayes_plots_a,
+#   path = here::here(here::here("_posts", "mus", "figs")),
+#   width = 10,
+#   height = 5,
+#   units = "in",
+#   filename = "bayes_plots_a.jpg",
+#   device = 'jpeg',
+#   limitsize = FALSE,
+#   dpi = 1200
+# )
 
 
 # 
@@ -890,341 +903,351 @@ ggsave(
 
 
 
-<!-- ## Weights graph  -->
-
-<!-- ```{r} -->
-<!-- kn <- km4 -->
-<!-- kn$attack <- as.numeric(km4$Attack) -->
-<!-- kn$attack -->
-
-
-
-<!-- imputed1<-imputed$imputations$imp1 -->
-<!-- im<- imputed1 -->
-<!-- im$attack <- as.numeric(im$As)-1 -->
-<!-- im$warmth <- as.numeric(im$Ys) -->
-<!-- kn$warmth <- as.numeric(kn$Warm.Muslims) -->
-<!-- im$attack -->
-
-<!-- kn%>% -->
-<!--   filter(Wave ==2019 & As ==1) %>% -->
-<!--   select(Warm.Muslims) %>% -->
-<!--   count(is.na(.)) -->
-
-<!-- plot1 <- ggplot() +  -->
-<!--     geom_histogram(data = filter(im, attack == 1 & Wave == 2018),  -->
-<!--             #  bins = 10,  -->
-<!--               aes(x = warmth),  -->
-<!--                  fill = colorspace::lighten("chocolate", 0.55)) +   -->
-<!--   geom_histogram(data = filter(im, attack == 0 & Wave == 2018),  -->
-<!--                 # bins = 10,  -->
-<!--                  aes(x = warmth, y = -..count..), -->
-<!--                   fill = colorspace::lighten("deepskyblue4", 0.55))  + -->
-<!--   geom_histogram(data = filter(kn, attack == 1& Wave == 2018),  -->
-<!--                  #bins = 10,  -->
-<!--                  aes(x = warmth),  -->
-<!--                  fill = colorspace::lighten("chocolate", 0.1))+  -->
-<!--   geom_histogram(data = filter(kn, attack == 0 & Wave == 2018),  -->
-<!--                 # bins = 10,  -->
-<!--                  aes(x = warmth, y = -..count..), -->
-<!--                  fill = colorspace::lighten("deepskyblue4", 0.1)) + -->
-<!--  annotate(geom = "label", x = 1.5, y = 2000, label = "Exposed\nobserved", -->
-<!--          fill = colorspace::lighten("chocolate",.1), color = "white", hjust = 1) + -->
-<!--  annotate(geom = "label", x = 3.5, y = 5000, label = "Exposed\nimputed", -->
-<!--            fill = colorspace::lighten("chocolate",.35), color = "white", hjust = 1)+ -->
-<!--  annotate(geom = "label", x = 1.5, y = -4000, label = "Not Exposed\nobserved", -->
-<!--          fill = colorspace::lighten("deepskyblue4", 0.1), color = "white", hjust = 1) + -->
-<!--  annotate(geom = "label", x = 3.5, y = -10000, label = "Not Exposed\nimputed", -->
-<!--           fill = colorspace::lighten("deepskyblue4",  .35), color = "white", hjust = 1) + -->
-<!--  geom_hline(yintercept = 0, color = "white", size = 0.25) + -->
-<!--  scale_y_continuous(label = abs) +  -->
-<!--     scale_y_continuous(limits=c(-15000,15000)) + -->
-<!--  # coord_cartesian(xlim = c(0.1, 1)) + -->
-<!--   labs(x = "Warmth to Muslim", y = "Counts") + labs(title= "Wave 10") -->
-
-
-<!-- plot1 -->
-
-<!-- length(unique(kn$Id)) -->
-<!-- length(unique(imputed1$Id)) -->
-
-<!-- plot2 <- ggplot() +  -->
-<!--     geom_histogram(data = filter(im, attack == 1 & Wave == 2019),  -->
-<!--              # bins = 10,  -->
-<!--               aes(x = warmth),  -->
-<!--                  fill = colorspace::lighten("chocolate", 0.55)) +   -->
-<!--   geom_histogram(data = filter(im, attack == 0 & Wave == 2019),  -->
-<!--                 # bins = 10,  -->
-<!--                  aes(x = warmth, y = -..count..), -->
-<!--                   fill = colorspace::lighten("deepskyblue4", 0.55))  + -->
-<!--   geom_histogram(data = filter(kn, attack == 1 & Wave == 2019),  -->
-<!--                  #bins = 10,  -->
-<!--                  aes(x = warmth),  -->
-<!--                  fill = colorspace::lighten("chocolate", 0.1))+  -->
-<!--   geom_histogram(data = filter(kn, attack == 0 & Wave == 2019),  -->
-<!--                #  bins = 10,  -->
-<!--                  aes(x = warmth, y = -..count..), -->
-<!--                  fill = colorspace::lighten("deepskyblue4", 0.1)) + -->
-<!--  annotate(geom = "label", x = 3.5, y = 8000, label = "Exposed\nobserved", -->
-<!--          fill = colorspace::lighten("chocolate",.1), color = "white", hjust = 1) + -->
-<!--  annotate(geom = "label", x = 3.5, y = 12000, label = "Exposed\nimputed", -->
-<!--            fill = colorspace::lighten("chocolate",.35), color = "white", hjust = 1)+ -->
-<!--  annotate(geom = "label", x = 2.5, y = -4000, label = "Not Exposed is\nfully imputed", -->
-<!--           fill = colorspace::lighten("deepskyblue4",  .35), color = "white", hjust = 1) + -->
-<!--  geom_hline(yintercept = 0, color = "white", size = 0.25) + -->
-<!--  scale_y_continuous(label = abs) +  -->
-<!--  # coord_cartesian(xlim = c(0.1, 1)) + -->
-<!--   labs(x = "Warmth to Muslim", y = "Counts") + labs(title= "Wave 11") +  -->
-<!--   scale_y_continuous(limits=c(-15000,15000)) -->
-<!-- plot2 -->
-<!-- imp_frq<- plot1 + plot2 + plot_annotation(tag_levels = "a", title = "Comparison of multiply-imputed responses and observed\nresponse distributions in Wave 10 and Wave 11") -->
-
-
-<!-- imp_frq -->
-
-
-<!-- ggsave( -->
-<!--   imp_frq, -->
-<!--   path = here::here(here::here("_posts", "mus", "figs")), -->
-<!--   width = 12, -->
-<!--   height = 8, -->
-<!--   units = "in", -->
-<!--   filename = "imp_frq.jpg", -->
-<!--   device = 'jpeg', -->
-<!--   limitsize = FALSE, -->
-<!--   dpi = 1200 -->
-<!-- ) -->
+## Weights graph
+
+```{r}
+kn <- km_all
+km_all$Attack
+kn$attack <- km_all$Attack
+kn$attack
+
+
+imputed1<-imps$imputations$imp[[1]]
+im<- imputed1
+im$attack <- as.numeric(im$As)-1
+im$warmth <- as.numeric(im$Ys)
+kn$warmth <- as.numeric(kn$Warm.Muslims)
+im$attack
+
+
+kn%>%
+  filter(Wave ==2019 & As ==1) %>%
+  select(Warm.Muslims) %>%
+  count(is.na(.))
+
+
+# kna<-km_all%>%filter(Wave==2019)
+# hist(kna$Warm.Muslims)
+
+plot1 <- ggplot() +
+    geom_histogram(data = filter(im, attack == 1 & Wave == 2018),
+            #  bins = 10,
+              aes(x = warmth),
+                 fill = colorspace::lighten("deepskyblue4", 0.55)) +
+  geom_histogram(data = filter(im, attack == 0 & Wave == 2018),
+                # bins = 10,
+                 aes(x = warmth, y = -..count..),
+                  fill = colorspace::lighten("chocolate", 0.55))  +
+  geom_histogram(data = filter(kn, attack == 1& Wave == 2018),
+                 #bins = 10,
+                 aes(x = warmth),
+                 fill = colorspace::lighten("deepskyblue4", 0.1))+
+  geom_histogram(data = filter(kn, attack == 0 & Wave == 2018),
+                # bins = 10,
+                 aes(x = warmth, y = -..count..),
+                 fill = colorspace::lighten("chocolate", 0.1)) +
+ annotate(geom = "label", x = 1.5, y = 3000, label = "Exposed\nobserved",
+         fill = colorspace::lighten("deepskyblue4",.1), color = "white", hjust = 1) +
+ annotate(geom = "label", x = 3.5, y = 7000, label = "Exposed\nimputed",
+           fill = colorspace::lighten("deepskyblue4",.35), color = "white", hjust = 1)+
+ annotate(geom = "label", x = 1.5, y = -5000, label = "Not Exposed\nobserved",
+         fill = colorspace::lighten("chocolate", 0.1), color = "white", hjust = 1) +
+ annotate(geom = "label", x = 3.5, y = -10000, label = "Not Exposed\nimputed",
+          fill = colorspace::lighten("chocolate",  .35), color = "white", hjust = 1) +
+ geom_hline(yintercept = 0, color = "white", size = 0.25) +
+ scale_y_continuous(label = abs) +
+    scale_y_continuous(limits=c(-20000,15000)) +
+ # coord_cartesian(xlim = c(0.1, 1)) +
+  labs(x = "Warmth to Muslim", y = "Counts") + labs(title= "Wave 10")
+
+
+
+
+plot1
+
+length(unique(kn$Id))
+length(unique(imputed1$Id))
+
+hist(kn$Warm.Muslims)
+
+plot2 <- ggplot() +
+    geom_histogram(data = filter(im, attack == 1 & Wave == 2019),
+             # bins = 10,
+              aes(x = warmth),
+                 fill = colorspace::lighten("deepskyblue4", 0.55)) +
+  geom_histogram(data = filter(im, attack == 0 & Wave == 2019),
+                # bins = 10,
+                 aes(x = warmth, y = -..count..),
+                  fill = colorspace::lighten("chocolate", 0.55))  +
+  geom_histogram(data = filter(kn, attack == 1 & Wave == 2019),
+                 #bins = 10,
+                 aes(x = warmth),
+                 fill = colorspace::lighten("deepskyblue4", 0.1))+
+  geom_histogram(data = filter(kn, attack == 0 & Wave == 2019),
+               #  bins = 10,
+                 aes(x = warmth, y = -..count..),
+                 fill = colorspace::lighten("chocolate", 0.1)) +
+ annotate(geom = "label", x = 2.5, y = 5000, label = "Exposed\nobserved",
+         fill = colorspace::lighten("deepskyblue4",.1), color = "white", hjust = 1) +
+ annotate(geom = "label", x = 3.5, y = 14000, label = "Exposed\nimputed",
+           fill = colorspace::lighten("deepskyblue4",.35), color = "white", hjust = 1)+
+ annotate(geom = "label", x = 2.5, y = -5600, label = "Not Exposed is\nfully imputed",
+          fill = colorspace::lighten("chocolate",  .35), color = "white", hjust = 1) +
+ geom_hline(yintercept = 0, color = "white", size = 0.25) +
+ scale_y_continuous(label = abs) +
+ # coord_cartesian(xlim = c(0.1, 1)) +
+  labs(x = "Warmth to Muslim", y = "Counts") + labs(title= "Wave 11") +
+  scale_y_continuous(limits=c(-20000,15000))
+plot2
+imp_frq<- plot1 + plot2 + plot_annotation(tag_levels = "a", title = "Comparison of multiply-imputed responses and observed\nresponse distributions in Wave 10 and Wave 11")
+
+
+imp_frq
+
 
 
+ggsave(
+  imp_frq,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 12,
+  height = 8,
+  units = "in",
+  filename = "imp_frq.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1200
+)
 
-<!-- model_treatment_freq <- glm(attack ~    Male  + Edu + EthnicCats + Religious + Pol.Orient + Urban + NZdep + Religious,  data = kn,family = binomial(link = "logit")) -->
 
 
-<!-- # Step 2: Use the treatment model to calculate propensity scores, and -->
-<!-- # Step 3: Use the propensity scores to calculate inverse probability of treatment weights -->
-<!-- km_with_weights <- augment(model_treatment_freq, kn, -->
-<!--                              type.predict = "response") %>% -->
-<!--   rename(propensity = .fitted) %>%  -->
-<!--   mutate(iptw = (attack / propensity) + ((1 - attack) / (1 - propensity))) -->
+model_treatment_freq <- glm(attack ~    Male  + Edu + EthnicCats + Religious + Pol.Orient + Urban + NZdep + Religious,  data = kn,family = binomial(link = "logit"))
 
 
-<!-- max(km_with_weights$iptw) -->
+# Step 2: Use the treatment model to calculate propensity scores, and
+# Step 3: Use the propensity scores to calculate inverse probability of treatment weights
+km_with_weights <- augment(model_treatment_freq, kn,
+                             type.predict = "response") %>%
+  rename(propensity = .fitted) %>%
+  mutate(iptw = (attack / propensity) + ((1 - attack) / (1 - propensity)))
 
 
-<!-- # Step 4: Use the IPTWs in a model that estimates the effect of treatment on outcome -->
-<!-- model_outcome_freq <- lm(Warm.Muslims ~ Attack   , -->
-<!--                          data = km_with_weights, -->
-<!--                          weights = iptw) -->
-
-<!-- # Coefficient  -->
-<!-- tidy(model_outcome_freq) -->
+max(km_with_weights$iptw)
 
-
-
-
-<!-- library(MetBrewer) -->
-<!-- # ggplot() +  -->
-<!-- #   geom_histogram(data = filter(km, Attack == 1),  -->
-<!-- #                  bins = 50, aes(x = ipw),  -->
-<!-- #                  fill = colorspace::lighten("darkorange", 0.5)) +  -->
-<!-- #    geom_histogram(data = filter(km, Attack == 0),  -->
-<!-- #                  bins = 50, aes(x = ipw, y = -..count..), -->
-<!-- #                  fill = colorspace::lighten("darkgreen", 0.5)) + -->
-<!-- #   geom_hline(yintercept = 0) +  -->
-<!-- #   annotate(geom = "label", x = 0.8, y = 2000, label = "Treated",  -->
-<!-- #            fill = colorspace::lighten("darkorange", 0.2), color = "white", hjust = 0) + -->
-<!-- #   annotate(geom = "label", x = 0.8, y = -2000, label = "Untreated",  -->
-<!-- #            fill = colorspace::lighten("darkgreen", 0.2), color = "white", hjust = 0) + -->
-<!-- #   scale_y_continuous(label = abs) + -->
-<!-- #  #coord_cartesian(xlim = c(0.1, 0.8), ylim = c(-10000, 10000)) + -->
-<!-- #   labs(x = "Propensity", y = "Count")  -->
-
-
-<!-- #   -->
-<!-- imputed -->
-<!-- ipwplot <- ggplot() +  -->
-<!--   geom_histogram(data = filter(km_with_weights, attack == 1),  -->
-<!--                  bins = 50, aes(x = propensity, weight = iptw),  -->
-<!--                  fill = colorspace::lighten("chocolate", 0.55)) +  -->
-<!--   geom_histogram(data = filter(km_with_weights, attack == 0),  -->
-<!--                  bins = 50, aes(x = propensity, weight = iptw, y = -..count..), -->
-<!--                   fill = colorspace::lighten("deepskyblue4", 0.55)) + -->
-<!--   geom_histogram(data = filter(km_with_weights, attack == 1),  -->
-<!--                  bins = 50, aes(x = propensity),  -->
-<!--                  fill = colorspace::lighten("chocolate", 0.1)) +  -->
-<!--   geom_histogram(data = filter(km_with_weights, attack == 0),  -->
-<!--                  bins = 50, aes(x = propensity, y = -..count..), -->
-<!--                  fill = colorspace::lighten("deepskyblue4", 0.1)) + -->
-<!--  annotate(geom = "label", x = 0.7, y = 1000, label = "Treated (actual)", -->
-<!--          fill = colorspace::lighten("chocolate",.1), color = "white", hjust = 1) + -->
-<!--  annotate(geom = "label", x = 0.7, y = 3000, label = "Treated (imputed\npseudo-population)", -->
-<!--            fill = colorspace::lighten("chocolate",.35), color = "white", hjust = .5)+ -->
-<!--  annotate(geom = "label", x = 0.7, y = -1000, label = "Untreated (actual)", -->
-<!--          fill = colorspace::lighten("deepskyblue4", 0.1), color = "white", hjust = 1) + -->
-<!--  annotate(geom = "label", x = 0.7, y = -3000, label = "Untreated (imputed\npseudo-population)", -->
-<!--           fill = colorspace::lighten("deepskyblue4",  .35), color = "white", hjust = 1) + -->
-<!--  geom_hline(yintercept = 0, color = "white", size = 0.25) + -->
-<!--  scale_y_continuous(label = abs) +  -->
-<!--  # coord_cartesian(xlim = c(0.1, 1)) + -->
-<!--   labs(x = "Propensity", y = "Count") + labs(title= "Comparison of propensity score\nand original response distributions") -->
-<!-- ipwplot -->
-
-
-
-<!-- model_treatment_freq <- glm(attack ~   -->
-<!--                               Male  + Edu + EthnicCats + Religious + Pol.Orient + Urban + NZdep + Religious, -->
-<!--                             data = kp18,family = binomial(link = "logit")) -->
 
+# Step 4: Use the IPTWs in a model that estimates the effect of treatment on outcome
+model_outcome_freq <- lm(Warm.Muslims ~ Attack   ,
+                         data = km_with_weights,
+                         weights = iptw)
 
-<!-- # Step 2: Use the treatment model to calculate propensity scores, and -->
-<!-- # Step 3: Use the propensity scores to calculate inverse probability of treatment weights -->
-<!-- km_with_weights <- augment(model_treatment_freq, kp18, -->
-<!--                              type.predict = "response") %>% -->
-<!--   rename(propensity = .fitted) %>%  -->
-<!--   mutate(iptw = (attack / propensity) + ((1 - attack) / (1 - propensity))) -->
+# Coefficient
+tidy(model_outcome_freq)
 
 
-<!-- max(km_with_weights$iptw) -->
 
+
+library(MetBrewer)
+# ggplot() +
+#   geom_histogram(data = filter(km, Attack == 1),
+#                  bins = 50, aes(x = ipw),
+#                  fill = colorspace::lighten("darkorange", 0.5)) +
+#    geom_histogram(data = filter(km, Attack == 0),
+#                  bins = 50, aes(x = ipw, y = -..count..),
+#                  fill = colorspace::lighten("darkgreen", 0.5)) +
+#   geom_hline(yintercept = 0) +
+#   annotate(geom = "label", x = 0.8, y = 2000, label = "Treated",
+#            fill = colorspace::lighten("darkorange", 0.2), color = "white", hjust = 0) +
+#   annotate(geom = "label", x = 0.8, y = -2000, label = "Untreated",
+#            fill = colorspace::lighten("darkgreen", 0.2), color = "white", hjust = 0) +
+#   scale_y_continuous(label = abs) +
+#  #coord_cartesian(xlim = c(0.1, 0.8), ylim = c(-10000, 10000)) +
+#   labs(x = "Propensity", y = "Count")
+
+
+#
+imputed
+ipwplot <- ggplot() +
+  geom_histogram(data = filter(km_with_weights, attack == 1),
+                 bins = 50, aes(x = propensity, weight = iptw),
+                 fill = colorspace::lighten("chocolate", 0.55)) +
+  geom_histogram(data = filter(km_with_weights, attack == 0),
+                 bins = 50, aes(x = propensity, weight = iptw, y = -..count..),
+                  fill = colorspace::lighten("deepskyblue4", 0.55)) +
+  geom_histogram(data = filter(km_with_weights, attack == 1),
+                 bins = 50, aes(x = propensity),
+                 fill = colorspace::lighten("chocolate", 0.1)) +
+  geom_histogram(data = filter(km_with_weights, attack == 0),
+                 bins = 50, aes(x = propensity, y = -..count..),
+                 fill = colorspace::lighten("deepskyblue4", 0.1)) +
+ annotate(geom = "label", x = 0.7, y = 1000, label = "Treated (actual)",
+         fill = colorspace::lighten("chocolate",.1), color = "white", hjust = 1) +
+ annotate(geom = "label", x = 0.7, y = 3000, label = "Treated (imputed\npseudo-population)",
+           fill = colorspace::lighten("chocolate",.35), color = "white", hjust = .5)+
+ annotate(geom = "label", x = 0.7, y = -1000, label = "Untreated (actual)",
+         fill = colorspace::lighten("deepskyblue4", 0.1), color = "white", hjust = 1) +
+ annotate(geom = "label", x = 0.7, y = -3000, label = "Untreated (imputed\npseudo-population)",
+          fill = colorspace::lighten("deepskyblue4",  .35), color = "white", hjust = 1) +
+ geom_hline(yintercept = 0, color = "white", size = 0.25) +
+ scale_y_continuous(label = abs) +
+ # coord_cartesian(xlim = c(0.1, 1)) +
+  labs(x = "Propensity", y = "Count") + labs(title= "Comparison of propensity score\nand original response distributions")
+ipwplot
+
+
+
+model_treatment_freq <- glm(attack ~
+                              Male  + Edu + EthnicCats + Religious + Pol.Orient + Urban + NZdep + Religious,
+                            data = kp18,family = binomial(link = "logit"))
 
-<!-- # Step 4: Use the IPTWs in a model that estimates the effect of treatment on outcome -->
-<!-- model_outcome_freq <- lm(Warm.Muslims ~ Attack , -->
-<!--                          data = km_with_weights, -->
-<!--                          weights = iptw) -->
-
-<!-- # Coefficient  -->
-<!-- tidy(model_outcome_freq) -->
-
-
-
-
-<!-- library(MetBrewer) -->
-<!-- # ggplot() +  -->
-<!-- #   geom_histogram(data = filter(km, Attack == 1),  -->
-<!-- #                  bins = 50, aes(x = ipw),  -->
-<!-- #                  fill = colorspace::lighten("darkorange", 0.5)) +  -->
-<!-- #    geom_histogram(data = filter(km, Attack == 0),  -->
-<!-- #                  bins = 50, aes(x = ipw, y = -..count..), -->
-<!-- #                  fill = colorspace::lighten("darkgreen", 0.5)) + -->
-<!-- #   geom_hline(yintercept = 0) +  -->
-<!-- #   annotate(geom = "label", x = 0.8, y = 2000, label = "Treated",  -->
-<!-- #            fill = colorspace::lighten("darkorange", 0.2), color = "white", hjust = 0) + -->
-<!-- #   annotate(geom = "label", x = 0.8, y = -2000, label = "Untreated",  -->
-<!-- #            fill = colorspace::lighten("darkgreen", 0.2), color = "white", hjust = 0) + -->
-<!-- #   scale_y_continuous(label = abs) + -->
-<!-- #  #coord_cartesian(xlim = c(0.1, 0.8), ylim = c(-10000, 10000)) + -->
-<!-- #   labs(x = "Propensity", y = "Count")  -->
-
-
-<!-- #   -->
-<!-- imputed -->
-<!-- ipwplot <- ggplot() +  -->
-<!--   geom_histogram(data = filter(km_with_weights, attack == 1),  -->
-<!--                  bins = 50, aes(x = propensity, weight = iptw),  -->
-<!--                  fill = colorspace::lighten("chocolate", 0.55)) +  -->
-<!--   geom_histogram(data = filter(km_with_weights, attack == 0),  -->
-<!--                  bins = 50, aes(x = propensity, weight = iptw, y = -..count..), -->
-<!--                   fill = colorspace::lighten("deepskyblue4", 0.55)) + -->
-<!--   geom_histogram(data = filter(km_with_weights, attack == 1),  -->
-<!--                  bins = 50, aes(x = propensity),  -->
-<!--                  fill = colorspace::lighten("chocolate", 0.1)) +  -->
-<!--   geom_histogram(data = filter(km_with_weights, attack == 0),  -->
-<!--                  bins = 50, aes(x = propensity, y = -..count..), -->
-<!--                  fill = colorspace::lighten("deepskyblue4", 0.1)) + -->
-<!--   # annotate(geom = "label", x = 0.7, y = 1000, label = "Treated (actual)",  -->
-<!--   #         fill = colorspace::lighten("chocolate",.1), color = "white", hjust = 1) + -->
-<!--   # annotate(geom = "label", x = 0.7, y = 3000, label = "Treated (imputed\npseudo-population)",  -->
-<!--   #           fill = colorspace::lighten("chocolate",.35), color = "white", hjust = .5)+ -->
-<!--   # annotate(geom = "label", x = 0.7, y = -1000, label = "Untreated (actual)",  -->
-<!--   #         fill = colorspace::lighten("deepskyblue4", 0.1), color = "white", hjust = 1) + -->
-<!--   # annotate(geom = "label", x = 0.7, y = -3000, label = "Untreated (imputed\npseudo-population)",  -->
-<!--   #          fill = colorspace::lighten("deepskyblue4",  .35), color = "white", hjust = 1) + -->
-<!--   # geom_hline(yintercept = 0, color = "white", size = 0.25) + -->
-<!--   # scale_y_continuous(label = abs) + -->
-<!--  # coord_cartesian(xlim = c(0.1, 0.8), ylim = c(-80, 100)) + -->
-<!--   labs(x = "Propensity", y = "Count") + labs(title= "Comparison of propensity score\nand original response distributions") -->
-<!-- ipwplot -->
-
-
-
-
-
-<!-- model_treatment_freq <- glm(attack ~   -->
-<!--                               Male  + Edu + EthnicCats + Religious + Pol.Orient + Urban + NZdep + Religious, -->
-<!--                             data = kp19,family = binomial(link = "logit")) -->
-
-
-<!-- # Step 2: Use the treatment model to calculate propensity scores, and -->
-<!-- # Step 3: Use the propensity scores to calculate inverse probability of treatment weights -->
-<!-- km_with_weights <- augment(model_treatment_freq, kp19, -->
-<!--                              type.predict = "response") %>% -->
-<!--   rename(propensity = .fitted) %>%  -->
-<!--   mutate(iptw = (attack / propensity) + ((1 - attack) / (1 - propensity))) -->
-
-
-<!-- min(km_with_weights$iptw) -->
-
-
-<!-- # Step 4: Use the IPTWs in a model that estimates the effect of treatment on outcome -->
-<!-- model_outcome_freq <- lm(Warm.Muslims ~ Attack , -->
-<!--                          data = km_with_weights, -->
-<!--                          weights = iptw) -->
-
-<!-- # Coefficient  -->
-<!-- tidy(model_outcome_freq) -->
-
-
-
-
-
-<!-- ind <- imputed1 -->
-<!-- ind$propensity<- rep(1,nrow(ind)) -->
-<!-- ind$iptw<- rep(1,nrow(ind)) -->
-<!-- ind$attack <- ind$As -->
-
-<!-- ipwplot <- ggplot() +  -->
-<!--   geom_histogram(data = filter(ind, attack == 1),  -->
-<!--                  bins = 50, aes(x = propensity, weight = iptw),  -->
-<!--                  fill = colorspace::lighten("chocolate", 0.55)) +  -->
-<!--   geom_histogram(data = filter(ind, attack == 0),  -->
-<!--                  bins = 50, aes(x = propensity, weight = iptw, y = -..count..), -->
-<!--                   fill = colorspace::lighten("deepskyblue4", 0.55)) + -->
-<!--   geom_histogram(data = filter(km_with_weights, attack == 1),  -->
-<!--                  bins = 50, aes(x = propensity),  -->
-<!--                  fill = colorspace::lighten("chocolate", 0.1)) +  -->
-<!--   geom_histogram(data = filter(km_with_weights, attack == 0),  -->
-<!--                  bins = 50, aes(x = propensity, y = -..count..), -->
-<!--                  fill = colorspace::lighten("deepskyblue4", 0.1)) + -->
-<!--  #  annotate(geom = "label", x = 0.7, y = 1000, label = "Treated (actual)",  -->
-<!--  #          fill = colorspace::lighten("chocolate",.1), color = "white", hjust = 1) + -->
-<!--  #  annotate(geom = "label", x = 0.7, y = 3000, label = "Treated (IPTW\npseudo-population)",  -->
-<!--  #            fill = colorspace::lighten("chocolate",.35), color = "white", hjust = 1)+ -->
-<!--  #  annotate(geom = "label", x = 0.7, y = -1000, label = "Untreated (actual)",  -->
-<!--  #          fill = colorspace::lighten("deepskyblue4", 0.1), color = "white", hjust = 1) + -->
-<!--  #  annotate(geom = "label", x = 0.7, y = -3000, label = "Untreated (IPTW\npseudo-population)",  -->
-<!--  #           fill = colorspace::lighten("deepskyblue4",  .35), color = "white", hjust = 1) + -->
-<!--  #  geom_hline(yintercept = 0, color = "white", size = 0.25) + -->
-<!--  #  scale_y_continuous(label = abs) + -->
-<!--  # # coord_cartesian(xlim = c(0.1, 0.8), ylim = c(-80, 100)) + -->
-<!--    labs(x = "Propensity", y = "Count") + labs(title= "Comparison of propensity score\nand original response distributions")#+ scale_y_continuous(limits=c(-15000,15000)) -->
-<!-- ipwplot -->
-
-
-
-<!-- ggsave( -->
-<!--   ipwplot, -->
-<!--   path = here::here(here::here("_posts", "mus", "figs")), -->
-<!--   width = 10, -->
-<!--   height = 5, -->
-<!--   units = "in", -->
-<!--   filename = "ipweightplot.jpg", -->
-<!--   device = 'jpeg', -->
-<!--   limitsize = FALSE, -->
-<!--   dpi = 1200 -->
-<!-- ) -->
-
-
-<!-- ``` -->
+
+# Step 2: Use the treatment model to calculate propensity scores, and
+# Step 3: Use the propensity scores to calculate inverse probability of treatment weights
+km_with_weights <- augment(model_treatment_freq, kp18,
+                             type.predict = "response") %>%
+  rename(propensity = .fitted) %>%
+  mutate(iptw = (attack / propensity) + ((1 - attack) / (1 - propensity)))
+
+
+max(km_with_weights$iptw)
+
+
+# Step 4: Use the IPTWs in a model that estimates the effect of treatment on outcome
+model_outcome_freq <- lm(Warm.Muslims ~ Attack ,
+                         data = km_with_weights,
+                         weights = iptw)
+
+# Coefficient
+tidy(model_outcome_freq)
+
+
+
+
+library(MetBrewer)
+# ggplot() +
+#   geom_histogram(data = filter(km, Attack == 1),
+#                  bins = 50, aes(x = ipw),
+#                  fill = colorspace::lighten("darkorange", 0.5)) +
+#    geom_histogram(data = filter(km, Attack == 0),
+#                  bins = 50, aes(x = ipw, y = -..count..),
+#                  fill = colorspace::lighten("darkgreen", 0.5)) +
+#   geom_hline(yintercept = 0) +
+#   annotate(geom = "label", x = 0.8, y = 2000, label = "Treated",
+#            fill = colorspace::lighten("darkorange", 0.2), color = "white", hjust = 0) +
+#   annotate(geom = "label", x = 0.8, y = -2000, label = "Untreated",
+#            fill = colorspace::lighten("darkgreen", 0.2), color = "white", hjust = 0) +
+#   scale_y_continuous(label = abs) +
+#  #coord_cartesian(xlim = c(0.1, 0.8), ylim = c(-10000, 10000)) +
+#   labs(x = "Propensity", y = "Count")
+
+
+#
+imputed
+ipwplot <- ggplot() +
+  geom_histogram(data = filter(km_with_weights, attack == 1),
+                 bins = 50, aes(x = propensity, weight = iptw),
+                 fill = colorspace::lighten("chocolate", 0.55)) +
+  geom_histogram(data = filter(km_with_weights, attack == 0),
+                 bins = 50, aes(x = propensity, weight = iptw, y = -..count..),
+                  fill = colorspace::lighten("deepskyblue4", 0.55)) +
+  geom_histogram(data = filter(km_with_weights, attack == 1),
+                 bins = 50, aes(x = propensity),
+                 fill = colorspace::lighten("chocolate", 0.1)) +
+  geom_histogram(data = filter(km_with_weights, attack == 0),
+                 bins = 50, aes(x = propensity, y = -..count..),
+                 fill = colorspace::lighten("deepskyblue4", 0.1)) +
+  # annotate(geom = "label", x = 0.7, y = 1000, label = "Treated (actual)",
+  #         fill = colorspace::lighten("chocolate",.1), color = "white", hjust = 1) +
+  # annotate(geom = "label", x = 0.7, y = 3000, label = "Treated (imputed\npseudo-population)",
+  #           fill = colorspace::lighten("chocolate",.35), color = "white", hjust = .5)+
+  # annotate(geom = "label", x = 0.7, y = -1000, label = "Untreated (actual)",
+  #         fill = colorspace::lighten("deepskyblue4", 0.1), color = "white", hjust = 1) +
+  # annotate(geom = "label", x = 0.7, y = -3000, label = "Untreated (imputed\npseudo-population)",
+  #          fill = colorspace::lighten("deepskyblue4",  .35), color = "white", hjust = 1) +
+  # geom_hline(yintercept = 0, color = "white", size = 0.25) +
+  # scale_y_continuous(label = abs) +
+ # coord_cartesian(xlim = c(0.1, 0.8), ylim = c(-80, 100)) +
+  labs(x = "Propensity", y = "Count") + labs(title= "Comparison of propensity score\nand original response distributions")
+ipwplot
+
+
+
+
+
+model_treatment_freq <- glm(attack ~
+                              Male  + Edu + EthnicCats + Religious + Pol.Orient + Urban + NZdep + Religious,
+                            data = kp19,family = binomial(link = "logit"))
+
+
+# Step 2: Use the treatment model to calculate propensity scores, and
+# Step 3: Use the propensity scores to calculate inverse probability of treatment weights
+km_with_weights <- augment(model_treatment_freq, kp19,
+                             type.predict = "response") %>%
+  rename(propensity = .fitted) %>%
+  mutate(iptw = (attack / propensity) + ((1 - attack) / (1 - propensity)))
+
+
+min(km_with_weights$iptw)
+
+
+# Step 4: Use the IPTWs in a model that estimates the effect of treatment on outcome
+model_outcome_freq <- lm(Warm.Muslims ~ Attack ,
+                         data = km_with_weights,
+                         weights = iptw)
+
+# Coefficient
+tidy(model_outcome_freq)
+
+
+
+
+
+ind <- imputed1
+ind$propensity<- rep(1,nrow(ind))
+ind$iptw<- rep(1,nrow(ind))
+ind$attack <- ind$As
+
+ipwplot <- ggplot() +
+  geom_histogram(data = filter(ind, attack == 1),
+                 bins = 50, aes(x = propensity, weight = iptw),
+                 fill = colorspace::lighten("chocolate", 0.55)) +
+  geom_histogram(data = filter(ind, attack == 0),
+                 bins = 50, aes(x = propensity, weight = iptw, y = -..count..),
+                  fill = colorspace::lighten("deepskyblue4", 0.55)) +
+  geom_histogram(data = filter(km_with_weights, attack == 1),
+                 bins = 50, aes(x = propensity),
+                 fill = colorspace::lighten("chocolate", 0.1)) +
+  geom_histogram(data = filter(km_with_weights, attack == 0),
+                 bins = 50, aes(x = propensity, y = -..count..),
+                 fill = colorspace::lighten("deepskyblue4", 0.1)) +
+ #  annotate(geom = "label", x = 0.7, y = 1000, label = "Treated (actual)",
+ #          fill = colorspace::lighten("chocolate",.1), color = "white", hjust = 1) +
+ #  annotate(geom = "label", x = 0.7, y = 3000, label = "Treated (IPTW\npseudo-population)",
+ #            fill = colorspace::lighten("chocolate",.35), color = "white", hjust = 1)+
+ #  annotate(geom = "label", x = 0.7, y = -1000, label = "Untreated (actual)",
+ #          fill = colorspace::lighten("deepskyblue4", 0.1), color = "white", hjust = 1) +
+ #  annotate(geom = "label", x = 0.7, y = -3000, label = "Untreated (IPTW\npseudo-population)",
+ #           fill = colorspace::lighten("deepskyblue4",  .35), color = "white", hjust = 1) +
+ #  geom_hline(yintercept = 0, color = "white", size = 0.25) +
+ #  scale_y_continuous(label = abs) +
+ # # coord_cartesian(xlim = c(0.1, 0.8), ylim = c(-80, 100)) +
+   labs(x = "Propensity", y = "Count") + labs(title= "Comparison of propensity score\nand original response distributions")#+ scale_y_continuous(limits=c(-15000,15000))
+ipwplot
+
+
+
+ggsave(
+  ipwplot,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 10,
+  height = 5,
+  units = "in",
+  filename = "ipweightplot.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1200
+)
+
+
+```
 
 
 
