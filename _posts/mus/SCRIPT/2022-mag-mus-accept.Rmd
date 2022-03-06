@@ -668,34 +668,36 @@ km_all <- df %>%
   dplyr::mutate(yrs =  (dys/365))%>% 
   dplyr::mutate(wave = as.numeric(Wave)-1) %>% 
   select(Id, Wave, Ys, As, Warm.Muslims, Attack, Age, EthnicCats, Edu, Employed, Urban, Male, GenCohort, Religious, Pol.Orient, Parent, Partner, Urban, NZdep,wave) %>%
-  dplyr::mutate(pol_bz = if_else(Wave == "2018", scale(Pol.Orient), NA_real_)) %>%
+  group_by(Id)%>%
+  dplyr::mutate(pol_bz = if_else(Wave == "2018", (Pol.Orient), NA_real_)) %>%
   fill(pol_bz) %>%
-  dplyr::mutate(rel_bz = if_else(Wave == "2018", scale(as.numeric(Religious)), NA_real_)) %>%
+  dplyr::mutate(rel_bz = if_else(Wave == "2018", (as.numeric(Religious)), NA_real_)) %>%
   fill(rel_bz) %>%
-  dplyr::mutate(partner_bz = if_else(Wave == "2018", scale(as.numeric(Partner)), NA_real_)) %>%
+  dplyr::mutate(partner_bz = if_else(Wave == "2018", (as.numeric(Partner)), NA_real_)) %>%
   fill(partner_bz) %>%
-  dplyr::mutate(parent_bz = if_else(Wave == "2018", scale(as.numeric(Parent)), NA_real_)) %>%
+  dplyr::mutate(parent_bz = if_else(Wave == "2018", (as.numeric(Parent)), NA_real_)) %>%
   fill(parent_bz) %>%
-  dplyr::mutate(age_bz = if_else(Wave == "2018", scale(Age), NA_real_)) %>%
+  dplyr::mutate(age_bz = if_else(Wave == "2018", (Age), NA_real_)) %>%
   fill(age_bz) %>%
-    dplyr::mutate(nzdep_bz = if_else(Wave == "2018", scale(NZdep), NA_real_)) %>%
+    dplyr::mutate(nzdep_bz = if_else(Wave == "2018", (NZdep), NA_real_)) %>%
   fill(nzdep_bz) %>%
-  dplyr::mutate(male_2z = if_else(Wave == "2018", scale(as.numeric(Male))/2, NA_real_)) %>%
+  dplyr::mutate(male_2z = if_else(Wave == "2018", (as.numeric(Male))/2, NA_real_)) %>%
   fill(male_2z) %>%
-  dplyr::mutate(employed_bz = if_else(Wave == "2018", scale(as.numeric(Employed)), NA_real_)) %>%
+  dplyr::mutate(employed_bz = if_else(Wave == "2018", (as.numeric(Employed)), NA_real_)) %>%
   fill(employed_bz) %>%
-  dplyr::mutate(edu_bz = if_else(Wave == "2018", scale(Edu), NA_real_)) %>%
+  dplyr::mutate(edu_bz = if_else(Wave == "2018", (Edu), NA_real_)) %>%
   fill(edu_bz) %>%
-  dplyr::mutate(ubran_bz = if_else(Wave == "2018", scale(as.numeric(Urban)), NA_real_)) %>%
+  dplyr::mutate(ubran_bz = if_else(Wave == "2018", (as.numeric(Urban)), NA_real_)) %>%
   fill(ubran_bz) %>%
   dplyr::mutate(EthnicCats_b = if_else(Wave == "2018", as.numeric(EthnicCats), NA_real_)) %>%
   fill(EthnicCats_b) %>% 
   dplyr::mutate(EthnicCats_b, as.factor(EthnicCats_b)) %>%
-  arrange(Wave,Id) 
+  ungroup()%>%
+  arrange(Id,Wave) 
 
 length(unique(km_all$Id))
-km_all$wave
-
+km_all
+head(km_all[,12:25])
 # correct
 table1::table1(~ Warm.Muslims|Wave*as.factor(Attack), data = km_all, overall=FALSE)
 
@@ -780,6 +782,7 @@ imputed_0<- amelia(
   ),
    idvars=c("Wave","As")) #, # do 
 
+head(d0)
 
 
 
@@ -1001,10 +1004,10 @@ marg_eff_attack_0a <- m_us %>%
               re_formula =NA)
            #   re_formula = NULL)  # or re_formula = ~ (1 | region)
 
-saveRDS(marg_eff_attack_0a,  here::here("_posts", "mus", "mods", "marg_eff_attack_0a.rds"))
+#saveRDS(marg_eff_attack_0a,  here::here("_posts", "mus", "mods", "marg_eff_attack_0a.rds"))
 marg_eff_attack_0a <- readRDS(here::here("_posts", "mus", "mods", "marg_eff_attack_0a.rds"))
 
-marg_eff_attack_0a
+#marg_eff_attack_0a
 # Obtain contrasts
 # marg_eff_attack_0a<- marg_eff_attack_0a%>%
 #   filter(As == 1 & Wave ==2019) #Attack == 1 & Wave ==2018|  Attack == 0 & Wave ==2018)
