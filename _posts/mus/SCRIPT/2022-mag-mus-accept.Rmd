@@ -142,7 +142,7 @@ lds2 <- ggplot(rarep, aes(day, n)) + geom_col(aes(fill = Condition)) + scale_x_d
     xmin = dates_vline2,
     xmax = dates_vline3,
     ymin = 0,
-    ymax = 900,
+    ymax = 2000,
     alpha = .3,
     fill = "darkred"
   ) +
@@ -159,14 +159,14 @@ lds2 <- ggplot(rarep, aes(day, n)) + geom_col(aes(fill = Condition)) + scale_x_d
     xmin = dates_vline3,
     xmax = as.Date("2020-10-15"),
     ymin = 0,
-    ymax = 900,
+    ymax = 2000,
     alpha = .05,
-    fill = "red"
+    fill = "yellow"
   ) +
   annotate(
     "text",
     x = as.Date("2018-10-15"),
-    y = 1500,
+    y = 2600,
     label = "Wave 10\npre-attacks"
   ) +
   # annotate(
@@ -179,60 +179,60 @@ lds2 <- ggplot(rarep, aes(day, n)) + geom_col(aes(fill = Condition)) + scale_x_d
   annotate(
     "text",
     x = as.Date("2019-05-15"),
-    y = 1500,
-    label = "Wave 10\npost\nattacks"
+    y = 2600,
+    label = "Wave 10\npost-attacks"
   ) +
-  annotate(
-    "text",
-    x = as.Date("2020-02-15"),
-    y = 1500,
-    label = "Wave 11\nrepeated"
-  ) +
+  # annotate(
+  #   "text",
+  #   x = as.Date("2020-02-15"),
+  #   y = 2200,
+  #   label = "Wave 11\nrepeated"
+  # ) +
   annotate(
     geom = "curve",
     x = as.Date("2018-02-15"),
-    y = 1100,
+    y = 2300,
     xend = as.Date("2018-10-15"),
-    yend = 1100,
+    yend = 2300,
     curvature = -.3,
     arrow = arrow(length = unit(2, "mm"))
   ) +
   annotate(
     geom = "curve",
     x = as.Date("2018-02-15"),
-    y = 1100,
-    xend = as.Date("2019-05-15"),
-    yend = 1100,
+    y = 2000,
+    xend = as.Date("2019-01-01"),
+    yend = 2000,
     curvature = -.3,
     arrow = arrow(length = unit(2, "mm"))
   ) +
-  annotate("text",
-           x = as.Date("2018-11-05"),
-           y = 1000,
-           label = "Control") +
+  # annotate("text",
+  #          x = as.Date("2018-11-05"),
+  #          y = 2000,
+  #          label = "Control") +
   annotate(
     geom = "curve",
     x = as.Date("2019-05-15"),
-    y = 1100,
-    xend = as.Date("2020-05-15"),
-    yend = 1100,
+    y = 2000,
+    xend = as.Date("2020-02-15"),
+    yend = 2000,
     curvature = -.3,
     arrow = arrow(length = unit(2, "mm"))
   ) +
   annotate("text",
-           x = as.Date("2019-06-05"),
-           y = 1000,
+           x = as.Date("2019-02-10"),
+           y = 2800,
            label = "Attack") +
   annotate("text",
-           x = as.Date("2020-07-30"),
-           y = 1050,
-           label = "Year\nFollowing") +
+           x = as.Date("2020-03-01"),
+           y = 2600,
+           label = "Wave 11 Year\nFollowing") +
   annotate(
     geom = "curve",
     x = as.Date("2018-11-15"),
-    y = 1100,
-    xend = as.Date("2020-05-15"),
-    yend = 1000,
+    y = 2000,
+    xend = as.Date("2020-02-15"),
+    yend = 2000,
     curvature = -.3,
     arrow = arrow(length = unit(2, "mm"))
   ) +
@@ -283,6 +283,20 @@ p1pp <- plot(p1,
 ```{r}
 # select variables
 library(tidyverse)
+df_raw<-df%>%
+  dplyr::filter( Wave == 2018 & YearMeasured ==1 | Wave == 2019 & YearMeasured ==1 ) %>%
+   droplevels() %>%
+  group_by(Id)%>%
+  filter(n() == 2) %>%
+  dplyr::add_tally() %>%
+  filter(n == 2 ) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(Attack = ifelse(TSCORE >= 3545, 1, 0)) %>%
+ungroup()
+
+table1::table1(~ Warm.Muslims |Wave*as.factor(Attack), data = df_raw, overall=FALSE)
+
+
 km_all <- df %>%
   dplyr::select(
     Id,
@@ -365,14 +379,18 @@ km_all <- df %>%
 # check N
 length(unique(km_all$Id))
 # correct
-table1::table1(~ Warm.Muslims|Wave*as.factor(Attack), data = km_all, overall=FALSE)
 
+t1<-table1::table1(~ Warm.Muslims|Wave*as.factor(Attack), data = km_all, overall=FALSE)
+kable(obtl, format ="latex", booktabs = TRUE)
 
-obtl<-table1::table1(~ Attack|Wave, data = km_all, overall=FALSE)
+table1::table1(~Warm.Muslims|Wave*as.factor(Attack), data = km_all, overall=FALSE)
+
+obtl<-table1::table1(~ Warm.Muslims|as.factor(Attack)*Wave, data = km_all, overall=FALSE)
+
 kable(obtl, format ="latex", booktabs = TRUE)
 
 
-x <- table1::table1(~ Warm.Muslims + Age + Male + GenCohort + Edu + Employed + EthnicCats  + NZdep + Parent + Partner + Religious + Pol.Orient  + Urban|Wave*As, data = km_all, overall=FALSE)
+x <- table1::table1(~ Warm.Muslims + Age + Male + GenCohort + Edu + Employed + EthnicCats  + NZdep + Parent + Partner + Religious + Pol.Orient  + Urban|Wave*Attack, data = km_all, overall=FALSE)
 
 t1kable(x, format ="latex")
 
@@ -393,7 +411,7 @@ kf  <- km_all %>%
 
   
 # Test  = Correct
-table1::table1(~Ys|Wave *as.factor(As), data =kf ,overall=F)
+table1::table1(~Ys|Wave *as.factor(As), data =kf, overall=F)
 
 
 
@@ -406,7 +424,9 @@ bind_rows(kf)%>%
 
 head(ka)
 # Check 
-table1::table1( ~Ys | Wave*As, data = ka)
+
+# Missing data problem
+t2<- table1::table1( ~Ys | Wave*As, data = ka, overall=F)
 
 # impute missing data
 # avoid collineraity
@@ -906,20 +926,22 @@ ggsave(
 ## Weights graph
 
 ```{r}
+
+# set up data
 kn <- km_all
 km_all$Attack
 kn$attack <- km_all$Attack
-kn$attack
 
 
+# set up of data
 imputed1<-imps$imputations$imp[[1]]
-im<- imputed1
 im$attack <- as.numeric(im$As)-1
 im$warmth <- as.numeric(im$Ys)
 kn$warmth <- as.numeric(kn$Warm.Muslims)
 im$attack
 
 
+# check
 kn%>%
   filter(Wave ==2019 & As ==1) %>%
   select(Warm.Muslims) %>%
@@ -991,7 +1013,7 @@ plot2 <- ggplot() +
          fill = colorspace::lighten("deepskyblue4",.1), color = "white", hjust = 1) +
  annotate(geom = "label", x = 3.5, y = 14000, label = "Exposed\nimputed",
            fill = colorspace::lighten("deepskyblue4",.35), color = "white", hjust = 1)+
- annotate(geom = "label", x = 2.5, y = -5600, label = "Not Exposed is\nfully imputed",
+ annotate(geom = "label", x = 2.5, y = -500, label = "Not Exposed is\nfully imputed",
           fill = colorspace::lighten("chocolate",  .35), color = "white", hjust = 1) +
  geom_hline(yintercept = 0, color = "white", size = 0.25) +
  scale_y_continuous(label = abs) +
