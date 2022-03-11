@@ -89,11 +89,18 @@ We prepare data by selecting data from wave 2018 (years 2018-19) and wave 2019 (
 
 ```{r pptimeline, cache=TRUE, fig.fullwidth = TRUE,  layout="l-body-outset", fig.width=12, fig.height=12, fig.cap="\\label{fig:pptimeline} Within-participant repeated measures covering the years before and following the attacks allow precise estimates of attitudinal change within-people (N = 11,481)."}
 ## timeline
+df%>%
+  dplyr::filter(Wave==2019) %>%
+  select(TSCORE)%>%
+  summarise(max(TSCORE, na.rm=TRUE))
+#3665 - min = 13 July 2019
+# 4125 max = 15 October 2021
+
 rarep<-df%>%
   dplyr::filter(YearMeasured == 1) %>%
   #dplyr::filter(Wave == 2018 | Wave == 2019) %>%
  # dplyr::group_by(Id) %>% filter(n() == 2) %>%
-  dplyr::filter(Wave == 2018 | Wave ==2019) %>%
+  dplyr::filter(Wave == 2018 | Wave ==2019 | Wave ==2020 ) %>%
   droplevels() %>%
   dplyr::mutate(org2018 =  ifelse(Wave == 2018 & YearMeasured ==1,1,0 ))%>%
   group_by(Id) %>%
@@ -102,10 +109,11 @@ rarep<-df%>%
   ungroup(Id) %>%
   dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30)+ TSCORE)%>%
   dplyr:::count(day = floor_date(timeline, "day"))%>%
-  dplyr::mutate(Condition = factor(ifelse(day >="2018-06-18" & day < "2019-03-15", 0,
-                                                 ifelse( day >="2019-03-15" & day < "2019-06-18",1 ,
-                                                         2)),
-                                                 labels= c("Control","Post-Attack", "Year following")))%>%
+  dplyr::mutate(Condition = factor(
+    ifelse(day >="2018-06-18" & day < "2019-03-15", 0,
+           ifelse( day >="2019-03-15" & day < "2019-06-18",1,
+                   ifelse(day >="2020-10-15" & day < "2021-10-15", 2, 3))),
+    labels= c("Baseline","Post-Attack", "One Year following","Two Years Following")))%>%
   arrange(day)
   #table(rarep$Condition)
 # get data of change of baseline
@@ -115,19 +123,22 @@ rarep<-df%>%
 # get attack date
 dates_vline2<- as.Date("2019-03-15")
 dates_vline3<- as.Date("2019-06-18")
+dates_vline4<-as.Date("2021-10-15")
+#3665 - min = 13 July 2019
+# 4125 max = 15 October 2021
 
 # for line in a graph
 dates_vline2b<-which(rarep$day %in% dates_vline2)
-#dates_vline1b<-which(rarep$day %in% dates_vline1)
 dates_vline3b<-which(rarep$day %in% dates_vline3)
+dates_vline4b<-which(rarep$day %in% dates_vline4)
 
-lds2 <- ggplot(rarep, aes(day, n)) + geom_col(aes(fill = Condition)) + scale_x_date(date_labels = "%b/%Y",
-                                                                                    limits = c(as.Date("2018-06-18"), as.Date("2020-10-15")))  +
+
+lds2 <- ggplot(rarep, aes(day, n)) + geom_col(aes(fill = Condition)) + scale_x_date(date_labels = "%b/%Y", limits = c(as.Date("2018-06-18"), as.Date("2021-10-15")))  +
   scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
   geom_vline(xintercept = as.numeric(rarep$day[dates_vline2b]),
              col = "red",
              linetype = "dashed") +
-  xlab("NZAVS Waves years 2018 - 2020 daily counts by condition") + ylab("Count of Responses")+
+  xlab("NZAVS Waves years 2018 - 2021 daily counts by condition") + ylab("Count of Responses")+
   theme_classic() +
   # annotate(
   #   "rect",
@@ -164,30 +175,47 @@ lds2 <- ggplot(rarep, aes(day, n)) + geom_col(aes(fill = Condition)) + scale_x_d
     fill = "yellow"
   ) +
   annotate(
+    "rect",
+    xmin = as.Date("2020-10-15"),
+    xmax = as.Date("2021-10-15"),
+    ymin = 0,
+    ymax = 2000,
+    alpha = .05,
+    fill = "orange"
+  ) +
+  annotate(
     "text",
     x = as.Date("2018-10-15"),
     y = 2600,
-    label = "Wave 10\npre-attacks"
+    label = "Time 10\npre-attacks"
   ) +
-  # annotate(
-  #   "text",
-  #   x = as.Date("2018-01-15"),
-  #   y = 980,
-  #   label = "Wave 9
-  #          baseline (control)"
-  # ) +
+  annotate("text",
+           x = as.Date("2019-02-01"),
+           y = 2800,
+           label = "attack") +
   annotate(
     "text",
-    x = as.Date("2019-05-15"),
+    x = as.Date("2019-06-15"),
     y = 2600,
-    label = "Wave 10\npost-attacks"
+    label = "Time 10\npost-attacks"
   ) +
-  # annotate(
-  #   "text",
-  #   x = as.Date("2020-02-15"),
-  #   y = 2200,
-  #   label = "Wave 11\nrepeated"
-  # ) +
+  annotate("text",
+           x = as.Date("2020-03-01"),
+           y = 2600,
+           label = "Time 11 Year\nFollowing") +
+  annotate("text",
+           x = as.Date("2021-03-01"),
+           y = 2600,
+           label = "Time 12 Year\nFollowing") +
+  annotate(
+    geom = "curve",
+    x = as.Date("2018-11-15"),
+    y = 2000,
+    xend = as.Date("2020-02-15"),
+    yend = 2000,
+    curvature = -.3,
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
   annotate(
     geom = "curve",
     x = as.Date("2018-02-15"),
@@ -206,42 +234,31 @@ lds2 <- ggplot(rarep, aes(day, n)) + geom_col(aes(fill = Condition)) + scale_x_d
     curvature = -.3,
     arrow = arrow(length = unit(2, "mm"))
   ) +
-  # annotate("text",
-  #          x = as.Date("2018-11-05"),
-  #          y = 2000,
-  #          label = "Control") +
-  annotate(
+ annotate(
     geom = "curve",
-    x = as.Date("2019-05-15"),
+    x = as.Date("2019-01-01"),
     y = 2000,
-    xend = as.Date("2020-02-15"),
+    xend = as.Date("2020-10-15"),
     yend = 2000,
     curvature = -.3,
     arrow = arrow(length = unit(2, "mm"))
   ) +
-  annotate("text",
-           x = as.Date("2019-02-10"),
-           y = 2800,
-           label = "Attack") +
-  annotate("text",
-           x = as.Date("2020-03-01"),
-           y = 2600,
-           label = "Wave 11 Year\nFollowing") +
-  annotate(
+   annotate(
     geom = "curve",
-    x = as.Date("2018-11-15"),
+    x = as.Date("2020-03-15"),
     y = 2000,
-    xend = as.Date("2020-02-15"),
+    xend = as.Date("2021-06-15"),
     yend = 2000,
     curvature = -.3,
     arrow = arrow(length = unit(2, "mm"))
   ) +
-  theme(
+    theme(
     legend.position = "top",
     legend.text = element_text(size = 6),
     legend.title = element_text(color = "Black", size = 8)
   ) +
-  scale_fill_viridis_d(option = "plasma")
+    scale_fill_viridis_d(option = "plasma") 
+
 
 ### USE GRAPH OF TIMELINE
 lds2
@@ -1885,8 +1902,7 @@ pred3<- ggeffects::ggemmeans(m_b, terms = c("Wave","As"))
 mus_plot3 <-plot(pred3)+ scale_y_continuous(limits=c(4,4.6))+labs(title="Effect of attack on acceptance of Muslims")
 
 p <-mcmc_intervals(m_b)
-p
-ps<- brms::posterior_summary(post_marLM) 
+ps<- brms::posterior_summary(m_b) 
 
 
 ```
