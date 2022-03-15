@@ -106,16 +106,17 @@ rarep<-df%>%
   group_by(Id) %>%
   dplyr::mutate(hold = mean(org2018, na.rm = TRUE)) %>%  # Hack
   filter(hold>0) %>% # hack!
-  ungroup(Id) %>%
+  ungroup(Id)%>%
   dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30)+ TSCORE)%>%
   dplyr:::count(day = floor_date(timeline, "day"))%>%
   dplyr::mutate(Condition = factor(
     ifelse(day >="2018-06-18" & day < "2019-03-15", 0,
            ifelse( day >="2019-03-15" & day < "2019-06-18",1,
-                   ifelse(day >="2020-10-15" & day < "2021-10-15", 2, 3))),
-    labels= c("Baseline","Post-Attack", "One Year following","Two Years Following")))%>%
-  arrange(day)
-  #table(rarep$Condition)
+                   ifelse(day >="2019-06-18" & day < "2020-10-15", 2, 3))),
+    labels= c("Baseline","Post-attack", "Post-attack one year","Post-attack two years")))%>%
+  arrange(day,Condition)
+
+
 # get data of change of baseline
 #dates_vline1<- as.Date("2018-06-18")
 
@@ -123,7 +124,7 @@ rarep<-df%>%
 # get attack date
 dates_vline2<- as.Date("2019-03-15")
 dates_vline3<- as.Date("2019-06-18")
-dates_vline4<-as.Date("2021-10-15")
+dates_vline4<-as.Date("2021-06-18")
 #3665 - min = 13 July 2019
 # 4125 max = 15 October 2021
 
@@ -132,14 +133,18 @@ dates_vline2b<-which(rarep$day %in% dates_vline2)
 dates_vline3b<-which(rarep$day %in% dates_vline3)
 dates_vline4b<-which(rarep$day %in% dates_vline4)
 
+#rarep$Condition <- ordered(rarep$Condition, c("Baseline","Post-attack", "Post-attack one year","Post-attack two years"))
 
-lds2 <- ggplot(rarep, aes(day, n)) + geom_col(aes(fill = Condition)) + scale_x_date(date_labels = "%b/%Y", limits = c(as.Date("2018-06-18"), as.Date("2021-10-15")))  +
+
+lds2 <- ggplot(rarep, aes(day, n)) + 
+  geom_col(aes(fill = Condition)) + 
+  scale_x_date(date_labels = "%b/%Y", limits = c(as.Date("2018-06-01"), as.Date("2021-10-16")))  +
   scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
   geom_vline(xintercept = as.numeric(rarep$day[dates_vline2b]),
              col = "red",
              linetype = "dashed") +
   xlab("NZAVS Waves years 2018 - 2021 daily counts by condition") + ylab("Count of Responses")+
-  theme_classic() +
+  theme_classic()  + 
   # annotate(
   #   "rect",
   #   xmin = as.Date("2017-08-25"),
@@ -172,7 +177,7 @@ lds2 <- ggplot(rarep, aes(day, n)) + geom_col(aes(fill = Condition)) + scale_x_d
     ymin = 0,
     ymax = 2000,
     alpha = .05,
-    fill = "yellow"
+    fill = "orange"
   ) +
   annotate(
     "rect",
@@ -181,7 +186,7 @@ lds2 <- ggplot(rarep, aes(day, n)) + geom_col(aes(fill = Condition)) + scale_x_d
     ymin = 0,
     ymax = 2000,
     alpha = .05,
-    fill = "orange"
+    fill = "yellow"
   ) +
   annotate(
     "text",
@@ -190,9 +195,9 @@ lds2 <- ggplot(rarep, aes(day, n)) + geom_col(aes(fill = Condition)) + scale_x_d
     label = "Time 10\npre-attacks"
   ) +
   annotate("text",
-           x = as.Date("2019-02-01"),
-           y = 2800,
-           label = "attack") +
+           x = as.Date("2019-01-01"),
+           y = 2950,
+           label = "**attack**") +
   annotate(
     "text",
     x = as.Date("2019-06-15"),
@@ -206,7 +211,7 @@ lds2 <- ggplot(rarep, aes(day, n)) + geom_col(aes(fill = Condition)) + scale_x_d
   annotate("text",
            x = as.Date("2021-03-01"),
            y = 2600,
-           label = "Time 12 Year\nFollowing") +
+           label = "Time 12 2 years \nFollowing") +
   annotate(
     geom = "curve",
     x = as.Date("2018-11-15"),
@@ -256,8 +261,9 @@ lds2 <- ggplot(rarep, aes(day, n)) + geom_col(aes(fill = Condition)) + scale_x_d
     legend.position = "top",
     legend.text = element_text(size = 6),
     legend.title = element_text(color = "Black", size = 8)
-  ) +
-    scale_fill_viridis_d(option = "plasma") 
+  ) +  scale_fill_viridis_d(option = "plasma") + 
+  scale_y_continuous(limits=c(0,2950))
+  #theme(legend.position="none")
 
 
 ### USE GRAPH OF TIMELINE
@@ -277,23 +283,34 @@ ggsave(
 )
 ```
 
+
+
+
+
 ## Missing data imputation
 
 ```{r}
 # select variables
 library(tidyverse)
 df_raw<-df%>%
-  dplyr::filter( Wave == 2018 & YearMeasured ==1 | Wave == 2019 & YearMeasured ==1 | Wave == 2020 & YearMeasured ==1) %>%
-   droplevels() %>%
-  group_by(Id)%>%
-  filter(n() == 2) %>%
-  dplyr::add_tally() %>%
-  filter(n == 2 ) %>%
+dplyr::filter(Wave == 2018 | Wave ==2019 | Wave ==2020 ) %>%
+  droplevels() %>%
+  dplyr::mutate(org2018 =  ifelse(Wave == 2018 & YearMeasured ==1,1,0 ))%>%
+  group_by(Id) %>%
+  dplyr::mutate(hold = mean(org2018, na.rm = TRUE)) %>%  # Hack
+  filter(hold>0) %>% # hack!
+  ungroup(Id)%>%
+ # filter(n == 2 ) %>%
   dplyr::ungroup() %>%
   dplyr::mutate(Attack = ifelse(TSCORE >= 3545, 1, 0)) %>%
 ungroup()
 
+# TABLE FOR RESPONSES
 table1::table1(~ Warm.Muslims |Wave*as.factor(Attack), data = df_raw, overall=FALSE)
+
+raw<-table1::table1(~ Warm.Muslims|as.factor(Attack)*Wave, data = df_raw, overall=FALSE)
+raw
+kable(raw, format ="latex", booktabs = TRUE)
 
 
 km_all <- df %>%
@@ -557,7 +574,7 @@ for(i in 1:m) {
 # saveRDS(dat, here::here("_posts", "mus", "mods", "dat"))
 # saveRDS(impsL, here::here("_posts", "mus", "mods", "impsL"))
 # saveRDS(imps, here::here("_posts", "mus", "mods", "imps"))
-imps <- readRDS(here::here("_posts", "mus", "mods", "imps"))
+impsL <- readRDS(here::here("_posts", "mus", "mods", "impsL"))
 
 tscsPlot(imputed, var = "Ys", cs =c(2,4,491,564,76,582), draws = 100, conf = 0.9, misscol = "red",
   obscol = "black")
@@ -570,14 +587,8 @@ for(i in 1:m) {
 }
 
 pool_parameters(models1)
-pred1<- ggeffects::ggemmeans(models1[[2]], terms = c("Wave","As"))
+pred1<- ggeffects::ggemmeans(models1[[1], terms = c("Wave","As"))
 plot(pred1)
-
-
-
-
-
-
 
 
 ```
@@ -709,6 +720,24 @@ save_pars=save_pars(group=FALSE)
 
 #amelia.list<-readRDS(here::here("_posts","mus", "mods", "amelia.list"))
 
+```
+
+
+### Distributional model
+
+```{r}
+m_dis <- brms::brm( 
+  bf(Ys ~ As  *  Wave + (1|Id), 
+     sigma ~ As * Wave + (1|Id)),
+  data = dat,
+  prior = c(prior(lognormal(0, 0.25), class = b, coef = "Wave")), # constrain wave to be positive
+  seed = 1234,
+  warmup = 1000,
+  iter = 2000,
+  chains = 4,
+  backend = "cmdstanr",
+  #save_pars=save_pars(group=FALSE))
+  file = here::here("_posts", "mus", "mods", "m_dis"))
 ```
 
 
@@ -1921,16 +1950,12 @@ marg_eff_attack_0 <- m_b %>%
 
 marg_eff_attack_0
 #saveRDS(marg_eff_attack_0,  here::here("_posts", "mus", "mods", "marg_eff_attack_0"))
-#marg_eff_attack_0a <- readRDS(here::here("_posts", "mus", "mods", "marg_eff_attack_0a.rds"))
+marg_eff_attack_0a <- readRDS(here::here("_posts", "mus", "mods", "marg_eff_attack_0a.rds"))
 
-#marg_eff_attack_0a
-# Obtain contrasts
-# marg_eff_attack_0a<- marg_eff_attack_0a%>%
-#   filter(As == 1 & Wave ==2019 ) #Attack == 1 & Wave ==2018|  Attack == 0 & Wave ==2018)
-
+## plot all
 # marg_eff_attack_0
 plot_all <- ggplot(
-  marg_eff_attack_0,
+  marg_eff_attack_0a,
   aes(
     x = .epred,
     y = Wave,
@@ -1943,25 +1968,115 @@ plot_all <- ggplot(
       x = "Predicted Warmth Response",
       #y = "wave 2018(yrs 2018-2019) & wave 2018 (yrs 2019-2020)",
       fill = "Conterfactual Contrasts",
-      subtitle = "Bayesian posterior locations of potential outcomes"
+      subtitle = "Bayesian posterior locations of potential outcomes: 2018 vs 2020"
     ) +
   #  scale_x_continuous(limits=c(4.0,4.6)) +
     theme_pubclean() +
     theme(legend.position = "bottom"
-    )+scale_x_continuous(limits=c(4,4.5))
+    )+scale_x_continuous(limits=c(4,4.7))
 plot_all
 
 ggsave(
   plot_all,
   path = here::here(here::here("_posts", "mus", "figs")),
-  width = 8,
-  height = 8,
+  width = 12,
+  height = 6,
   units = "in",
-  filename = "plot_all.jpg",
+  filename = "plot_all",
   device = 'jpeg',
   limitsize = FALSE,
   dpi = 1200
 )
+
+
+
+
+
+#marg_eff_attack_0a
+# Obtain contrasts
+library(tidyverse)
+marg_t <- marg_eff_attack_0%>%
+  filter((Wave=="Wave 10" | Wave == "Wave 11" ) )#Attack == 1 & Wave ==2018|  Attack == 0 & Wave ==2018)
+marg_t
+
+
+# marg_eff_attack_0
+plot_2019 <- ggplot(
+  marg_t,
+  aes(
+    x = .epred,
+    y = Wave,
+    fill = as.factor(As)
+  ) ) + 
+  scale_y_discrete(limits=rev) +
+    stat_halfeye() +
+    scale_fill_okabe_ito() +
+    labs(
+      x = "Predicted Warmth Response",
+      #y = "wave 2018(yrs 2018-2019) & wave 2018 (yrs 2019-2020)",
+      fill = "Conterfactual Contrasts",
+      subtitle = "Bayesian posterior locations of potential outcomes: 2018 vs 2020"
+    ) +
+  #  scale_x_continuous(limits=c(4.0,4.6)) +
+    theme_pubclean() +
+    theme(legend.position = "bottom"
+    )+scale_x_continuous(limits=c(4,4.7))
+plot_2019
+
+ggsave(
+  plot_2019,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 12,
+  height = 6,
+  units = "in",
+  filename = "plot_2019",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1200
+)
+
+
+## 2020
+marg_t2 <- marg_eff_attack_0%>%
+  filter((Wave=="Wave 10" | Wave == "Wave 12" ) )#Attack == 1 & Wave ==2018|  Attack == 0 & Wave ==2018)
+marg_t2
+
+
+# marg_eff_attack_0
+plot_2020 <- ggplot(
+  marg_t2,
+  aes(
+    x = .epred,
+    y = Wave,
+    fill = as.factor(As)
+  ) ) + 
+  scale_y_discrete(limits=rev) +
+    stat_halfeye() +
+    scale_fill_okabe_ito() +
+    labs(
+      x = "Predicted Warmth Response",
+      #y = "wave 2018(yrs 2018-2019) & wave 2018 (yrs 2019-2020)",
+      fill = "Conterfactual Contrasts",
+      subtitle = "Bayesian posterior locations of potential outcomes: 2018 vs. 2020"
+    ) +
+  #  scale_x_continuous(limits=c(4.0,4.6)) +
+    theme_pubclean() +
+    theme(legend.position = "bottom"
+    )+scale_x_continuous(limits=c(4,4.7))
+plot_2020
+
+ggsave(
+  plot_2020,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 12,
+  height = 6,
+  units = "in",
+  filename = "plot_2020",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1200
+)
+
 
 #plot_all
 

@@ -462,9 +462,9 @@ We can fit a distributional model
 ```{r}
 sigma ~ group
 
-m_bayes3wave <- brms::brm( 
+m_dis <- brms::brm( 
   bf(Ys ~ As *  Wave + (1|Id), 
-     sigma ~ As * Wave + (1|Id)),
+     sigma ~  Wave + (1|Id)),
   data = dat3, 
   seed = 1234,
   warmup = 1000,
@@ -472,7 +472,7 @@ m_bayes3wave <- brms::brm(
   chains = 4,
   backend = "cmdstanr",
   #save_pars=save_pars(group=FALSE))
-  file = here::here("_posts", "mus", "mods", "m_bayes3wave"))
+  file = here::here("_posts", "mus", "mods", "m_dis"))
 
 
 ```
