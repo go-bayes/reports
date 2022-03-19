@@ -876,6 +876,31 @@ listbayes <-imps_bind$imputations$imp
 saveRDS(listbayes, here::here("_posts", "mus", "mods", "listbayes"))
 
 
+
+# make wave continuous and as continuous ----------------------------------
+m <- 10
+imps_bindC <- NULL
+for (i in 1:m) {
+  imps_bindC$imputations$imp[[i]] <- 
+    dplyr::bind_rows(zero$imputations$imp[[i]],
+                     one$imputations$imp[[i]])%>%
+    dplyr::select(-wave) %>%
+    dplyr::filter(Wave =="Time10"| Wave =="Time11"| Wave == "Time12") %>%
+    droplevels()%>%
+    dplyr::mutate(As = as.numeric(As)-1) %>%
+    dplyr::mutate(Wave = as.numeric(Wave)-1) %>%
+    arrange(Wave,Id) 
+}
+
+str(imps_bindC$imputations$imp[[1]])
+    
+# make list for bayesian models
+listbayesC <-imps_bindC$imputations$imp
+
+# save list for bayesian models
+saveRDS(listbayesC, here::here("_posts", "mus", "mods", "listbayesC"))
+
+
 # ML model ----------------------------------------------------------------
 
 # model
@@ -924,6 +949,250 @@ estimate_contrasts( model_all[[1]],
 
 
 
+# as and wave continuous --------------------------------------------------
+
+# model
+m<-10
+model_allC_nl<-NULL
+for(i in 1:m) {
+  model_allC_nl[[i]] <- lmer(Ys ~  as.factor(As) * as.factor(Wave) + (1|Id),
+                         data = imps_bindC$imputations$imp[[i]])
+}
+
+# table
+
+tab<-pool_parameters(model_allC_nl)
+tab
+tab [,c(1:5)]%>%
+  # print_md()%>%
+  kbl("latex",booktabs = TRUE,digits=2)
+q
+
+
+estimate_contrasts(
+  model_allC_nl[[4]],
+  contrast = "As",
+  at = c("As","Wave"),
+  # fixed = NULL,
+  # transform = "none",
+  ci = 0.95,
+  adjust = "holm",
+  length = 2
+)
+
+estimate_contrasts( model_allC_nl[[1]],
+                    contrast = "As",
+                    at = c("Wave","As"),
+                    length=2)
+%>%
+  kbl("latex",booktabs = TRUE,digits=2)
+
+
+
+# ML model separate wave estimates ----------------------------------------
+#  not needed
+# 
+# m <- 10
+# imps_bind19 <- NULL
+# for (i in 1:m) {
+#   imps_bind19$imputations$imp[[i]] <- 
+#     dplyr::bind_rows(zero$imputations$imp[[i]],
+#                      one$imputations$imp[[i]])%>%
+#     dplyr::select(-wave) %>%
+#     dplyr::filter(Wave =="Time10"| Wave =="Time11") %>%
+#     droplevels()%>%
+#     arrange(Wave,Id) 
+# }
+# 
+# 
+# 
+# # Works!
+# table(imps_bind19$imputations$imp[[1]]$Wave)
+# 
+# # save
+# saveRDS(imps_bind19, here::here("_posts", "mus", "mods", "imps_bind19"))
+# 
+# # make list for bayesian models
+# listbayes19 <-imps_bind19$imputations$imp
+# 
+# # save list for bayesian models
+# saveRDS(listbayes19, here::here("_posts", "mus", "mods", "listbayes19"))
+# 
+# # 20 
+# 
+# m <- 10
+# imps_bind20 <- NULL
+# for (i in 1:m) {
+#   imps_bind20$imputations$imp[[i]] <- 
+#     dplyr::bind_rows(zero$imputations$imp[[i]],
+#                      one$imputations$imp[[i]])%>%
+#     dplyr::select(-wave) %>%
+#     dplyr::filter(Wave =="Time10"|  Wave == "Time12") %>%
+#     droplevels()%>%
+#     arrange(Wave,Id) 
+# }
+# 
+# 
+# 
+# # Works!
+# table(imps_bind20$imputations$imp[[1]]$Wave)
+# 
+# # save
+# saveRDS(imps_bind20, here::here("_posts", "mus", "mods", "imps_bind20"))
+# 
+# # make list for bayesian models
+# listbayes20 <-imps_bind20$imputations$imp
+# 
+# # save list for bayesian models
+# saveRDS(listbayes20, here::here("_posts", "mus", "mods", "listbayes"))
+# 
+# 
+# # ml 19 wave --------------------------------------------------------------
+# 
+# 
+# # model
+# m<-10
+# model_all19<-NULL
+# for(i in 1:m) {
+#   model_all19[[i]] <- lmer(Ys ~  As * Wave + (1|Id), data = imps_bind19$imputations$imp[[i]])
+# }
+# 
+# # table
+# tab19<-pool_parameters(model_all19)
+# tab19
+# tab19[,c(1:5)]%>%
+#   # print_md()%>%
+#   kbl("latex",booktabs = TRUE,digits=2)
+# 
+# plot(tab19, show_labels = TRUE)
+# 
+# pl_ml19 <- ggeffects::ggemmeans(model_all19[[2]], terms = c("Wave","As")) 
+# 
+# 
+# mus_plot_model_all <-plot(pl_ml19)+ 
+#   scale_y_continuous(limits=c(4.10,4.5))+
+#   labs(subtitle="Effect of attack on acceptance of Muslims") + 
+#   #scale_x_discrete(limits=rev) +
+#   coord_flip() 
+# mus_plot_model_all
+# 
+# 
+# estimate_contrasts(
+#   model_all19[[4]],
+#   contrast = "As",
+#   at = c("As","Wave"),
+#   # fixed = NULL,
+#   # transform = "none",
+#   ci = 0.95,
+#   adjust = "holm",
+#   length = 2
+# )
+# 
+# 
+# 
+# 
+# # ml 20 -------------------------------------------------------------------
+# 
+# 
+# # model
+# m<-10
+# model_all20<-NULL
+# for(i in 1:m) {
+#   model_all20[[i]] <- lmer(Ys ~  As * Wave + (1|Id), data = imps_bind20$imputations$imp[[i]])
+# }
+# 
+# # table
+# tab20<-pool_parameters(model_all20)
+# tab20
+# tab20 [,c(1:5)]%>%
+#   # print_md()%>%
+#   kbl("latex",booktabs = TRUE,digits=2)
+# 
+# plot(tab, show_labels = TRUE)
+# 
+# pl_ml <- ggeffects::ggemmeans(model_all20[[2]], terms = c("Wave","As")) 
+# 
+# 
+# mus_plot_model_all <-plot(pl_ml)+ 
+#   scale_y_continuous(limits=c(4.10,4.5))+
+#   labs(subtitle="Effect of attack on acceptance of Muslims") + 
+#   #scale_x_discrete(limits=rev) +
+#   coord_flip() 
+# mus_plot_model_all
+# 
+# 
+# estimate_contrasts(
+#   model_all20[[4]],
+#   contrast = "As",
+#   at = c("As","Wave"),
+#   # fixed = NULL,
+#   # transform = "none",
+#   ci = 0.95,
+#   adjust = "holm",
+#   length = 2
+# )
+
+
+# bayesian 20  ------------------------------------------------------------
+# 
+# # NO DIFF
+# b_m20 <- brms::brm( 
+#   bf(Ys ~ As  *  Wave + (1|Id)),#, 
+#   # sigma ~ As + Wave + (1|Id)),
+#   data = listbayes20,
+#   # prior = c(prior(normal(.04, .5), class = b, coef = "WaveTime11"),
+#   #           prior(normal(.08, .5), class = b, coef = "WaveTime12"),
+#   #           prior(normal(0,  1), class = b, coef = "As1"),
+#   #           prior(normal(0,.25), class=b, coef= "As1:WaveTime11"),
+#   #           prior(normal(0,.25), class=b, coef= "As1:WaveTime12")), 
+#   seed = 1234,
+#   warmup = 1000,
+#   iter = 2000,
+#   chains = 4,
+#   backend = "cmdstanr",
+#   #save_pars=save_pars(group=FALSE))
+#   file = here::here("_posts", "mus", "mods", "b_m20"))
+# 
+# tab20b<- lazerhawk::brms_SummaryTable(b_m20, panderize=F)
+# tab20b
+# tab20b %>%
+#   kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims") %>%
+#   print()
+# 
+# 
+# 
+# 
+# # bayesian 19 -------------------------------------------------------------
+# 
+# # no point
+# 
+# b_m19 <- brms::brm( 
+#   bf(Ys ~ As  *  Wave + (1|Id)),#, 
+#   # sigma ~ As + Wave + (1|Id)),
+#   data = listbayes20,
+#   # prior = c(prior(normal(.04, .5), class = b, coef = "WaveTime11"),
+#   #           prior(normal(.08, .5), class = b, coef = "WaveTime12"),
+#   #           prior(normal(0,  1), class = b, coef = "As1"),
+#   #           prior(normal(0,.25), class=b, coef= "As1:WaveTime11"),
+#   #           prior(normal(0,.25), class=b, coef= "As1:WaveTime12")), 
+#   seed = 1234,
+#   warmup = 1000,
+#   iter = 2000,
+#   chains = 4,
+#   backend = "cmdstanr",
+#   #save_pars=save_pars(group=FALSE))
+#   file = here::here("_posts", "mus", "mods", "b_m19"))
+# 
+# tab19b<- lazerhawk::brms_SummaryTable(b_m19, panderize=F)
+# tab19b
+# tab19b
+# b %>%
+#   kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims") %>%
+#   print()
+# 
+# 
+
+
 # bayesian model  ---------------------------------------------------------
 
 
@@ -932,8 +1201,8 @@ b_m1 <- brms::brm(
   # sigma ~ As + Wave + (1|Id)),
   data = listbayes,
   prior = c(prior(normal(.04, .5), class = b, coef = "WaveTime11"),
-            prior(normal(.04, .5), class = b, coef = "WaveTime12"),
-            prior(normal(.2,  .5), class = b, coef = "As1"),
+            prior(normal(.08, .5), class = b, coef = "WaveTime12"),
+            prior(normal(0,  1), class = b, coef = "As1"),
             prior(normal(0,.25), class=b, coef= "As1:WaveTime11"),
             prior(normal(0,.25), class=b, coef= "As1:WaveTime12")), 
   seed = 1234,
@@ -945,13 +1214,14 @@ b_m1 <- brms::brm(
   file = here::here("_posts", "mus", "mods", "b_m1"))
 
 tab <- lazerhawk::brms_SummaryTable(b_m1, panderize=F)
+tab
 tab %>%
   kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims") %>%
   print()
 
 
 # default prior -----------------------------------------------------------
-b_mdf <- brms::brm( 
+b_m_df <- brms::brm( 
   bf(Ys ~ As  *  Wave + (1|Id)),#, 
   # sigma ~ As + Wave + (1|Id)),
   data = listbayes,
@@ -961,11 +1231,360 @@ b_mdf <- brms::brm(
   chains = 4,
   backend = "cmdstanr",
   #save_pars=save_pars(group=FALSE))
-  file = here::here("_posts", "mus", "mods", "b_m1"))
+  file = here::here("_posts", "mus", "mods", "b_m_df"))
 
-lazerhawk::brms_SummaryTable(b_mdf, panderize=F)
+tab <- lazerhawk::brms_SummaryTable(b_m_df, panderize=F)
+
+tab
 
 
+# bayesian wave cont fact -------------------------------------------------------------
+
+b_m_dfC <- brms::brm( 
+  bf(Ys ~ as.factor(As)  *  as.factor(Wave) + (1|Id)),#, 
+  # sigma ~ As + Wave + (1|Id)),
+  data = listbayesC,
+  seed = 1234,
+  warmup = 1000,
+  iter = 2000,
+  chains = 4,
+  backend = "cmdstanr",
+  save_pars=save_pars(group=FALSE),
+  file = here::here("_posts", "mus", "mods", "b_m_dfC"))
+
+lazerhawk::brms_SummaryTable(b_m_dfC, panderize=F)
+
+tabC <- model_parameters(b_m_dfC, test = c("pd"))
+
+plot(tabC, show_labels = TRUE)
+
+
+pl_bfC <- ggeffects::ggemmeans(b_m_dfC, terms = c("Wave","As")) 
+
+mus_plot_pl_bfC <-plot(pl_bfC) + 
+  #scale_y_continuous(limits=c(4.10,4.5)) +
+  labs(subtitle="Effect of attack on acceptance of Muslims") + 
+  # scale_x_continuous(limits=rev)
+  coord_flip() 
+mus_plot_pl_bfC
+
+
+# bayesian cont wave  -------------------------------------------------------------
+listbayesC<- readRDS(here::here("_posts", "mus", "mods", "listbayesC"))
+
+b_m_dfCw <- brms::brm( 
+  bf(Ys ~ As  *  Wave + (1|Id)),#, 
+  # sigma ~ As + Wave + (1|Id)),
+  data = listbayesC,
+  seed = 1234,
+  warmup = 1000,
+  iter = 2000,
+  chains = 4,
+  backend = "cmdstanr",
+  #save_pars=save_pars(group=FALSE),
+  file = here::here("_posts", "mus", "mods", "b_m_dfCw"))
+
+lazerhawk::brms_SummaryTable(b_m_dfCw, panderize=F)
+
+tabCw <- model_parameters(b_m_dfCw, test = c("pd"))
+
+plot(tabCw, show_labels = TRUE)
+pl_bfCw <- ggeffects::ggemmeans(b_m_dfCw, terms = c("Wave","As")) 
+
+mus_plot_pl_bfC <-plot(pl_bfC) + 
+  #scale_y_continuous(limits=c(4.10,4.5)) +
+  labs(subtitle="Effect of attack on acceptance of Muslims") + 
+  # scale_x_continuous(limits=rev)
+  coord_flip() 
+mus_plot_pl_bfC
+
+
+
+# cont wave /as strg prior ------------------------------------------------
+
+
+b_m_dfC <- brms::brm( 
+  bf(Ys ~ As  *  Wave + (1|Id)),#, 
+  # sigma ~ As + Wave + (1|Id)),
+  data = listbayesC,
+  prior = c(prior(lognormal(log(1), .5), class = b, coef = "WaveTime11"),
+            prior(lognormal(log(1), .5), class = b, coef = "WaveTime12"),
+            prior(normal(0,  1), class = b, coef = "As1"),
+            prior(normal(0,.25), class=b, coef= "As1:WaveTime11"),
+            prior(normal(0,.25), class=b, coef= "As1:WaveTime12")), 
+  seed = 1234,
+  warmup = 1000,
+  iter = 2000,
+  chains = 4,
+  backend = "cmdstanr",
+  #save_pars=save_pars(group=FALSE))
+  file = here::here("_posts", "mus", "mods", "b_m_dfC"))
+
+tabC <- lazerhawk::brms_SummaryTable(b_m_dfC, panderize=F)
+
+tabC
+
+
+
+# nonlinear ---------------------------------------------------------------
+
+library(splines)
+
+b_m_dfC_nl <- brms::brm( 
+  bf(Ys ~ bs(As)  +  Wave + (1|Id)),#, 
+  # sigma ~ As + Wave + (1|Id)),
+  data = listbayesC,
+  seed = 1234,
+  warmup = 1000,
+  iter = 2000,
+  chains = 4,
+  backend = "cmdstanr",
+  #save_pars=save_pars(group=FALSE))
+  file = here::here("_posts", "mus", "mods", "b_m_dfC_nl"))
+
+tabC <- lazerhawk::brms_SummaryTable(b_m_dfC_nl, panderize=F)
+
+tabC
+
+
+# sensitivity anlaysis ----------------------------------------------------
+# imagine strong time effect
+
+b_sens <- brms::brm(
+  bf(Ys ~  As * Wave + (1 | Id)),
+  data = listbayes,
+  prior = c(set_prior("constant(0.1)", class = "b", coef = "WaveTime11"),
+            set_prior("constant(0.2)", class = "b", coef = "WaveTime12")),
+  seed = 1234,
+  warmup = 1000,
+  iter = 2000,
+  chains = 4,
+  backend = "cmdstanr",
+  #save_pars=save_pars(group=FALSE))
+  file = here::here("_posts", "mus", "mods", "b_sens")
+)
+
+lazerhawk::brms_SummaryTable(b_sens, panderize=F)
+
+
+# sens analysis extrapolate -----------------------------------------------
+
+b_sens_s <- brms::brm(
+  bf(Ys ~  As * Wave + (1 | Id)),
+  data = listbayes,
+  prior = c(set_prior("constant(0.4)", class = "b", coef = "WaveTime11"),
+            set_prior("constant(0.8)", class = "b", coef = "WaveTime12")),
+  seed = 1234,
+  warmup = 1000,
+  iter = 2000,
+  chains = 4,
+  backend = "cmdstanr",
+  #save_pars=save_pars(group=FALSE))
+  file = here::here("_posts", "mus", "mods", "b_sens")
+)
+
+lazerhawk::brms_SummaryTable(b_sens, panderize=F)
+
+
+
+# model graphs ------------------------------------------------------------
+
+library(tidybayes)
+library(emmeans)
+
+marg_eff_bf_df <- b_m_df %>%
+  epred_draws(newdata = expand.grid(As = c(0, 1), Wave = c("Time10", "Time11","Time12")),
+              re_formula = NA)
+marg_eff_bf_df
+#saveRDS(marg_eff_bf_df,  here::here("_posts", "mus", "mods", "marg_eff_bf_df"))
+#marg_eff_bf_df <- readRDS(here::here("_posts", "mus", "mods", "marg_eff_bf_df"))
+
+marg_eff_sens <- b_sens %>%
+  epred_draws(newdata = expand.grid(As = c(0, 1), Wave = c("Time10", "Time11","Time12")),
+              re_formula = NA)
+saveRDS(marg_eff_sens,  here::here("_posts", "mus", "mods", "marg_eff_sens"))
+
+# sensitivity
+marg_eff_attack_0s <- m_use_pr_sens %>%
+  epred_draws(newdata = expand.grid(As = c(0, 1), Wave = c("Time 10", "Time 11","Time 12")),
+              re_formula = NA)
+#saveRDS(marg_eff_attack_0s,  here::here("_posts", "mus", "mods", "marg_eff_attack_0s"))
+
+marg_eff_attack_0s
+# marg_eff_attack_0a <- readRDS(here::here("_posts", "mus", "mods", "marg_eff_attack_0a.rds"))
+
+
+
+marg_eff_attack_0s2 <- m_use_pr_sens2 %>%
+  epred_draws(newdata = expand.grid(As = c(0, 1), Wave = c("Time 10", "Time 11","Time 12")),
+              re_formula = NA)
+saveRDS(marg_eff_attack_0s,  here::here("_posts", "mus", "mods", "marg_eff_attack_0s2"))
+
+marg_eff_attack_0s2
+# marg_eff_attack_0a <- readRDS(here::here("_posts", "mus", "mods", "marg_eff_attack_0a.rds"))
+
+marg_eff_attack_0s3 <- m_use_pr_sens3 %>%
+  epred_draws(newdata = expand.grid(As = c(0, 1), Wave = c("Time 10", "Time 11","Time 12")),
+              re_formula = NA)
+
+saveRDS(marg_eff_attack_0s3,  here::here("_posts", "mus", "mods", "marg_eff_attack_0s3"))
+
+
+
+plot_bf_df <- ggplot(
+  marg_eff_bf_df,
+  aes(
+    x = .epred,
+    y = Wave,
+    fill = as.factor(As)
+  ) ) + 
+  scale_y_discrete(limits=rev) +
+  stat_halfeye() +
+  scale_fill_okabe_ito() +
+  labs(
+    x = "Predicted Warmth Response",
+    #y = "wave 2018(yrs 2018-2019) & wave 2018 (yrs 2019-2020)",
+    fill = "Conterfactual Contrasts",
+    subtitle = "Bayesian posterior locations of potential outcomes\nModel estimates"
+  ) +
+  #  scale_x_continuous(limits=c(4.0,4.6)) +
+  theme_pubclean() +
+  theme(legend.position = "bottom"
+  )+scale_x_continuous(limits=c(4,4.6))
+plot_bf_df
+
+# marg_eff_m_use_pr <- m_use_pr %>%
+#   epred_draws(newdata = expand.grid(As = c(0, 1), Wave = c("Time 10", "Time 11","Time 12")),
+#               re_formula = NA)
+# saveRDS(marg_eff_m_use_pr,  here::here("_posts", "mus", "mods", "marg_eff_m_use_pr"))
+# 
+#  <- readRDS(here::here("_posts", "mus", "mods", "marg_eff_attack_0a.rds"))
+
+## plot all
+# marg_eff_attack_0
+plot_baseline_constr <- ggplot(
+  marg_eff_attack_0,
+  aes(
+    x = .epred,
+    y = Wave,
+    fill = as.factor(As)
+  ) ) + 
+  scale_y_discrete(limits=rev) +
+  stat_halfeye() +
+  scale_fill_okabe_ito() +
+  labs(
+    x = "Predicted Warmth Response",
+    #y = "wave 2018(yrs 2018-2019) & wave 2018 (yrs 2019-2020)",
+    fill = "Conterfactual Contrasts",
+    subtitle = "Bayesian posterior locations of potential outcomes\nSensitivity analysis: constrain baseline to Time 10"
+  ) +
+  #  scale_x_continuous(limits=c(4.0,4.6)) +
+  theme_pubclean() +
+  theme(legend.position = "bottom"
+  )+scale_x_continuous(limits=c(4,4.6))
+plot_baseline_constr
+
+# 
+# plot_baseline_sens <- ggplot(
+#   marg_eff_attack_0s,
+#   aes(
+#     x = .epred,
+#     y = Wave,
+#     fill = as.factor(As)
+#   ) ) + 
+#   scale_y_discrete(limits=rev) +
+#     stat_halfeye() +
+#     scale_fill_okabe_ito() +
+#     labs(
+#       x = "Predicted Warmth Response",
+#       #y = "wave 2018(yrs 2018-2019) & wave 2018 (yrs 2019-2020)",
+#       fill = "Conterfactual Contrasts",
+#       subtitle = "Bayesian posterior locations of potential outcomes: Time 10,11,12.\nSensitivity analysis: strong time effect"
+#     ) +
+#   #  scale_x_continuous(limits=c(4.0,4.6)) +
+#     theme_pubclean() +
+#     theme(legend.position = "bottom"
+#     )+scale_x_continuous(limits=c(4,4.6))
+# plot_baseline_sens
+
+
+# plot_baseline_sens2 <- ggplot(
+#   marg_eff_attack_0s2,
+#   aes(
+#     x = .epred,
+#     y = Wave,
+#     fill = as.factor(As)
+#   ) ) + 
+#   scale_y_discrete(limits=rev) +
+#     stat_halfeye() +
+#     scale_fill_okabe_ito() +
+#     labs(
+#       x = "Predicted Warmth Response",
+#       #y = "wave 2018(yrs 2018-2019) & wave 2018 (yrs 2019-2020)",
+#       fill = "Conterfactual Contrasts",
+#       subtitle = "Bayesian posterior locations of potential outcomes\nSensitivity analysis: assume strong time effect"
+#     ) +
+#   #  scale_x_continuous(limits=c(4.0,4.6)) +
+#     theme_pubclean() +
+#     theme(legend.position = "bottom"
+#     )+scale_x_continuous(limits=c(4,4.6))
+# plot_baseline_sens2
+
+
+plot_baseline_sens <- ggplot(
+  marg_eff_sens,
+  aes(
+    x = .epred,
+    y = Wave,
+    fill = as.factor(As)
+  ) ) + 
+  scale_y_discrete(limits=rev) +
+  stat_halfeye() +
+  scale_fill_okabe_ito() +
+  labs(
+    x = "Predicted Warmth Response",
+    #y = "wave 2018(yrs 2018-2019) & wave 2018 (yrs 2019-2020)",
+    fill = "Conterfactual Contrasts",
+    subtitle = "Bayesian posterior locations of potential outcomes\nSensitivity analysis: assume strong time effect"
+  ) +
+  #  scale_x_continuous(limits=c(4.0,4.6)) +
+  theme_pubclean() +
+  theme(legend.position = "bottom"
+  )+scale_x_continuous(limits=c(4,4.6))
+plot_baseline_sens
+
+# ML Graph 
+
+d_ml <- ggeffects::ggemmeans(model_all[[3]], terms = c("Wave","As")) + labs(subtitle="maximu")
+
+pl_ml <-plot(d_ml) +  
+  scale_y_reverse() +
+  coord_flip() +
+  scale_y_continuous(limits=c(4,4.6))+
+  labs(x = "Predicted Warmth Response",
+       #y = "wave 2018(yrs 2018-2019) & wave 2018 (yrs 2019-2020)",
+       title = '',
+       fill = "Conterfactual Contrasts",
+       subtitle = "Frequentist posterior locations of potential outcomes:\nSensitivity analysis: assume strong time effect") +
+  theme_pubclean() + theme(legend.position = "bottom")
+pl_ml
+
+plot_baseline_constr
+outplot <- (pl_ml + plot_baseline_unconstr ) /
+  (plot_baseline_constr + plot_baseline_sens2 )  + 
+  plot_annotation(tag_levels = 'a', title = "Estimation of  predicted marginal effects of the attack under different assumptions")
+outplot
+ggsave(
+  outplot,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 12,
+  height =9,
+  units = "in",
+  filename = "outplot.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 800
+)
 
 
 

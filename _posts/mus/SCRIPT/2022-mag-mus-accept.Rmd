@@ -2013,6 +2013,7 @@ m_prior <- brms::brm(
   #save_pars=save_pars(group=FALSE))
   file = here::here("_posts", "mus", "mods", "m_prior"))
 
+prior_summary(m_prior)
 blh_tab_nat <- lazerhawk::brms_SummaryTable(m_prior, panderize=F)
 blh_tab_nat %>%
    kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims") %>%
