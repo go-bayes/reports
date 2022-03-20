@@ -973,21 +973,23 @@ lazerhawk::brms_SummaryTable(b_m0, panderize=F)
 tab_b_m0 <- model_parameters(b_m0, test = c("pd"))
 
 plot(tab_b_m0, show_labels = TRUE)
-pl_bfCw <- ggeffects::ggemmeans(b_m_dfCw, terms = c("Wave","As")) 
-pl_bfCw
+pb_m0 <- ggeffects::ggemmeans(b_m0, terms = c("Wave","As")) 
+pb_m0
 
-plot(pl_bfCw)
+plot(pb_m0)
 
-mus_plot_pl_bfC <-plot(pl_bfCw) + 
+mus_plot_pl_bfC <-plot(b_m0) + 
   #scale_y_continuous(limits=c(4.10,4.5)) +
   labs(subtitle="Effect of attack on acceptance of Muslims") + 
   # scale_x_continuous(limits=rev)
   coord_flip() 
 
-# 
-# # graph
-# conditional <- plot(conditional_effects(b_m_dfCw,  "Wave:As",  ndraws = 200, spaghetti = T), 
-#                     points = F, plot = F) + theme_classic()
+
+# conditions <- data.frame(Wave = c(0, 2))
+# plot(conditional_effects(fit, effects = "Wave:As",
+#                          conditions = conditions))
+
+conditional <- plot(conditional_effects(b_m0,  "Wave:As",  ndraws = 200, spaghetti = T), points = F) 
 # 
 # # another approach
 # int_conditions <- list(
