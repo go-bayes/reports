@@ -2052,25 +2052,22 @@ estimate_slopes( model_all4[[1]],
                  length=2)
 
 
-# bayes 4 -----------------------------------------------------------------
+# bayes 9 -----------------------------------------------------------------
 
 
-b4_m0 <- brms::brm( 
+b9_m0 <- brms::brm( 
   bf(Ys ~ As  *  Wave + (1|Id)),
   family = gaussian, 
-  data = listbayes4,
-  # c(prior(student_t(3, .15,.5), class = b, coef = "As1"),
-  #   prior(student_t(3, .02,.5), class = b, coef = "Wave"),
-  #   prior(normal(0,.25),  class= b, coef = "As1:Wave")), 
+  data = listbayes9,
   seed = 1234,
   warmup = 1000,
   iter = 2000,
   chains = 4,
   backend = "cmdstanr",
-  file = here::here("_posts", "mus", "mods", "b4_m0")
+  file = here::here("_posts", "mus", "mods", "b9_m0")
 )
 
-lazerhawk::brms_SummaryTable(b4_m1, panderize=F)
+lazerhawk::brms_SummaryTable(b9_m0, panderize=F)
 
 
 
