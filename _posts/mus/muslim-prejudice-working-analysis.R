@@ -1,7 +1,7 @@
 
 # Causal estimate of long term effect of terrorist attacks on muslim prejudice
 # joseph.bulbulia@gmail.com
-
+# code for plots
 
 #libraries
 library("here") # file management
@@ -295,20 +295,13 @@ all_d <- df %>%
     Religious,
     GenCohort
   ) %>%
-  dplyr::filter(TSCORE < 3545) %>%
   dplyr::filter(
-    Wave == 2012 &
-      YearMeasured == 1 |
-      Wave == 2013 &
-      YearMeasured == 1 |
-      Wave == 2014 &
-      YearMeasured == 1 |
-      Wave == 2016 &
-      YearMeasured == 1 |
-      Wave == 2017 &
-      YearMeasured == 1 |
-      Wave == 2018 &
-      YearMeasured == 1 
+      Wave == 2012 & YearMeasured == 1 |
+      Wave == 2013 & YearMeasured != -1 |
+      Wave == 2014 & YearMeasured != -1 |
+      Wave == 2015 & YearMeasured != -1 |
+      Wave == 2016 & YearMeasured != -1 |
+      Wave == 2017 & YearMeasured != -1 
   ) %>% 
   droplevels() %>%
   dplyr::mutate(org2012 =  ifelse(Wave == 2012 & YearMeasured ==1,1,0 ))%>%
@@ -325,11 +318,11 @@ all_d <- df %>%
   # dplyr::add_tally() %>%
   # filter(n == 7) %>%
   # arrange(Wave,Id) %>%
-  dplyr::mutate(Warm.Muslims_lag = lag(Warm.Muslims))%>%
+ # dplyr::mutate(Warm.Muslims_lag = lag(Warm.Muslims))%>%
   droplevels() %>%
   ungroup() %>%
   arrange(Wave,Id) %>%
-  dplyr::mutate(Attack = ifelse(TSCORE <= 3545, 0, 1)) %>% # 
+  dplyr::mutate(Attack = ifelse(TSCORE >= 3545, 1, 0)) %>% # 
   # dplyr::filter(Attack == 0) %>%
   group_by(Id) %>%
   dplyr::mutate(dys = (TSCORE - min(TSCORE)))%>% 
@@ -382,17 +375,33 @@ all_d <- df %>%
   dplyr::mutate(EthnicCats_b, as.factor(EthnicCats_b)) %>%
 #  dplyr::mutate(As = as.factor(As)) %>%
   ungroup()%>%
-  arrange(Id,Wave) 
-levels(all_d$Wave) <- c("Time4", "Time5", "Time6","Time7", "Time8","Time9", "Time10")
+  dplyr::mutate(As = replace_na(As, 0)) %>%
+  arrange(Wave, Id) 
+
+
+levels(all_d$Wave) <- c("Time4", "Time5", "Time6", "Time7","Time8", "Time9")
+table(all_d$Wave)
+table(all_d$As)
+summary(all_d$wave)
+
 
 str(all_d$As)
+
+
 
 all_d_selected <-all_d%>%
   dplyr::select(Id,Wave,wave,As,Ys,pol_bz,rel_bz,partner_bz,parent_bz,nzdep_bz,male_2z,employed_bz,edu_bz,ubran_bz,EthnicCats_b, GenCohort)
 
 
 # table 
-t13<-table1::table1(~ Ys|Wave, data = all_d_selected, overall=FALSE)
+table1::table1(~ Attack|Wave, data = all_d, overall=FALSE)
+
+
+
+table1::table1(~ Ys|Wave, data = all_d_selected, overall=FALSE)
+
+
+
 kable(t13, format ="markdown", booktabs = TRUE)
 
 
@@ -406,6 +415,7 @@ library(Amelia)
 
 # assume Y^0|A=2018 = Y^0 2019
 all_d_selected <- as.data.frame(all_d_selected)
+
 imputed_m <- amelia(
   set.seed = 1234,
   all_d_selected,
@@ -414,35 +424,17 @@ imputed_m <- amelia(
   ts = c("wave"),
   m = 10,
   # number of imputations
-  lags="Ys",
+  ords = "Ys",
+  lags= "Ys",
   leads="Ys",
   noms = c("EthnicCats_b","GenCohort"),
-  idvars = c("Wave","As")
+  idvars = c("Wave","As"),
+  polytime = 2, # Allow polynomial, if 3, reverts to pre w10 mean!
+  intercs = F, # too many vars
+  bounds = bds, # lower upper bounds to Mus Prej
+  empri = .05*nrow(bind_zero9)
 )
 
-
-### IPW
-
-# library(ipw)
-# # 
-# w_ipw <- ipwtm(
-#   exposure = wave,
-#   family = "gaussian",
-#   # Time invariant
-#   numerator =  ~ Male + GenCohort + Edu + EthnicCats,
-#   # Time invariant and non-invariant confounders
-#   denominator = ~ Male + GenCohort + Edu + EthnicCats + Religious + Pol.Orient + Urban+NZdep,
-#   id = Id,
-#  # timevar = Wave,
-#   corstr = "exchangeable",
-#   type = "all",
-#   data = as.data.frame(km2)
-# )
-
-# km2 <- km2 %>% 
-#   mutate(ipw = w_ipw$ipw.weights)
-# #check no weights greater than 10
-# max(w_ipw$ipw.weights) # max is 1.189481
 
 library(splines)
 m<-10
@@ -520,6 +512,7 @@ km_all3 <- df %>%
     YearMeasured
   ) %>%
   dplyr::filter(Wave == 2018 | Wave ==2019 | Wave ==2020) %>%
+  dplyr::filter(YearMeasured != -1)%>% # remove people who passed away
   droplevels() %>%
   dplyr::mutate(org2018 =  ifelse(Wave == 2018 & YearMeasured ==1,1,0 ))%>%
   group_by(Id) %>%
@@ -527,12 +520,18 @@ km_all3 <- df %>%
   filter(hold>0) %>% # hack to enable repeate of baseline in 2019 
   ungroup(Id) %>%
   dplyr::mutate(Edu = as.numeric(Edu))%>%
-  arrange(Wave,Id) %>%
-  dplyr::mutate(Attack = as.numeric((ifelse(
-    (TSCORE >= 3545 & Wave == 2018)|(Wave==2019|Wave ==2020), 1, 0)))) %>% # All 2019s even if NA need to be 1
-  # dplyr::filter(Attack == 0) %>%
+  arrange(Id,Wave) %>%
   group_by(Id) %>%
-  dplyr::mutate(dys = (TSCORE - min(TSCORE)))%>% 
+  dplyr::mutate(TSCORE_b = ifelse(Wave == "2017", (TSCORE), NA_real_)) %>%
+  fill(TSCORE_b)%>%
+  dplyr::mutate(TSCORE_i = ifelse(YearMeasured == 0 & Wave==2018, TSCORE_b + 365,
+                                  ifelse(YearMeasured == 0 & Wave==2019, TSCORE_b + 730, 
+                                         ifelse(YearMeasured == 0 & Wave==2020, TSCORE_b + 1095, TSCORE))))%>%
+  dplyr::mutate(Attack = as.numeric((ifelse(
+    (TSCORE_i >= 3545 & Wave == 2018)|(Wave==2019|Wave ==2020), 1, 0)))) %>% # All 2019s even if NA need to be 1
+  ungroup() %>%  # Create TSCORE for when people would have been observed
+  group_by(Id) %>%
+  dplyr::mutate(dys = (TSCORE_i - min(TSCORE_i)))%>% 
   dplyr::mutate(Ys = Warm.Muslims, 
                 As = Attack)%>%
   dplyr::mutate(yrs =  (dys/365))%>% 
@@ -582,9 +581,7 @@ obtl<-table1::table1(~ Warm.Muslims|as.factor(Attack)*Wave, data = km_all3, over
 
 kable(obtl, format ="latex", booktabs = TRUE)
 
-km_2018 <- km_all3 %>% 
-  dplyr::filter(Wave =="Time10")%>%
-  droplevels()
+
 
 x <- table1::table1(~  Age +Edu + Employed + EthnicCats  + Male + NZdep + Parent + Partner + Religious + Pol.Orient  + Urban|Wave, data = km_all3, overall = FALSE)
 x
@@ -668,13 +665,15 @@ table1::table1(~ Ys|Wave*As, data = km_zero, overall=FALSE)
 # remove wave 10 from the pre-attack sample (above)
 
 km_pre<- all_d_selected %>%
-  dplyr::filter(Wave != "Time10")%>%
+ # dplyr::filter(Wave != "Time10")%>%
+ # droplevels() %>%
   dplyr::select(-wave)%>% # wrong 
   dplyr::mutate(As = as.factor(As))%>%
   arrange(Wave,Id)
 
 dim(km_pre)
 head(km_pre)
+table1::table1(~ Ys|Wave*As, data = km_pre, overall=FALSE)
 
 
 str(km_pre$As)
@@ -685,10 +684,11 @@ str(km_pre$As)
 bind_zero <-full_join(km_pre,km_zero)%>%
   arrange(Wave,Id)
 
-
+table(bind_zero$Wave)
 # relevel
-levels = c("Time4","Time5","Time6","Time7","Time8","Time9",
+levels = c("Time4", "Time5","Time6","Time7","Time8","Time9",
            "Time10","Time11","Time12")
+
 bind_zero$Wave <- fct_relevel(bind_zero$Wave, levels)
 levels(bind_zero$Wave)
 str(bind_zero$Wave)
@@ -700,7 +700,7 @@ bind_zero1 <-bind_zero %>%
 
 max(bind_zero1$wave)
 # correct 
-table1::table1(~ Ys|Wave * As, data = bind_zero, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = bind_zero1, overall=FALSE)
 
 
 # Impute 0s ------------------------------------------------------------
@@ -717,7 +717,7 @@ library(Amelia)
 
 # limit Ys to range 1 to 7
 # find col number
-head(bind_zero)
+head(bind_zero1)
 # create bounds
 bds <- matrix(c(4, 1, 7), nrow = 1, ncol = 3)
 
@@ -727,16 +727,17 @@ imputed0<- amelia(
   cs= c("Id"),
   ts= c("wave"),
   m = 10, # number of imputations
+  ords = "Ys",
   noms = c(
     "EthnicCats_b","GenCohort"
   ),
   idvars=c("Wave","As"),
   lags="Ys",
   leads="Ys",
-  polytime = 2, # Allow polynomial, if 3, reverts to pre w10 mean!
+  #polytime = 2, # Allow polynomial
   intercs = F, # to many vars
   bounds = bds, # lower upper bounds to Mus Prej
-  empri = .01*nrow(bind_zero2)
+  empri = .05*nrow(bind_zero1)
   ) # ridge prior see: Amelia pdf documentation p.23
 
 saveRDS(imputed0, here::here("_posts","mus","mods", "imputed0"))
@@ -799,25 +800,27 @@ imputed1<- amelia(
   cs= c("Id"),
   ts= c("wave"),
   m = 10, # number of imputations
+  ords="Ys",
   noms = c(
     "EthnicCats_b","GenCohort"
   ),
   idvars=c("Wave","As"),
   lags="Ys",
   leads="Ys",
- # polytime = 2, #  polynomials perhaps not sensible given 
+  polytime = 2, #  polynomials perhaps not sensible given 
   intercs = F, # to many vars
   bounds = bds, # lower upper bounds to Mus Prej
-  empri = .01*nrow(km_one)) # ridge prior see: Amelia pdf documentation p.23
+  empri = .05*nrow(km_one)) # ridge prior see: Amelia pdf documentation p.23
 
-saveRDS(imputed1, here::here("_posts","mus","mods", "imputed1"))
 
 # check means, looks good
 table1::table1(~ Ys|Wave * As, data = imputed1l$imputations$imp3, overall=FALSE)
-
+saveRDS(imputed1, here::here("_posts","mus","mods", "imputed1"))
 
 
 # make frames compatible --------------------------------------------------
+imputed0<-readRDS(here::here("_posts","mus","mods", "imputed0"))
+imputed1<-readRDS(here::here("_posts","mus","mods", "imputed1"))
 
 
 imp0 <- transform(imputed0, Wave = as.character(Wave))
@@ -825,7 +828,7 @@ imp1 <- transform(imputed1, Wave = as.character(Wave))
 
 
 # bind data frames --------------------------------------------------------
-levels_old <- c("Time4","Time5","Time6","Time7","Time8","Time9",
+levels_old <- c("Time4", "Time5","Time6","Time7","Time8","Time9",
   "Time10","Time11","Time12")
 newlevels = c("Time10","Time11","Time12")
 
@@ -833,7 +836,6 @@ m <- 10
 zero <- NULL
 for (i in 1:m) {
   zero$imputations$imp[[i]] <- imp0$imputations[[i]] %>%
-    dplyr::mutate(Wave = as.factor(Wave)) %>%
     dplyr::mutate(Wave = forcats::fct_relevel(Wave, levels_old)) %>%
   droplevels()%>%
   arrange(Wave, Id)
@@ -843,9 +845,9 @@ one <- NULL
 
 for(i in 1:m) {
   one$imputations$imp[[i]] <- imp1$imputations[[i]] %>%
-    dplyr::mutate(Wave = as.factor(Wave)) %>%
     dplyr::mutate(Wave = forcats::fct_relevel(Wave, newlevels)) %>%
-    arrange(Id) %>%  droplevels()
+    droplevels()%>%
+    arrange(Id) 
 }
 
 
@@ -858,16 +860,20 @@ for (i in 1:m) {
     dplyr::select(-wave) %>%
     dplyr::filter(Wave =="Time10"| Wave =="Time11"| Wave == "Time12") %>%
     droplevels()%>%
+    dplyr::mutate(Wave = as.numeric(Wave)-1) %>%
     arrange(Wave,Id) 
 }
 
 
 
 # Works!
-table(imps_bind$imputations$imp[[1]]$Wave)
+str(imps_bind$imputations$imp[[1]]$Wave)
 
 # save
 saveRDS(imps_bind, here::here("_posts", "mus", "mods", "imps_bind"))
+
+# read
+#imps_bind <- readRDS(here::here("_posts", "mus", "mods", "imps_bind"))
 
 # make list for bayesian models
 listbayes <-imps_bind$imputations$imp
@@ -875,30 +881,8 @@ listbayes <-imps_bind$imputations$imp
 # save list for bayesian models
 saveRDS(listbayes, here::here("_posts", "mus", "mods", "listbayes"))
 
-
-
-# make wave continuous and as continuous ----------------------------------
-m <- 10
-imps_bindC <- NULL
-for (i in 1:m) {
-  imps_bindC$imputations$imp[[i]] <- 
-    dplyr::bind_rows(zero$imputations$imp[[i]],
-                     one$imputations$imp[[i]])%>%
-    dplyr::select(-wave) %>%
-    dplyr::filter(Wave =="Time10"| Wave =="Time11"| Wave == "Time12") %>%
-    droplevels()%>%
-    dplyr::mutate(As = as.numeric(As)-1) %>%
-    dplyr::mutate(Wave = as.numeric(Wave)-1) %>%
-    arrange(Wave,Id) 
-}
-
-str(imps_bindC$imputations$imp[[1]])
-    
-# make list for bayesian models
-listbayesC <-imps_bindC$imputations$imp
-
-# save list for bayesian models
-saveRDS(listbayesC, here::here("_posts", "mus", "mods", "listbayesC"))
+#readRDS
+#listbayes<- readRDS(here::here("_posts", "mus", "mods", "listbayes"))
 
 
 # ML model ----------------------------------------------------------------
@@ -907,7 +891,7 @@ saveRDS(listbayesC, here::here("_posts", "mus", "mods", "listbayesC"))
 m<-10
 model_all<-NULL
 for(i in 1:m) {
-  model_all[[i]] <- lmer(Ys ~  As * Wave + (1|Id), data = imps_bind$imputations$imp[[i]])
+  model_all[[i]] <- lmer(Ys ~ As * Wave + (1|Id), data = imps_bind$imputations$imp[[i]])
 }
 
 # table
@@ -920,20 +904,20 @@ tab [,c(1:5)]%>%
 plot(tab, show_labels = TRUE)
 
 pl_ml <- ggeffects::ggemmeans(model_all[[2]], terms = c("Wave","As")) 
-
+pl_ml
 
 mus_plot_model_all <-plot(pl_ml)+ 
   scale_y_continuous(limits=c(4.10,4.5))+
-  labs(subtitle="Effect of attack on acceptance of Muslims") + 
+  labs(subtitle="Effect of attack on acceptance of Muslims")# + 
   #scale_x_discrete(limits=rev) +
-  coord_flip() 
+ # coord_flip() 
 mus_plot_model_all
 
 
 estimate_contrasts(
   model_all[[4]],
   contrast = "As",
-  at = c("As","Wave"),
+  at = c("Wave"),
   # fixed = NULL,
   # transform = "none",
   ci = 0.95,
@@ -948,403 +932,132 @@ estimate_contrasts( model_all[[1]],
   kbl("latex",booktabs = TRUE,digits=2)
 
 
+# bayesian USE  -------------------------------------------------------------
+# us this
+listbayes<- readRDS(here::here("_posts", "mus", "mods", "listbayes"))
 
-# as and wave continuous --------------------------------------------------
+# prob way to go.
 
-# model
-m<-10
-model_allC_nl<-NULL
-for(i in 1:m) {
-  model_allC_nl[[i]] <- lmer(Ys ~  as.factor(As) * as.factor(Wave) + (1|Id),
-                         data = imps_bindC$imputations$imp[[i]])
-}
-
-# table
-
-tab<-pool_parameters(model_allC_nl)
-tab
-tab [,c(1:5)]%>%
-  # print_md()%>%
-  kbl("latex",booktabs = TRUE,digits=2)
-q
-
-
-estimate_contrasts(
-  model_allC_nl[[4]],
-  contrast = "As",
-  at = c("As","Wave"),
-  # fixed = NULL,
-  # transform = "none",
-  ci = 0.95,
-  adjust = "holm",
-  length = 2
-)
-
-estimate_contrasts( model_allC_nl[[1]],
-                    contrast = "As",
-                    at = c("Wave","As"),
-                    length=2)
-%>%
-  kbl("latex",booktabs = TRUE,digits=2)
-
-
-
-# ML model separate wave estimates ----------------------------------------
-#  not needed
-# 
-# m <- 10
-# imps_bind19 <- NULL
-# for (i in 1:m) {
-#   imps_bind19$imputations$imp[[i]] <- 
-#     dplyr::bind_rows(zero$imputations$imp[[i]],
-#                      one$imputations$imp[[i]])%>%
-#     dplyr::select(-wave) %>%
-#     dplyr::filter(Wave =="Time10"| Wave =="Time11") %>%
-#     droplevels()%>%
-#     arrange(Wave,Id) 
-# }
-# 
-# 
-# 
-# # Works!
-# table(imps_bind19$imputations$imp[[1]]$Wave)
-# 
-# # save
-# saveRDS(imps_bind19, here::here("_posts", "mus", "mods", "imps_bind19"))
-# 
-# # make list for bayesian models
-# listbayes19 <-imps_bind19$imputations$imp
-# 
-# # save list for bayesian models
-# saveRDS(listbayes19, here::here("_posts", "mus", "mods", "listbayes19"))
-# 
-# # 20 
-# 
-# m <- 10
-# imps_bind20 <- NULL
-# for (i in 1:m) {
-#   imps_bind20$imputations$imp[[i]] <- 
-#     dplyr::bind_rows(zero$imputations$imp[[i]],
-#                      one$imputations$imp[[i]])%>%
-#     dplyr::select(-wave) %>%
-#     dplyr::filter(Wave =="Time10"|  Wave == "Time12") %>%
-#     droplevels()%>%
-#     arrange(Wave,Id) 
-# }
-# 
-# 
-# 
-# # Works!
-# table(imps_bind20$imputations$imp[[1]]$Wave)
-# 
-# # save
-# saveRDS(imps_bind20, here::here("_posts", "mus", "mods", "imps_bind20"))
-# 
-# # make list for bayesian models
-# listbayes20 <-imps_bind20$imputations$imp
-# 
-# # save list for bayesian models
-# saveRDS(listbayes20, here::here("_posts", "mus", "mods", "listbayes"))
-# 
-# 
-# # ml 19 wave --------------------------------------------------------------
-# 
-# 
-# # model
-# m<-10
-# model_all19<-NULL
-# for(i in 1:m) {
-#   model_all19[[i]] <- lmer(Ys ~  As * Wave + (1|Id), data = imps_bind19$imputations$imp[[i]])
-# }
-# 
-# # table
-# tab19<-pool_parameters(model_all19)
-# tab19
-# tab19[,c(1:5)]%>%
-#   # print_md()%>%
-#   kbl("latex",booktabs = TRUE,digits=2)
-# 
-# plot(tab19, show_labels = TRUE)
-# 
-# pl_ml19 <- ggeffects::ggemmeans(model_all19[[2]], terms = c("Wave","As")) 
-# 
-# 
-# mus_plot_model_all <-plot(pl_ml19)+ 
-#   scale_y_continuous(limits=c(4.10,4.5))+
-#   labs(subtitle="Effect of attack on acceptance of Muslims") + 
-#   #scale_x_discrete(limits=rev) +
-#   coord_flip() 
-# mus_plot_model_all
-# 
-# 
-# estimate_contrasts(
-#   model_all19[[4]],
-#   contrast = "As",
-#   at = c("As","Wave"),
-#   # fixed = NULL,
-#   # transform = "none",
-#   ci = 0.95,
-#   adjust = "holm",
-#   length = 2
-# )
-# 
-# 
-# 
-# 
-# # ml 20 -------------------------------------------------------------------
-# 
-# 
-# # model
-# m<-10
-# model_all20<-NULL
-# for(i in 1:m) {
-#   model_all20[[i]] <- lmer(Ys ~  As * Wave + (1|Id), data = imps_bind20$imputations$imp[[i]])
-# }
-# 
-# # table
-# tab20<-pool_parameters(model_all20)
-# tab20
-# tab20 [,c(1:5)]%>%
-#   # print_md()%>%
-#   kbl("latex",booktabs = TRUE,digits=2)
-# 
-# plot(tab, show_labels = TRUE)
-# 
-# pl_ml <- ggeffects::ggemmeans(model_all20[[2]], terms = c("Wave","As")) 
-# 
-# 
-# mus_plot_model_all <-plot(pl_ml)+ 
-#   scale_y_continuous(limits=c(4.10,4.5))+
-#   labs(subtitle="Effect of attack on acceptance of Muslims") + 
-#   #scale_x_discrete(limits=rev) +
-#   coord_flip() 
-# mus_plot_model_all
-# 
-# 
-# estimate_contrasts(
-#   model_all20[[4]],
-#   contrast = "As",
-#   at = c("As","Wave"),
-#   # fixed = NULL,
-#   # transform = "none",
-#   ci = 0.95,
-#   adjust = "holm",
-#   length = 2
-# )
-
-
-# bayesian 20  ------------------------------------------------------------
-# 
-# # NO DIFF
-# b_m20 <- brms::brm( 
-#   bf(Ys ~ As  *  Wave + (1|Id)),#, 
-#   # sigma ~ As + Wave + (1|Id)),
-#   data = listbayes20,
-#   # prior = c(prior(normal(.04, .5), class = b, coef = "WaveTime11"),
-#   #           prior(normal(.08, .5), class = b, coef = "WaveTime12"),
-#   #           prior(normal(0,  1), class = b, coef = "As1"),
-#   #           prior(normal(0,.25), class=b, coef= "As1:WaveTime11"),
-#   #           prior(normal(0,.25), class=b, coef= "As1:WaveTime12")), 
-#   seed = 1234,
-#   warmup = 1000,
-#   iter = 2000,
-#   chains = 4,
-#   backend = "cmdstanr",
-#   #save_pars=save_pars(group=FALSE))
-#   file = here::here("_posts", "mus", "mods", "b_m20"))
-# 
-# tab20b<- lazerhawk::brms_SummaryTable(b_m20, panderize=F)
-# tab20b
-# tab20b %>%
-#   kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims") %>%
-#   print()
-# 
-# 
-# 
-# 
-# # bayesian 19 -------------------------------------------------------------
-# 
-# # no point
-# 
-# b_m19 <- brms::brm( 
-#   bf(Ys ~ As  *  Wave + (1|Id)),#, 
-#   # sigma ~ As + Wave + (1|Id)),
-#   data = listbayes20,
-#   # prior = c(prior(normal(.04, .5), class = b, coef = "WaveTime11"),
-#   #           prior(normal(.08, .5), class = b, coef = "WaveTime12"),
-#   #           prior(normal(0,  1), class = b, coef = "As1"),
-#   #           prior(normal(0,.25), class=b, coef= "As1:WaveTime11"),
-#   #           prior(normal(0,.25), class=b, coef= "As1:WaveTime12")), 
-#   seed = 1234,
-#   warmup = 1000,
-#   iter = 2000,
-#   chains = 4,
-#   backend = "cmdstanr",
-#   #save_pars=save_pars(group=FALSE))
-#   file = here::here("_posts", "mus", "mods", "b_m19"))
-# 
-# tab19b<- lazerhawk::brms_SummaryTable(b_m19, panderize=F)
-# tab19b
-# tab19b
-# b %>%
-#   kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims") %>%
-#   print()
-# 
-# 
-
-
-# bayesian model  ---------------------------------------------------------
-
-
-b_m1 <- brms::brm( 
-  bf(Ys ~ As  *  Wave + (1|Id)),#, 
-  # sigma ~ As + Wave + (1|Id)),
-  data = listbayes,
-  prior = c(prior(normal(.04, .5), class = b, coef = "WaveTime11"),
-            prior(normal(.08, .5), class = b, coef = "WaveTime12"),
-            prior(normal(0,  1), class = b, coef = "As1"),
-            prior(normal(0,.25), class=b, coef= "As1:WaveTime11"),
-            prior(normal(0,.25), class=b, coef= "As1:WaveTime12")), 
-  seed = 1234,
-  warmup = 1000,
-  iter = 2000,
-  chains = 4,
-  backend = "cmdstanr",
-  #save_pars=save_pars(group=FALSE))
-  file = here::here("_posts", "mus", "mods", "b_m1"))
-
-tab <- lazerhawk::brms_SummaryTable(b_m1, panderize=F)
-tab
-tab %>%
-  kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims") %>%
-  print()
-
-
-# default prior -----------------------------------------------------------
-b_m_df <- brms::brm( 
-  bf(Ys ~ As  *  Wave + (1|Id)),#, 
-  # sigma ~ As + Wave + (1|Id)),
+test<-brms::brm( 
+  bf(Ys ~ As  *  Wave)
   data = listbayes,
   seed = 1234,
-  warmup = 1000,
-  iter = 2000,
-  chains = 4,
-  backend = "cmdstanr",
-  #save_pars=save_pars(group=FALSE))
-  file = here::here("_posts", "mus", "mods", "b_m_df"))
+  warmup = 100,
+  iter = 200,
+  init=0,
+  chains = 1,
+  backend = "cmdstanr")
+prior_summary(test)
 
-tab <- lazerhawk::brms_SummaryTable(b_m_df, panderize=F)
+#save_pars=save_pars(group=FALSE),
+# file = here::here("_posts", "mus", "mods", "b_m_dfCw"))
 
-tab
-
-
-# bayesian wave cont fact -------------------------------------------------------------
-
-b_m_dfC <- brms::brm( 
-  bf(Ys ~ as.factor(As)  *  as.factor(Wave) + (1|Id)),#, 
-  # sigma ~ As + Wave + (1|Id)),
-  data = listbayesC,
+b_m0 <- brms::brm( 
+  bf(Ys ~ As  *  Wave + (1|Id)),
+  family = gaussian, 
+  data = listbayes,
+  # c(prior(lognormal(0,.25), nl= "As"),
+  #   prior(lognormal(0,.2), nl= "Wave"),
+  #   prior(normal(0,.5), class = b, coef = "As"),
+  #   prior(normal(0,.5), class = b, coef = "Wave"),
+  #   prior(normal(0,.25),  class= b, coef = "As1:Wave")), 
   seed = 1234,
   warmup = 1000,
+  init=0,
   iter = 2000,
   chains = 4,
-  backend = "cmdstanr",
-  save_pars=save_pars(group=FALSE),
-  file = here::here("_posts", "mus", "mods", "b_m_dfC"))
+  backend = "cmdstanr")
 
-lazerhawk::brms_SummaryTable(b_m_dfC, panderize=F)
+lazerhawk::brms_SummaryTable(b_m0, panderize=F)
 
-tabC <- model_parameters(b_m_dfC, test = c("pd"))
+tab_b_m0 <- model_parameters(b_m0, test = c("pd"))
 
-plot(tabC, show_labels = TRUE)
+plot(tab_b_m0, show_labels = TRUE)
+pl_bfCw <- ggeffects::ggemmeans(b_m_dfCw, terms = c("Wave","As")) 
+pl_bfCw
 
+plot(pl_bfCw)
 
-pl_bfC <- ggeffects::ggemmeans(b_m_dfC, terms = c("Wave","As")) 
-
-mus_plot_pl_bfC <-plot(pl_bfC) + 
+mus_plot_pl_bfC <-plot(pl_bfCw) + 
   #scale_y_continuous(limits=c(4.10,4.5)) +
   labs(subtitle="Effect of attack on acceptance of Muslims") + 
   # scale_x_continuous(limits=rev)
   coord_flip() 
-mus_plot_pl_bfC
+
+# 
+# # graph
+# conditional <- plot(conditional_effects(b_m_dfCw,  "Wave:As",  ndraws = 200, spaghetti = T), 
+#                     points = F, plot = F) + theme_classic()
+# 
+# # another approach
+# int_conditions <- list(
+#   Wave = setNames(c(0, 1, 2), c("base", "T11", "T12"))
+# )
+# 
+# 
+
+# GRAPH OF THIS
+
+all__ame <- b_m0 %>% 
+  emtrends(~ As * Wave,
+           var = "Wave",
+           at = list(As = c(0, 1),
+                     Wave = c(0, 2)),
+           epred = TRUE, re_formula = NULL)%>% 
+  gather_emmeans_draws()   
+
+saveRDS(all__ame,  here::here("_posts", "mus", "mods", "all__ame"))
 
 
-# bayesian cont wave  -------------------------------------------------------------
+plot_all_regions_civlib_ame <- ggplot(all__ame,
+                                      aes(x = .value / 10, fill = factor(As))) +
+  stat_halfeye(slab_alpha = 0.75) +
+  scale_fill_okabe_ito(order = c(3, 4)) +
+  labs(x = "Average marginal effect of a 3 year increase in Time",
+       y = "Density", fill = "Muslim Warmth") +
+  facet_wrap(vars(As)) +
+  theme_clean() + 
+  theme(legend.position = "bottom")
+# 
+# (plot_all_regions_civlib / plot_all_regions_civlib_ame) +
+#   plot_annotation(title = "Region-specific means",
+#                   subtitle = "re_formula = NULL; existing region(s) included in newdata",
+#                   theme = theme_clean())
+
+# use str prior # 2 -----------------------------------------------------------------
 listbayesC<- readRDS(here::here("_posts", "mus", "mods", "listbayesC"))
 
-b_m_dfCw <- brms::brm( 
-  bf(Ys ~ As  *  Wave + (1|Id)),#, 
-  # sigma ~ As + Wave + (1|Id)),
+b_m1 <- brms::brm( 
+  bf(Ys ~ As  *  Wave + (1|Id)),
+  family = gaussian, 
   data = listbayesC,
+  c(prior(student_t(3, .15,.5), class = b, coef = "As1"),
+    prior(student_t(3, .02,.5), class = b, coef = "Wave"),
+    prior(normal(0,.25),  class= b, coef = "As1:Wave")), 
   seed = 1234,
   warmup = 1000,
   iter = 2000,
   chains = 4,
   backend = "cmdstanr",
-  #save_pars=save_pars(group=FALSE),
-  file = here::here("_posts", "mus", "mods", "b_m_dfCw"))
+  file = here::here("_posts", "mus", "mods", "b_m1")
+  )
 
-lazerhawk::brms_SummaryTable(b_m_dfCw, panderize=F)
+lazerhawk::brms_SummaryTable(b_m1, panderize=F)
 
-tabCw <- model_parameters(b_m_dfCw, test = c("pd"))
+tab_b_m1<- model_parameters(b_m1, test = c("pd"))
 
-plot(tabCw, show_labels = TRUE)
-pl_bfCw <- ggeffects::ggemmeans(b_m_dfCw, terms = c("Wave","As")) 
+plot(tab_b_m1, show_labels = TRUE)
+pl_b_m1 <- ggeffects::ggemmeans(b_m1, terms = c("Wave","As")) 
+pl_b_m1
 
-mus_plot_pl_bfC <-plot(pl_bfC) + 
+plot(pl_bfCw)
+
+mus_plot_pl_bfC <-plot(pl_bfCw) + 
   #scale_y_continuous(limits=c(4.10,4.5)) +
   labs(subtitle="Effect of attack on acceptance of Muslims") + 
   # scale_x_continuous(limits=rev)
   coord_flip() 
-mus_plot_pl_bfC
 
-
-
-# cont wave /as strg prior ------------------------------------------------
-
-
-b_m_dfC <- brms::brm( 
-  bf(Ys ~ As  *  Wave + (1|Id)),#, 
-  # sigma ~ As + Wave + (1|Id)),
-  data = listbayesC,
-  prior = c(prior(lognormal(log(1), .5), class = b, coef = "WaveTime11"),
-            prior(lognormal(log(1), .5), class = b, coef = "WaveTime12"),
-            prior(normal(0,  1), class = b, coef = "As1"),
-            prior(normal(0,.25), class=b, coef= "As1:WaveTime11"),
-            prior(normal(0,.25), class=b, coef= "As1:WaveTime12")), 
-  seed = 1234,
-  warmup = 1000,
-  iter = 2000,
-  chains = 4,
-  backend = "cmdstanr",
-  #save_pars=save_pars(group=FALSE))
-  file = here::here("_posts", "mus", "mods", "b_m_dfC"))
-
-tabC <- lazerhawk::brms_SummaryTable(b_m_dfC, panderize=F)
-
-tabC
-
-
-
-# nonlinear ---------------------------------------------------------------
-
-library(splines)
-
-b_m_dfC_nl <- brms::brm( 
-  bf(Ys ~ bs(As)  +  Wave + (1|Id)),#, 
-  # sigma ~ As + Wave + (1|Id)),
-  data = listbayesC,
-  seed = 1234,
-  warmup = 1000,
-  iter = 2000,
-  chains = 4,
-  backend = "cmdstanr",
-  #save_pars=save_pars(group=FALSE))
-  file = here::here("_posts", "mus", "mods", "b_m_dfC_nl"))
-
-tabC <- lazerhawk::brms_SummaryTable(b_m_dfC_nl, panderize=F)
-
-tabC
 
 
 # sensitivity anlaysis ----------------------------------------------------
@@ -1353,8 +1066,7 @@ tabC
 b_sens <- brms::brm(
   bf(Ys ~  As * Wave + (1 | Id)),
   data = listbayes,
-  prior = c(set_prior("constant(0.1)", class = "b", coef = "WaveTime11"),
-            set_prior("constant(0.2)", class = "b", coef = "WaveTime12")),
+  prior = c(set_prior("constant(0.8)", class = "b", coef = "WaveTime")),
   seed = 1234,
   warmup = 1000,
   iter = 2000,
@@ -1363,27 +1075,1014 @@ b_sens <- brms::brm(
   #save_pars=save_pars(group=FALSE))
   file = here::here("_posts", "mus", "mods", "b_sens")
 )
+prior_summary(b_sens)
+
 
 lazerhawk::brms_SummaryTable(b_sens, panderize=F)
 
 
-# sens analysis extrapolate -----------------------------------------------
 
-b_sens_s <- brms::brm(
-  bf(Ys ~  As * Wave + (1 | Id)),
-  data = listbayes,
-  prior = c(set_prior("constant(0.4)", class = "b", coef = "WaveTime11"),
-            set_prior("constant(0.8)", class = "b", coef = "WaveTime12")),
+# impute 4 waves ----------------------------------------------------------
+
+
+# df 4 for estimating time trend in attack sample ---------------------------
+km_all4 <- df %>%
+  dplyr::select(
+    Id,
+    Age,
+    Wave,
+    EthnicCats,
+    Employed,
+    Urban,
+    Edu,
+    Male,
+    Pol.Orient,
+    NZdep,
+    Religious,
+    GenCohort,
+    Urban,
+    TSCORE,
+    Partner,
+    Parent,
+    # Warm.Overweight,
+    # Warm.Elderly,
+    # Warm.MentalIllness,
+    Warm.Muslims,
+    # Warm.Immigrants,
+    # Warm.Asians,
+    # Warm.Refugees,
+    # Wave,
+    # Warm.Maori,
+    # Warm.NZEuro,
+    # Warm.Indians,
+    # Warm.Chinese,
+    # Warm.Refugees,
+    # Warm.Pacific,
+    YearMeasured
+  ) %>%
+  dplyr::filter(Wave == 2017 | Wave == 2018 | Wave ==2019 | Wave ==2020) %>%
+  dplyr::filter(YearMeasured != -1)%>% # remove people who passed away
+  droplevels() %>%
+  dplyr::mutate(org2017 =  ifelse(Wave == 2017 & YearMeasured ==1,1,0 ))%>%
+  group_by(Id) %>%
+  dplyr::mutate(hold = mean(org2017, na.rm = TRUE)) %>%  # Hack
+  filter(hold>0) %>% # hack to enable repeate of baseline in 2019 
+  ungroup(Id) %>%
+  dplyr::mutate(Edu = as.numeric(Edu))%>%
+  arrange(Id,Wave) %>%
+  group_by(Id) %>%
+  dplyr::mutate(TSCORE_b = ifelse(Wave == "2017", (TSCORE), NA_real_)) %>%
+  fill(TSCORE_b)%>%
+  dplyr::mutate(TSCORE_i = ifelse(YearMeasured == 0 & Wave==2018, TSCORE_b + 365,
+                                  ifelse(YearMeasured == 0 & Wave==2019, TSCORE_b + 730, 
+                                         ifelse(YearMeasured == 0 & Wave==2020, TSCORE_b + 1095, TSCORE))))%>%
+  dplyr::mutate(Attack = as.numeric((ifelse(
+    (TSCORE_i >= 3545 & Wave == 2018)|(Wave==2019|Wave ==2020), 1, 0)))) %>% # All 2019s even if NA need to be 1
+  ungroup() %>%  # Create TSCORE for when people would have been observed
+  group_by(Id) %>%
+  dplyr::mutate(dys = (TSCORE_i - min(TSCORE_i)))%>% 
+  dplyr::mutate(Ys = Warm.Muslims, 
+                As = Attack)%>%
+  dplyr::mutate(yrs =  (dys/365))%>% 
+  dplyr::mutate(wave = as.numeric(Wave)-1) %>% 
+  dplyr::mutate(pol_bz = if_else(Wave == "2017", (Pol.Orient), NA_real_)) %>%
+  fill(pol_bz) %>%
+  dplyr::mutate(rel_bz = if_else(Wave == "2017", (as.numeric(Religious)), NA_real_)) %>%
+  fill(rel_bz) %>%
+  dplyr::mutate(partner_bz = if_else(Wave == "2017", (as.numeric(Partner)), NA_real_)) %>%
+  fill(partner_bz) %>%
+  dplyr::mutate(parent_bz = if_else(Wave == "2017", (as.numeric(Parent)), NA_real_)) %>%
+  fill(parent_bz) %>%
+  dplyr::mutate(age_bz = if_else(Wave == "2017", (Age), NA_real_)) %>%
+  fill(age_bz) %>%
+  dplyr::mutate(nzdep_bz = if_else(Wave == "2017", (NZdep), NA_real_)) %>%
+  fill(nzdep_bz) %>%
+  dplyr::mutate(male_2z = if_else(Wave == "2017", (as.numeric(Male))/2, NA_real_)) %>%
+  fill(male_2z) %>%
+  dplyr::mutate(employed_bz = if_else(Wave == "2017", (as.numeric(Employed)), NA_real_)) %>%
+  fill(employed_bz) %>%
+  dplyr::mutate(edu_bz = if_else(Wave == "2017", (Edu), NA_real_)) %>%
+  fill(edu_bz) %>%
+  dplyr::mutate(ubran_bz = if_else(Wave == "2017", (as.numeric(Urban)), NA_real_)) %>%
+  fill(ubran_bz) %>%
+  dplyr::mutate(EthnicCats_b = if_else(Wave == "2017", as.numeric(EthnicCats), NA_real_)) %>%
+  fill(EthnicCats_b) %>% 
+  dplyr::mutate(EthnicCats_b, as.factor(EthnicCats_b)) %>%
+  ungroup()%>%
+  arrange(Id,Wave) 
+
+levels(km_all4$Wave) <- c("Time9", "Time10", "Time11","Time12")
+
+
+# tw<-km_all4%>%
+#   select(Id,YearMeasured,Wave,TSCORE,TSCORE_i)%>%
+#   filter(is.na(TSCORE_i))
+#   
+# check
+sum(is.na(km_all4$TSCORE_i))
+
+
+
+# correct
+table1::table1(~ TSCORE_i|Wave, data = km_all4, overall=FALSE)
+
+# latex summary
+kable(x, format ="latex", booktabs = TRUE)
+
+#modelsummary::datasummary_crosstab(mean(Warm.Muslims) ~ Wave * as.factor(Attack), data = km_all3) #output = "latex_tabular")
+
+table1::table1(~Warm.Muslims|Wave*as.factor(Attack), data = km_all4, overall=FALSE)
+
+obtl<-table1::table1(~ Warm.Muslims|as.factor(Attack)*Wave, data = km_all4, overall=FALSE)
+
+kable(obtl, format ="latex", booktabs = TRUE)
+
+
+x <- table1::table1(~  Age +Edu + Employed + EthnicCats  + Male + NZdep + Parent + Partner + Religious + Pol.Orient  + Urban|Wave, data = km_all4, overall = FALSE)
+x
+
+t1kable(x, format ="latex")
+
+# create new data set
+library(tidyverse)
+kf4  <- km_all4 %>%
+  group_by(Id) %>%  # All ZEROS
+ # filter(Wave != "Time9")%>%
+  group_by(Id) %>%  # All ZEROS
+  # mutate(Attack == as.numeric(Attack))%>%
+  mutate(As = (ifelse(Wave=="Time10" & Attack == 1|Wave == "Time11"|Wave =="Time12", 0, 
+                      ifelse(Wave=="Time10" & Attack == 0| Wave=="Time9" & Attack == 0, 1, Attack)))) %>%
+  mutate(Ys = ifelse(Wave=="Time9" & Attack == 1 |Wave=="Time10" & Attack == 1|Wave == "Time11"|Wave =="Time12", NA, 
+                     ifelse(Wave=="Time10" & Attack == 0 | Wave == "Time9" & Attack == 0, NA, Warm.Muslims)))%>%
+  ungroup() %>%
+  arrange(Id,Wave) 
+
+# dat_all N
+length(unique(kf4$Id))
+str(kf4$As)
+# correct
+
+
+# Test NAs = Correct
+table1::table1(~Ys|Wave *as.factor(As), data =kf4, overall=F)
+
+
+
+## Bind - double dataset to creat missing values
+ka4 <- km_all4%>%
+  bind_rows(kf4)%>%
+  arrange(Id,Wave) %>%
+  mutate(As = as.factor(As)) #%>%
+# select(-c(Warm.Muslims,Attack))
+
+head(ka4$Ys)
+# Check 
+
+# Missing data problem
+t2<- table1::table1( ~Ys | Wave*As, data = ka4, overall=F)
+t2
+
+t1kable(t2, format ="latex")
+#modelsummary::datasummary_crosstab(mean(Warm.Muslims) ~ Wave * as.factor(Attack), data = km_all3) #output = "latex_tabular")
+
+
+
+# link 4 dfs for zero estimate -----------------------------------------
+
+km_zero4 <- ka4 %>%
+  filter((As == 0))%>%
+  droplevels() %>%
+  dplyr::select(
+    Id,
+    Wave,
+    As,
+    Ys,
+    pol_bz,
+    rel_bz,
+    partner_bz,
+    parent_bz,
+    nzdep_bz,
+    male_2z,
+    employed_bz,
+    edu_bz,
+    ubran_bz,
+    EthnicCats_b,
+    GenCohort,
+    dys,
+    wave
+  )%>%
+  arrange(Wave,Id)
+
+str(km_zero4$As)
+head(km_zero4)
+dim(km_zero4)
+# works
+table1::table1(~ Ys|Wave*As, data = km_zero4, overall=FALSE)
+
+# correct 
+table1::table1(~ Ys|Wave * As, data = km_zero4, overall=FALSE)
+
+
+# Impute 4 0s ------------------------------------------------------------
+
+
+bind_zero4 <- as.data.frame(km_zero4)
+
+library(Amelia)
+
+
+# We impute the entire distribution of Attack = 0, on the assumption that there 2018 and 2019 have an identical distribution. 
+# assume Y^0|A=2018 = Y^0 2019
+
+
+# limit Ys to range 1 to 7
+# find col number
+head(bind_zero4)
+
+# create bounds
+bds <- matrix(c(4, 1, 7), nrow = 1, ncol = 3)
+
+imputed0_4<- amelia(
+  set.seed=1234,
+  bind_zero4, 
+  cs= c("Id"),
+  ts= c("dys"), # use days
+  m = 10, # number of imputations
+  ords = "Ys",
+  noms = c(
+    "EthnicCats_b","GenCohort"
+  ),
+  idvars=c("Wave","As"),
+  lags="Ys",
+  leads="Ys",
+  #polytime = 2, # Allow polynomial
+  intercs = F, # to many vars
+  bounds = bds, # lower upper bounds to Mus Prej
+  empri = .05*nrow(bind_zero1)
+) # ridge prior see: Amelia pdf documentation p.23
+
+saveRDS(imputed0_4, here::here("_posts","mus","mods", "imputed0_4"))
+
+
+# check means, looks good!
+
+table1::table1(~ Ys|Wave * As, data = imputed0_4$imputations$imp1, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed0_4$imputations$imp2, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed0_4$imputations$imp3, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed0_4$imputations$imp4, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed0_4$imputations$imp5, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed0_4$imputations$imp6, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed0_4$imputations$imp7, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed0_4$imputations$imp8, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed0_4$imputations$imp9, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed0_4$imputations$imp10, overall=FALSE)
+
+
+# impute 4 1s ---------------------------------------------------------------
+
+km_one4 <- ka4 %>%
+  filter((As == 1 & Wave !="Time9"))%>%
+  droplevels() %>%
+  dplyr::select(
+    Id,
+    Wave,
+    As,
+    Ys,
+    pol_bz,
+    rel_bz,
+    partner_bz,
+    parent_bz,
+    nzdep_bz,
+    male_2z,
+    employed_bz,
+    edu_bz,
+    ubran_bz,
+    EthnicCats_b,
+    GenCohort,
+    dys,
+    wave # include wave
+  )%>%
+  arrange(Wave,Id)
+
+length(unique(km_one$Id))
+
+#check looks good
+table1::table1(~ Ys|Wave * As, data = km_one4, overall=FALSE)
+
+# make data frame
+km_one4<-as.data.frame(km_one4) 
+
+# create bounds for Ys
+head(km_one4)
+bds <- matrix(c(4, 1, 7), nrow = 1, ncol = 3)
+
+imputed1_4<- amelia(
+  set.seed=1234,
+  km_one4, 
+  cs= c("Id"),
+  ts= c("dys"),
+  m = 10, # number of imputations
+  ords = "Ys",
+  noms = c(
+    "EthnicCats_b","GenCohort"
+  ),
+  idvars=c("Wave","As"),
+  lags="Ys",
+  leads="Ys",
+  #polytime = 2, # Allow polynomial
+  intercs = F, # to many vars
+  bounds = bds, # lower upper bounds to Mus Prej
+  empri = .05*nrow(bind_zero1)
+) # ridge prior see: Amelia pdf documentation p.23
+
+saveRDS(imputed1_4, here::here("_posts","mus","mods","imputed1_4"))
+
+# check means, looks good
+
+table1::table1(~ Ys|Wave * As, data = imputed1_4$imputations$imp1, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed1_4$imputations$imp2, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed1_4$imputations$imp3, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed1_4$imputations$imp4, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed1_4$imputations$imp5, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed1_4$imputations$imp6, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed1_4$imputations$imp7, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed1_4$imputations$imp8, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed1_4$imputations$imp9, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed1_4$imputations$imp10, overall=FALSE)
+
+
+
+
+# 4 make frames compatible --------------------------------------------------
+imputed0_4<-readRDS(here::here("_posts","mus","mods", "imputed0_4"))
+imputed1_4<-readRDS(here::here("_posts","mus","mods", "imputed1_4"))
+
+
+
+
+# bind data frames --------------------------------------------------------
+# levels_old <- c("Time4","Time5","Time6","Time7","Time8","Time9",
+#                 "Time10","Time11","Time12")
+# newlevels = c("Time10","Time11","Time12")
+
+m <- 10
+zero4 <- NULL
+for (i in 1:m) {
+  zero4$imputations$imp[[i]] <- imputed0_4$imputations[[i]] %>%
+    dplyr::filter(Wave !="Time9") %>%
+    droplevels()%>%
+    arrange(Wave, Id)
+}
+
+one4 <- NULL
+
+for(i in 1:m) {
+  one4$imputations$imp[[i]] <- imputed1_4$imputations[[i]] %>%
+    dplyr::filter(Wave !="Time9") %>%
+    droplevels()%>%
+    arrange(Wave, Id)
+}
+
+
+m <- 10
+imps_bind4 <- NULL
+for (i in 1:m) {
+  imps_bind4$imputations$imp[[i]] <- 
+    dplyr::bind_rows(zero4$imputations$imp[[i]],
+                     one4$imputations$imp[[i]])%>%
+    dplyr::select(-wave) %>%
+    dplyr::filter(Wave =="Time10"| Wave =="Time11"| Wave == "Time12") %>%
+    dplyr::mutate(Wave = as.numeric(Wave)-1) %>%
+    dplyr::mutate(days_n = dys - min(dys) ) %>% # new zero
+   dplyr::mutate(yrs =  days_n/365 ) %>% # new yzer
+    droplevels()%>%
+    arrange(Wave,Id) 
+}
+
+
+
+# Works
+hist(imps_bind4$imputations$imp[[1]]$yrs)
+
+# save
+saveRDS(imps_bind4, here::here("_posts", "mus", "mods", "imps_bind4"))
+
+# read
+#imps_bind4 <- readRDS(here::here("_posts", "mus", "mods", "imps_bind4"))
+
+# make list for bayesian models
+#listbayes4 <-imps_bind4$imputations$imp
+
+# save list for bayesian models
+#saveRDS(listbayes4, here::here("_posts", "mus", "mods", "listbayes4"))
+
+#readRDS
+#listbayes4<- readRDS(here::here("_posts", "mus", "mods", "listbayes4"))
+
+
+# ML model 4 ----------------------------------------------------------------
+
+# model
+m<-10
+model_all4<-NULL
+for(i in 1:m) {
+  model_all4[[i]] <- lmer(Ys ~ As * Wave + (1|Id), 
+                          data = imps_bind4$imputations$imp[[i]])
+}
+
+# table
+tab<-pool_parameters(model_all4)
+tab
+tab [,c(1:5)]%>%
+  # print_md()%>%
+  kbl("latex",booktabs = TRUE,digits=2)
+
+plot(tab, show_labels = TRUE)
+
+pl_ml <- ggeffects::ggemmeans(model_all4[[2]], terms = c("Wave","As")) 
+pl_ml
+
+mus_plot_model_all <-plot(pl_ml)+ 
+  #scale_y_continuous(limits=c(4.10,4.5))+
+  labs(subtitle="Effect of attack on acceptance of Muslims") + 
+  #scale_x_discrete(limits=rev) +
+  coord_flip() 
+mus_plot_model_all
+
+
+estimate_contrasts(
+  model_all4[[4]],
+  contrast = "As",
+  at = c("Wave"),
+  # fixed = NULL,
+  # transform = "none",
+  ci = 0.95,
+  adjust = "holm",
+  length = 2
+)
+
+estimate_contrasts( model_all4[[1]],
+                    contrast = "As",
+                    at = c("yrs","As") )
+%>%
+  kbl("latex",booktabs = TRUE,digits=2)
+
+estimate_slopes( model_all4[[1]],
+                 trend = "Wave",
+                 at = c("As"),
+                 length=2)
+
+
+# bayes 4 -----------------------------------------------------------------
+
+
+b4_m0 <- brms::brm( 
+  bf(Ys ~ As  *  Wave + (1|Id)),
+  family = gaussian, 
+  data = listbayes4,
+  # c(prior(student_t(3, .15,.5), class = b, coef = "As1"),
+  #   prior(student_t(3, .02,.5), class = b, coef = "Wave"),
+  #   prior(normal(0,.25),  class= b, coef = "As1:Wave")), 
   seed = 1234,
   warmup = 1000,
   iter = 2000,
   chains = 4,
   backend = "cmdstanr",
-  #save_pars=save_pars(group=FALSE))
-  file = here::here("_posts", "mus", "mods", "b_sens")
+  file = here::here("_posts", "mus", "mods", "b4_m0")
 )
 
-lazerhawk::brms_SummaryTable(b_sens, panderize=F)
+lazerhawk::brms_SummaryTable(b4_m1, panderize=F)
+
+
+# IMPUTE 9wave ---------------------------------------------------------------
+# df 4 for estimating time trend in attack sample ---------------------------
+km_all9 <- df %>%
+  dplyr::select(
+    Id,
+    Age,
+    Wave,
+    EthnicCats,
+    Employed,
+    Urban,
+    Edu,
+    Male,
+    Pol.Orient,
+    NZdep,
+    Religious,
+    GenCohort,
+    Urban,
+    TSCORE,
+    Partner,
+    Parent,
+    # Warm.Overweight,
+    # Warm.Elderly,
+    # Warm.MentalIllness,
+    Warm.Muslims,
+    # Warm.Immigrants,
+    # Warm.Asians,
+    # Warm.Refugees,
+    # Wave,
+    # Warm.Maori,
+    # Warm.NZEuro,
+    # Warm.Indians,
+    # Warm.Chinese,
+    # Warm.Refugees,
+    # Warm.Pacific,
+    YearMeasured
+  ) %>%
+  dplyr::filter(Wave == 2012 | 
+                  Wave == 2013 |
+                  Wave == 2014 |
+                  Wave == 2015 |
+                  Wave == 2016 |
+                  Wave == 2017 | 
+                  Wave == 2018 | 
+                  Wave ==2019 | 
+                  Wave ==2020) %>%
+  dplyr::filter(YearMeasured != -1)%>% # remove people who passed away
+  droplevels() %>%
+  dplyr::mutate(org2012 =  ifelse(Wave == 2012 & YearMeasured ==1,1,0 ))%>%
+  group_by(Id) %>%
+  dplyr::mutate(hold = mean(org2012, na.rm = TRUE)) %>%  # Hack
+  filter(hold>0) %>% # hack to enable repeate of baseline in 2019 
+  ungroup(Id) %>%
+  dplyr::mutate(Edu = as.numeric(Edu))%>%
+  arrange(Id,Wave) %>%
+  group_by(Id) %>%
+  dplyr::mutate(TSCORE_b = ifelse(Wave == "2012", (TSCORE), NA_real_)) %>%
+  fill(TSCORE_b)%>%
+  dplyr::mutate(TSCORE_i = ifelse(
+    YearMeasured == 0 & Wave==2013, TSCORE_b + 365,
+    ifelse(YearMeasured == 0 & Wave==2014, TSCORE_b + 730, 
+           ifelse(YearMeasured == 0 & Wave==2015, TSCORE_b + 1094,  # leap
+                  ifelse(YearMeasured == 0 & Wave==2016, TSCORE_b + 1459, 
+                         ifelse(YearMeasured ==0 & Wave ==2017, TSCORE_b + 1824,
+                                ifelse(YearMeasured == 0 & Wave == 2018,  TSCORE_b + 3248,
+                                       ifelse(YearMeasured == 0 & Wave == 2019, TSCORE_b + 3512, 
+                                              ifelse(YearMeasured == 0 & Wave == 2020, TSCORE_b + 3877, TSCORE)))))))))%>%
+  dplyr::mutate(Attack = as.numeric((ifelse(
+    (TSCORE_i >= 3545 & Wave == 2018)|(Wave==2019|Wave ==2020), 1, 0)))) %>% # All 2019s even if NA need to be 1
+  ungroup() %>%  # Create TSCORE for when people would have been observed
+  group_by(Id) %>%
+  dplyr::mutate(dys = (TSCORE_i - min(TSCORE_i)))%>% 
+  dplyr::mutate(Ys = Warm.Muslims, 
+                As = Attack)%>%
+  dplyr::mutate(yrs =  (dys/365))%>% 
+  dplyr::mutate(wave = as.numeric(Wave)-1) %>% 
+  dplyr::mutate(pol_bz = if_else(Wave == "2012", (Pol.Orient), NA_real_)) %>%
+  fill(pol_bz) %>%
+  dplyr::mutate(rel_bz = if_else(Wave == "2012", (as.numeric(Religious)), NA_real_)) %>%
+  fill(rel_bz) %>%
+  dplyr::mutate(partner_bz = if_else(Wave == "2012", (as.numeric(Partner)), NA_real_)) %>%
+  fill(partner_bz) %>%
+  dplyr::mutate(parent_bz = if_else(Wave == "2012", (as.numeric(Parent)), NA_real_)) %>%
+  fill(parent_bz) %>%
+  dplyr::mutate(age_bz = if_else(Wave == "2012", (Age), NA_real_)) %>%
+  fill(age_bz) %>%
+  dplyr::mutate(nzdep_bz = if_else(Wave == "2012", (NZdep), NA_real_)) %>%
+  fill(nzdep_bz) %>%
+  dplyr::mutate(male_2z = if_else(Wave == "2012", (as.numeric(Male))/2, NA_real_)) %>%
+  fill(male_2z) %>%
+  dplyr::mutate(employed_bz = if_else(Wave == "2012", (as.numeric(Employed)), NA_real_)) %>%
+  fill(employed_bz) %>%
+  dplyr::mutate(edu_bz = if_else(Wave == "2012", (Edu), NA_real_)) %>%
+  fill(edu_bz) %>%
+  dplyr::mutate(ubran_bz = if_else(Wave == "2012", (as.numeric(Urban)), NA_real_)) %>%
+  fill(ubran_bz) %>%
+  dplyr::mutate(EthnicCats_b = if_else(Wave == "2012", as.numeric(EthnicCats), NA_real_)) %>%
+  fill(EthnicCats_b) %>% 
+  dplyr::mutate(EthnicCats_b, as.factor(EthnicCats_b)) %>%
+  ungroup()%>%
+  arrange(Wave,Id) 
+str(km_all9$Wave)
+levels(km_all9$Wave) <- c("Time4","Time5", "Time6", "Time7", "Time8","Time9", "Time10", "Time11", "Time12")
+
+
+# tw<-km_all4%>%
+#   select(Id,YearMeasured,Wave,TSCORE,TSCORE_i)%>%
+#   filter(is.na(TSCORE_i))
+#   
+# check
+sum(is.na(km_all9$TSCORE_i))
+
+
+
+# correct
+table1::table1(~ TSCORE_i|Wave, data = km_all9, overall=FALSE)
+
+# latex summary
+kable(x, format ="latex", booktabs = TRUE)
+
+#modelsummary::datasummary_crosstab(mean(Warm.Muslims) ~ Wave * as.factor(Attack), data = km_all3) #output = "latex_tabular")
+
+table1::table1(~Warm.Muslims|Wave*as.factor(Attack), data = km_all9, overall=FALSE)
+
+table1::table1(~ Warm.Muslims|Wave*as.factor(As), data = km_all9, overall=FALSE)
+
+kable(obtl, format ="latex", booktabs = TRUE)
+
+
+x <- table1::table1(~  Age +Edu + Employed + EthnicCats  + Male + NZdep + Parent + Partner + Religious + Pol.Orient  + Urban|Wave, data = km_all9, overall = FALSE)
+x
+
+t1kable(x, format ="latex")
+
+table1::table1(~  as.factor(Warm.Muslims) |Wave*as.factor(As) , data = km_all9)
+  km_all9
+# create new data set
+library(tidyverse)
+kf9  <- km_all9 %>%
+  group_by(Id) %>%  # All ZEROS
+  # filter(Wave != "Time9")%>%
+  group_by(Id) %>%  # All ZEROS
+  # mutate(Attack == as.numeric(Attack))%>%
+  mutate(As = ifelse(Wave=="Time10" & Attack == 1|
+                        Wave == "Time11"|
+                        Wave =="Time12", 0, 
+                      ifelse(Wave=="Time10" & Attack == 0| 
+                               Wave=="Time9" & Attack == 0|
+                               Wave=="Time8" & Attack == 0|
+                               Wave=="Time7" & Attack == 0|
+                               Wave=="Time6" & Attack == 0|
+                               Wave=="Time5" & Attack == 0|
+                               Wave=="Time4" & Attack == 0, 1, 
+                             Attack))) %>%
+  mutate(Ys = ifelse(Wave=="Time9" & Attack == 1 |
+                       Wave=="Time10" & Attack == 1|
+                       Wave == "Time11"|Wave =="Time12", NA, 
+                     ifelse(Wave=="Time10" & Attack == 0 | 
+                            Wave == "Time9" | 
+                            Wave == "Time8" |
+                            Wave == "Time7" |
+                            Wave == "Time6" |
+                            Wave == "Time5" |
+                            Wave == "Time4" , NA, 
+                            Warm.Muslims)))%>%
+  ungroup() %>%
+  arrange(Wave,Id) 
+
+# dat_all N
+length(unique(kf9$Id))
+str(kf9$As)
+# correct
+
+
+# Test NAs = Correct
+table1::table1(~(Ys)|Wave*as.factor(As), data =kf9, overall=F)
+
+
+
+## Bind - double dataset to creat missing values
+ka9 <- km_all9%>%
+  bind_rows(kf9)%>%
+  arrange(Wave,Id) %>%
+  mutate(As = as.factor(As)) %>%
+  arrange(Wave,Id)
+# select(-c(Warm.Muslims,Attack))
+
+head(ka9$Ys)
+# Check 
+
+# Missing data problem
+t2<- table1::table1( ~Ys | Wave*as.factor(As), data = ka9, overall=F)
+t2
+
+t1kable(t2, format ="latex")
+#modelsummary::datasummary_crosstab(mean(Warm.Muslims) ~ Wave * as.factor(Attack), data = km_all3) #output = "latex_tabular")
+
+
+
+# link 4 dfs for zero estimate -----------------------------------------
+
+km_zero9 <- ka9 %>%
+  filter((As == 0))%>%
+  droplevels() %>%
+  dplyr::select(
+    Id,
+    Wave,
+    As,
+    Ys,
+    pol_bz,
+    rel_bz,
+    partner_bz,
+    parent_bz,
+    nzdep_bz,
+    male_2z,
+    employed_bz,
+    edu_bz,
+    ubran_bz,
+    EthnicCats_b,
+    GenCohort,
+    dys,
+    wave
+  )%>%
+  arrange(Wave,Id)
+
+str(km_zero9$As)
+head(km_zero9)
+dim(km_zero9)
+# works
+table1::table1(~ Ys|Wave*As, data = km_zero9, overall=FALSE)
+
+# correct 
+table1::table1(~ Ys|Wave * As, data = km_zero9, overall=FALSE)
+
+
+# Impute 4 0s ------------------------------------------------------------
+
+
+bind_zero9 <- as.data.frame(km_zero9)
+
+library(Amelia)
+
+
+# We impute the entire distribution of Attack = 0, on the assumption that there 2018 and 2019 have an identical distribution. 
+# assume Y^0|A=2018 = Y^0 2019
+
+
+# limit Ys to range 1 to 7
+# find col number
+head(bind_zero9)
+
+# create bounds
+bds <- matrix(c(4, 1, 7), nrow = 1, ncol = 3)
+
+imputed0_9<- amelia(
+  set.seed=1234,
+  bind_zero9, 
+  cs= c("Id"),
+  ts= c("wave"), # use days
+  m = 10, # number of imputations
+  ords = "Ys",
+  noms = c(
+    "EthnicCats_b","GenCohort"
+  ),
+  idvars=c("Wave","As","dys"),
+  lags="Ys",
+  leads="Ys",
+  polytime = 2, # Allow polynomial, if 3, reverts to pre w10 mean!
+  intercs = F, # too many vars
+  bounds = bds, # lower upper bounds to Mus Prej
+  empri = .05*nrow(bind_zero9)
+) # ridge prior see: Amelia pdf documentation p.23
+table1::table1(~ Ys|Wave * As, data = imputed0_9t$imputations$imp1, overall=FALSE)
+
+saveRDS(imputed0_9, here::here("_posts","mus","mods", "imputed0_9"))
+
+# check means, looks good
+
+table1::table1(~ Ys|Wave * As, data = imputed0_9$imputations$imp1, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed0_9$imputations$imp2, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed0_9$imputations$imp3, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed0_9$imputations$imp4, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed0_9$imputations$imp5, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed0_9$imputations$imp6, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed0_9$imputations$imp7, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed0_9$imputations$imp8, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed0_9$imputations$imp9, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed0_9$imputations$imp10, overall=FALSE)
+
+
+# impute 9 1s ---------------------------------------------------------------
+
+km_one9 <- ka9 %>%
+  filter( 
+   # (As == 1 & Wave =="Time4")|
+  #  (As == 1 & Wave =="Time5")|
+   # (As == 1 & Wave =="Time6")|
+   # (As == 1 & Wave =="Time7")|
+   # (As == 1 & Wave =="Time8")|
+  #  (As == 1 & Wave =="Time9")|
+    (As == 1 & Wave =="Time10") | 
+           (As == 1 & Wave =="Time11")|
+           (As == 1 & Wave =="Time12"))%>%
+  droplevels() %>%
+  mutate(wave = wave -6) %>%
+  dplyr::select(
+    Id,
+    Wave,
+    As,
+    Ys,
+    pol_bz,
+    rel_bz,
+    partner_bz,
+    parent_bz,
+    nzdep_bz,
+    male_2z,
+    employed_bz,
+    edu_bz,
+    ubran_bz,
+    EthnicCats_b,
+    GenCohort,
+    dys,
+    wave # include wave
+  )%>%
+  arrange(Wave,Id)
+
+summary(km_one9$wave)
+
+length(unique(km_one9$Id))
+
+#check looks good
+table1::table1(~ Ys|Wave * As, data = km_one9, overall=FALSE)
+
+# make data frame
+km_one9<-as.data.frame(km_one9) 
+
+# create bounds for Ys
+head(km_one9)
+bds <- matrix(c(4, 1, 7), nrow = 1, ncol = 3)
+
+imputed1_9<- amelia(
+  set.seed=1234,
+  km_one9, 
+  cs= c("Id"),
+  ts= c("wave"),
+  m = 10, # number of imputations
+  ords = "Ys",
+  noms = c(
+    "EthnicCats_b","GenCohort"
+  ),
+  idvars=c("Wave","As","dys"),
+  lags="Ys",
+  leads="Ys",
+  polytime = 2, # Allow polynomial, if 3, reverts to pre w10 mean!
+  intercs = F, # too many vars
+  bounds = bds, # lower upper bounds to Mus Prej
+  empri = .05*nrow(bind_zero9)
+) # ridge prior see: Amelia pdf documentation p.23
+
+saveRDS(imputed1_9, here::here("_posts","mus","mods","imputed1_9"))
+
+# check means, looks good
+
+table1::table1(~ Ys|Wave * As, data = imputed1_9$imputations$imp1, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed1_9$imputations$imp2, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed1_9$imputations$imp3, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed1_9$imputations$imp4, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed1_9$imputations$imp5, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed1_9$imputations$imp6, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed1_9$imputations$imp7, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed1_9$imputations$imp8, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed1_9$imputations$imp9, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = imputed1_9$imputations$imp10, overall=FALSE)
+
+
+
+
+# 4 make frames compatible --------------------------------------------------
+imputed0_9<-readRDS(here::here("_posts","mus","mods", "imputed0_9"))
+imputed1_9<-readRDS(here::here("_posts","mus","mods", "imputed1_9"))
+
+
+
+
+# bind data frames --------------------------------------------------------
+# levels_old <- c("Time4","Time5","Time6","Time7","Time8","Time9",
+#                 "Time10","Time11","Time12")
+# newlevels = c("Time10","Time11","Time12")
+
+m <- 10
+zero9<- NULL
+for (i in 1:m) {
+  zero9$imputations$imp[[i]] <- imputed0_9$imputations[[i]] %>%
+    dplyr::filter(Wave =="Time10"|Wave =="Time11"|Wave =="Time12") %>%
+    droplevels()%>%
+    arrange(Wave, Id)
+}
+
+one9 <- NULL
+
+for(i in 1:m) {
+  one9$imputations$imp[[i]] <- imputed1_9$imputations[[i]] %>%
+    dplyr::filter(Wave =="Time10"|Wave =="Time11"|Wave =="Time12") %>%
+    droplevels()%>%
+    arrange(Wave, Id)
+}
+
+
+m <- 10
+imps_bind9 <- NULL
+for (i in 1:m) {
+  imps_bind9$imputations$imp[[i]] <- 
+    dplyr::bind_rows(zero9$imputations$imp[[i]],
+                     one9$imputations$imp[[i]])%>%
+    dplyr::select(-wave) %>%
+    dplyr::filter(Wave =="Time10"|Wave =="Time11"|Wave =="Time12") %>%
+    dplyr::mutate(Wave = as.numeric(Wave)-1) %>%
+    dplyr::mutate(days_n = dys - min(dys) ) %>% # new zero
+    dplyr::mutate(yrs =  days_n/365 ) %>% # new yzer
+    droplevels()%>%
+    arrange(Wave,Id) 
+}
+
+
+
+# Works
+hist(imps_bind9$imputations$imp[[1]]$yrs)
+
+# save
+saveRDS(imps_bind9, here::here("_posts", "mus", "mods", "imps_bind9"))
+
+# read
+#imps_bind9 <- readRDS(here::here("_posts", "mus", "mods", "imps_bind9"))
+
+# make list for bayesian models
+listbayes9 <-imps_bind9$imputations$imp
+
+# save list for bayesian models
+saveRDS(listbayes9, here::here("_posts", "mus", "mods", "listbayes9"))
+
+#readRDS
+#listbayes9<- readRDS(here::here("_posts", "mus", "mods", "listbayes9"))
+
+
+# ML model 9 ----------------------------------------------------------------
+
+# model
+m<-10
+model_all9<-NULL
+for(i in 1:m) {
+  model_all9[[i]] <- lmer(Ys ~ As * Wave + (1|Id), 
+                          data = imps_bind9$imputations$imp[[i]])
+}
+
+# table
+tab<-pool_parameters(model_all9)
+tab
+tab [,c(1:5)]%>%
+  # print_md()%>%
+  kbl("latex",booktabs = TRUE,digits=2)
+
+plot(tab, show_labels = TRUE)
+
+pl_ml <- ggeffects::ggemmeans(model_all9[[2]], terms = c("Wave","As")) 
+pl_ml
+
+mus_plot_model_all <-plot(pl_ml)+ 
+  #scale_y_continuous(limits=c(4.10,4.5))+
+  labs(subtitle="Effect of attack on acceptance of Muslims") + 
+  #scale_x_discrete(limits=rev) +
+  coord_flip() 
+mus_plot_model_all
+
+
+estimate_contrasts(
+  model_all4[[4]],
+  contrast = "As",
+  at = c("Wave"),
+  # fixed = NULL,
+  # transform = "none",
+  ci = 0.95,
+  adjust = "holm",
+  length = 2
+)
+
+estimate_contrasts( model_all4[[1]],
+                    contrast = "As",
+                    at = c("yrs","As") )
+%>%
+  kbl("latex",booktabs = TRUE,digits=2)
+
+estimate_slopes( model_all4[[1]],
+                 trend = "Wave",
+                 at = c("As"),
+                 length=2)
+
+
+# bayes 4 -----------------------------------------------------------------
+
+
+b4_m0 <- brms::brm( 
+  bf(Ys ~ As  *  Wave + (1|Id)),
+  family = gaussian, 
+  data = listbayes4,
+  # c(prior(student_t(3, .15,.5), class = b, coef = "As1"),
+  #   prior(student_t(3, .02,.5), class = b, coef = "Wave"),
+  #   prior(normal(0,.25),  class= b, coef = "As1:Wave")), 
+  seed = 1234,
+  warmup = 1000,
+  iter = 2000,
+  chains = 4,
+  backend = "cmdstanr",
+  file = here::here("_posts", "mus", "mods", "b4_m0")
+)
+
+lazerhawk::brms_SummaryTable(b4_m1, panderize=F)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1392,11 +2091,11 @@ lazerhawk::brms_SummaryTable(b_sens, panderize=F)
 library(tidybayes)
 library(emmeans)
 
-marg_eff_bf_df <- b_m_df %>%
+marg_eff_bfCw <- b_m_dfCw %>%
   epred_draws(newdata = expand.grid(As = c(0, 1), Wave = c("Time10", "Time11","Time12")),
               re_formula = NA)
 marg_eff_bf_df
-#saveRDS(marg_eff_bf_df,  here::here("_posts", "mus", "mods", "marg_eff_bf_df"))
+saveRDS(marg_eff_bfCw,  here::here("_posts", "mus", "mods", "marg_eff_bfCw"))
 #marg_eff_bf_df <- readRDS(here::here("_posts", "mus", "mods", "marg_eff_bf_df"))
 
 marg_eff_sens <- b_sens %>%
@@ -3742,60 +4441,10 @@ mus_plot_18 + mus_plot_19 + mus_plot_20
 # mus_plot_base20202 <-plot(pred__base20202)+ scale_y_continuous(limits=c(4,4.6))+labs(title="Effect of attack on acceptance of Muslims")
 # 
 # mus_plot
-```
 
-## Bayesian model 3 x waves
-
-```{r}
-## Do not save residuals
-#   save_pars=save_pars(group=FALSE))
-dat_l<- readRDS(here::here("_posts","mus","mods","dat_l"))
-# 
-# m_b <- brms::brm( 
-#   Ys ~ As *  Wave + (1|Id), 
-#   data 
-#   = dat_l, 
-#   seed = 1234,
-#   warmup = 1000,
-#   iter = 2000,
-#   chains = 4,
-#   backend = "cmdstanr",
-#   #save_pars=save_pars(group=FALSE))
-#   file = here::here("_posts", "mus", "mods", "m_b"))
-# 
-# lazerhawk::brms_SummaryTable(m_b)
-# prior_summary(m_b)
-
-
-
-# Print Table
-# ouput <- tidy(m_b)
-# str(ouput)
-# ouput
-# #output<- as.data.frame(ouput)
-# 
-# test <-tidybayes::summaries_draws.grouped_df(m_b)
-# 
-# library(lazerhawk)
-# blh_tab <- lazerhawk::brms_SummaryTable(m_b, panderize=F)
-# blh_tab
-# blh_tab %>%
-#    kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims") %>%
-# print()
-
-
-pred3<- ggeffects::ggemmeans(m_b, terms = c("Wave","As"))
-mus_plot3 <-plot(pred3)+ scale_y_continuous(limits=c(4,4.6))+labs(title="Effect of attack on acceptance of Muslims")
-
-p <-mcmc_intervals(m_b)
-ps<- brms::posterior_summary(m_b) 
-
-```
 
 ### lognormal prior
 
-
-```{r}
 # m_lgn <- brms::brm( 
 #   bf(Ys ~ As  *  Wave + (1|Id)),#, 
 #   # sigma ~ As + Wave + (1|Id)),
@@ -4364,12 +5013,12 @@ bayes_plots_a
 #   dpi = 1200
 # )
 
-````
+
+
+# old ---------------------------------------------------------------------
 
 
 ### Impute all waves of MUS PRED
-
-```{r}
 
 table1::table1(~ Partner|Wave, data = df)%>%
   kbl()%>%
@@ -4580,1111 +5229,206 @@ m00 <- lmer(Warm.Muslims ~   yrs + Warm.Muslims_lag +   (1|Id), weights=ipw,
 
 
 
-# dplyr::select(Id,Wave,wave,Attack,Warm.Muslims,pol_bz,rel_bz,partner_bz,parent_bz,age_bz,nzdep_bz,male_2z,employed_bz,edu_bz,ubran_bz,EthnicCats_b,yrs)
 
-# #check no weights greater than 10
-# max(w_ipw$ipw.weights) # max is 1.189481
-# 
-# ## add weights to data frame. 
-# km$Pol.Orient
-# library(tidyverse)
-# km2 <- km2 %>% 
-#   mutate(ipw = w_ipw$ipw.weights)
+# ML model separate wave estimates ----------------------------------------
+#  not needed
+#one$imputations$imp[[i]]
 
-
-
-
-
-
-
-
-# we impute all the 1s from 2018 seperately.  Y^1|A=2018 \ne Y^1 2019
-
-
-imputed_18_3<- amelia(
-  d18, #dataset to impute
-  m = 10, # number of imputations
-  noms = c(
-    "EthnicCats_b"
-  ),
-  idvars=c("Wave","As","Id","wave")) #, # do 
-
-
-# This is tricky. We impute all the 1s from 2019 with the 1s from the joint distribution of 2018 & 2018 seperately.  
-# Y^1|A=2018,A=2019 \ne Y^1 2018.  We will need to filter the 2019 Ys later. 
-
-d19<-as.data.frame(d19)
-imputed_19_3<- amelia(
-  set.seed=14321,
-  d19, #dataset to impute
-  m = 10, # number of imputations
-  cs= c("Id"),
-  ts= c("wave"),
-  noms = c(
-    "EthnicCats_b"
-  ),
-  idvars=c("Wave","As")) # correct
-
-imputed_20_3 <- amelia(
-  set.seed=14321,
-  d19, #dataset to impute
-  m = 10, # number of imputations
-  cs= c("Id"),
-  ts= c("wave"),
-  noms = c(
-    "EthnicCats_b"
-  ),
-  idvars=c("Wave","As")) # correct
-
-
-# Here filter only the 2019 Y^1s
-
-m<-10
-imputed_19s_3<-NULL
-
-for(i in 1:m) {
-  imputed_19s_3$imputations$imp[[i]] <- imputed_19_3$imputations[[i]] %>%
-    dplyr::filter(Wave == 2019 & As == 1) %>%
-    arrange(Wave, Id)
+m <- 10
+imps_bind18z <- NULL
+for (i in 1:m) {
+  imps_bind18z$imputations$imp[[i]] <-
+    dplyr::bind_rows(zero$imputations$imp[[i]])%>%
+    dplyr::select(-wave) %>%
+    dplyr::filter(Wave =="Time10") %>%
+    droplevels()%>%
+    arrange(Wave,Id)
 }
 
-# check
-
-imputed_19s_3$imputations$imp[[1]]
-
-m<-10
-imputed_20s_3<-NULL
-
-for(i in 1:m) {
-  imputed_20s_3$imputations$imp[[i]] <- imputed_20_3$imputations[[i]] %>%
-    dplyr::filter(Wave == 2020 & As == 1) %>%
-    arrange(Wave, Id)
-}
-
-# check
-
-imputed_19s_3$imputations$imp[[1]]
-imputed_20s_3$imputations$imp[[1]]
-
-
-m<-10
-imps3 <-NULL
-for(i in 1:m) {
-  imps3$imputations$imp[[i]] <- dplyr::bind_rows(imputed_0_3$imputations[[i]], 
-                                                 imputed_18_3$imputations[[i]],
-                                                 imputed_19s_3$imputations$imp[[i]],
-                                                 imputed_20s_3$imputations$imp[[i]])
-  imps3$imputations$imp[[i]] <- imps3$imputations$imp[[i]] %>% arrange(Wave,Id)
-}
 
 # 
-# m<-20
-# imps<-NULL
-# for(i in 1:m) {
-#   imps$imputations$imp[[i]] <- dplyr::bind_rows(imputed_0$imputations[[i]], 
-#                                      imputed_1$imputations[[i]])
-#   imps$imputations$imp[[i]] <- imps$imputations$imp[[i]] %>% arrange(Wave,Id)
-#   
+# # Works!
+# table(imps_bind19$imputations$imp[[1]]$Wave)
+# 
+# # save
+# saveRDS(imps_bind19, here::here("_posts", "mus", "mods", "imps_bind19"))
+# 
+# # make list for bayesian models
+# listbayes19 <-imps_bind19$imputations$imp
+# 
+# # save list for bayesian models
+# saveRDS(listbayes19, here::here("_posts", "mus", "mods", "listbayes19"))
+# 
+# # 20 
+# 
+# m <- 10
+# imps_bind20 <- NULL
+# for (i in 1:m) {
+#   imps_bind20$imputations$imp[[i]] <- 
+#     dplyr::bind_rows(zero$imputations$imp[[i]],
+#                      one$imputations$imp[[i]])%>%
+#     dplyr::select(-wave) %>%
+#     dplyr::filter(Wave =="Time10"|  Wave == "Time12") %>%
+#     droplevels()%>%
+#     arrange(Wave,Id) 
 # }
-
-table1::table1(~ Ys |Wave*As, data = km_all)
-
-m<-10
-impsL3 <-NULL
-dat3 <- NULL
-
-table1::table1(~ Warm.Muslims |Wave, data = df)
-
-for(i in 1:m) {
-  impsL3$imputations[[i]]<- as.data.frame(imps3$imputations$imp[[i]])
-}
-
-# dat3 <- impsL3$imputations
-# saveRDS(dat3, here::here("_posts", "mus", "mods", "dat3"))
-# saveRDS(impsL3, here::here("_posts", "mus", "mods", "impsL3"))
-# saveRDS(imps3, here::here("_posts", "mus", "mods", "imps3"))
-# impsL3 <- readRDS(here::here("_posts", "mus", "mods", "impsL3"))
-
-tscsPlot(imputed_19_3, var = "Ys", cs =c(2,4,491,564,76,582), draws = 100, conf = 0.9, misscol = "red",
-         obscol = "black")
-
-m<-10
-models<-NULL
-for(i in 1:m) {
-  models[[i]] <- lmer(Ys ~ As * Wave  + (1|Id), data=impsL3$imputations[[i]])
-}
-
-pool_parameters(models)
-pred<- ggeffects::ggemmeans(models[[2]], terms = c("Wave","As"))
-mus_plot <-plot(pred)+ scale_y_continuous(limits=c(4,4.6))+labs(title="Effect of attack on acceptance of Muslims")
-
-mus_plot
-
-df1<- df%>%
-  filter(YearMeasured==1)
-df$KESSLER6
-table1::table1(~ Religion.Church|Wave, data = df1, transpose=T)
-```
-
-
-
-
-
-
-## EStimate the variances as well as the mean
-
-We can fit a distributional model
-
-
-
-```{r}
-sigma ~ group
-
-m_bayes3waveSigma <- brms::brm( 
-  bf(Ys ~ As *  Wave + (1|Id), 
-     sigma ~ As * Wave,  
-     set_rescor(rescor = FALSE)),
-  data = dat3, 
-  seed = 1234,
-  warmup = 1000,
-  iter = 2000,
-  chains = 4,
-  backend = "cmdstanr",
-  #save_pars=save_pars(group=FALSE))
-  file = here::here("_posts", "mus", "mods", "m_bayes3waveSigma"))
-
-tab<-(m_bayes3waveSigma)
-
-blh_tab <- lazerhawk::brms_SummaryTable(m_bayes3waveSigma, panderize=F)
-blh_tab
-blh_tab %>%
-  kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims") %>%
-  print()
-
-m_bayes3waveSigma
-
-tab <-parameters::model_parameters(m_bayes3waveSigma, test = c("pd"))
-tab2<- sjstats::tidy_stan(m_bayes3waveSigma)
-
-tab2<- modelsummary::modelsummary(m_bayes3waveSigma, metrics="SIGMA")
-
-
-m_bayes3waveSigma %>%
-  spread_draws(r_condition[condition,]) %>%
-  compare_levels(r_condition, by = condition) %>%
-  ungroup() %>%
-  mutate(condition = reorder(condition, r_condition)) %>%
-  ggplot(aes(y = condition, x = r_condition)) +
-  stat_halfeye() +
-  geom_vline(xintercept = 0, linetype = "dashed") 
-```
-
-
-
-
-## negative control
-
-```{r}
-km_ov <- df %>%
-  dplyr::select(
-    Id,
-    Age,
-    Wave,
-    EthnicCats,
-    Employed,
-    Urban,
-    Edu,
-    Male,
-    Pol.Orient,
-    NZdep,
-    Religious,
-    GenCohort,
-    Urban,
-    TSCORE,
-    Partner,
-    Parent,
-    Warm.Overweight,
-    # Warm.Elderly,
-    # Warm.MentalIllness,
-    # Warm.Muslims,
-    # Warm.Immigrants,
-    # Warm.Asians,
-    # Warm.Refugees,
-    # Wave,
-    # Warm.Maori,
-    # Warm.NZEuro,
-    # Warm.Indians,
-    # Warm.Chinese,
-    # Warm.Refugees,
-    # Warm.Pacific,
-    YearMeasured
-  ) %>%
-  dplyr::filter(Wave == 2018 | Wave ==2019 | Wave ==2020) %>%
-  droplevels() %>%
-  dplyr::mutate(org2018 =  ifelse(Wave == 2018 & YearMeasured ==1,1,0 ))%>%
-  group_by(Id) %>%
-  dplyr::mutate(hold = mean(org2018, na.rm = TRUE)) %>%  # Hack
-  filter(hold>0) %>% # hack to enable repeate of baseline in 2019 
-  ungroup(Id) %>%
-  dplyr::mutate(Edu = as.numeric(Edu))%>%
-  arrange(Wave,Id) %>%
-  dplyr::mutate(Attack = as.numeric((ifelse(
-    (TSCORE >= 3545 & Wave == 2018)|(Wave==2019|Wave ==2020), 1, 0)))) %>% # All 2019s even if NA need to be 1
-  # dplyr::filter(Attack == 0) %>%
-  dplyr::mutate(dys = (TSCORE - min(TSCORE)))%>% 
-  dplyr::mutate(Ys = Warm.Overweight, 
-                As = Attack)%>%
-  dplyr::mutate(yrs =  (dys/365))%>% 
-  dplyr::mutate(wave = as.numeric(Wave)-1) %>% 
-  select(Id, Wave, Ys, As, Warm.Overweight, Attack, Age, EthnicCats, Edu, Employed, Urban, Male, GenCohort, Religious, Pol.Orient, Parent, Partner, Urban, NZdep,wave) %>%
-  group_by(Id)%>% # need to fill this way
-  dplyr::mutate(pol_bz = if_else(Wave == "2018", (Pol.Orient), NA_real_)) %>%
-  fill(pol_bz) %>%
-  dplyr::mutate(rel_bz = if_else(Wave == "2018", (as.numeric(Religious)), NA_real_)) %>%
-  fill(rel_bz) %>%
-  dplyr::mutate(partner_bz = if_else(Wave == "2018", (as.numeric(Partner)), NA_real_)) %>%
-  fill(partner_bz) %>%
-  dplyr::mutate(parent_bz = if_else(Wave == "2018", (as.numeric(Parent)), NA_real_)) %>%
-  fill(parent_bz) %>%
-  dplyr::mutate(age_bz = if_else(Wave == "2018", (Age), NA_real_)) %>%
-  fill(age_bz) %>%
-  dplyr::mutate(nzdep_bz = if_else(Wave == "2018", (NZdep), NA_real_)) %>%
-  fill(nzdep_bz) %>%
-  dplyr::mutate(male_2z = if_else(Wave == "2018", (as.numeric(Male))/2, NA_real_)) %>%
-  fill(male_2z) %>%
-  dplyr::mutate(employed_bz = if_else(Wave == "2018", (as.numeric(Employed)), NA_real_)) %>%
-  fill(employed_bz) %>%
-  dplyr::mutate(edu_bz = if_else(Wave == "2018", (Edu), NA_real_)) %>%
-  fill(edu_bz) %>%
-  dplyr::mutate(ubran_bz = if_else(Wave == "2018", (as.numeric(Urban)), NA_real_)) %>%
-  fill(ubran_bz) %>%
-  dplyr::mutate(EthnicCats_b = if_else(Wave == "2018", as.numeric(EthnicCats), NA_real_)) %>%
-  fill(EthnicCats_b) %>% 
-  dplyr::mutate(EthnicCats_b, as.factor(EthnicCats_b)) %>%
-  ungroup()%>%
-  arrange(Id,Wave) 
-
-# check N
-length(unique(km_ov$Id))
-# correct
-
-t13<-table1::table1(~ Warm.Overweight|Wave*as.factor(Attack), data = km_ov, overall=FALSE)
-t13
-
-kable(t13, format ="latex", booktabs = TRUE)
-
-table1::table1(~Warm.Overweight|Wave*as.factor(Attack), data = km_all3, overall=FALSE)
-
-obtl<-table1::table1(~ Warm.Overweight|as.factor(Attack)*Wave, data = km_all3, overall=FALSE)
-
-kable(obtl, format ="latex", booktabs = TRUE)
-
-
-x <- table1::table1(~ Warm.Overweight + Age + Male + GenCohort + Edu + Employed + EthnicCats  + NZdep + Parent + Partner + Religious + Pol.Orient  + Urban|Wave*Attack, data = km_all3, overall=FALSE)
-
-t1kable(x, format ="latex")
-
-
-
-# create new data set
-library(tidyverse)
-kfo  <- km_ov %>%
-  group_by(Id) %>%  # All ZEROS
-  # mutate(Attack == as.numeric(Attack))%>%
-  mutate(As = (ifelse(Wave==2018 & Attack == 1|Wave == 2019|Wave ==2020, 0, 
-                      ifelse(Wave==2018 & Attack == 0, 1, Attack)))) %>%
-  mutate(Ys = ifelse(Wave==2018 & Attack == 1|Wave ==2019|Wave ==2020, NA, 
-                     ifelse(Wave==2018 & Attack == 0, NA, Warm.Overweight)))%>%
-  ungroup() %>%
-  arrange(Wave,Id) 
-
-
-
-# Test NAs = Correct
-table1::table1(~Ys|Wave *as.factor(As), data =kfo, overall=F)
-
-
-
-## Bind - double dataset to creat missing values
-koo <- km_ov%>%
-  bind_rows(kfo)%>%
-  arrange(Id,Wave) %>%
-  mutate(As = as.factor(As)) %>%
-  select(-c(Warm.Overweight,Attack))
-
-head(koo)
-# Check 
-
-# Missing data problem
-t2<- table1::table1( ~Ys | Wave*As, data = koo, overall=F)
-t2
-# impute missing data
-# avoid collineraity
-ko_selected <-koo%>%
-  select(Id,Wave,wave,As,Ys,pol_bz,rel_bz,partner_bz,parent_bz,age_bz,nzdep_bz,male_2z,employed_bz,edu_bz,ubran_bz,EthnicCats_b)
-
-ko_amelia<-as.data.frame(ko_selected) 
-
-
-### WITHOUT JOINT ASSUMPTION 
-# filter only 0s and only 1s for the As
-d0o <- ko_amelia %>%
-  filter(As==0 )
-
-d18o <- ko_amelia %>%
-  filter(As==1 & Wave ==2018)
-
-# need full distribution to obtain correct marginal for 19 = 1 (because we have 2018=0, and 2018=1)
-d19o <- ko_amelia 
-
-d20o <- ko_amelia
-
-
-
-#ka3$Wave<-as.numeric(ka3$Wave)
-
-# Amelia will center and scale continuous variables during the MI process. 
-
-library(Amelia)
-
-# data needs to be a data frame if passed to Amelia
-d0o <-as.data.frame(d0o)
-
-
-# We impute the entire distribution of Attack = 0, on the assumption that there 2018 and 2019 have an identical distribution. 
-
-# assume Y^0|A=2018 = Y^0 2019
-
-imputed_0_3o<- amelia(
-  set.seed=1234,
-  d0o, #dataset to impute
-  cs= c("Id"),
-  ts= c("wave"),
-  m = 10, # number of imputations
-  noms = c(
-    "EthnicCats_b"
-  ),
-  idvars=c("Wave","As")) 
-
-
-
-# we impute all the 1s from 2018 seperately.  Y^1|A=2018 \ne Y^1 2019
-d18o<-as.data.frame(d18o)
-
-imputed_18_3o<- amelia(
-  d18o, #dataset to impute
-  m = 10, # number of imputations
-  noms = c(
-    "EthnicCats_b"
-  ),
-  idvars=c("Wave","As","Id","wave")) #, # do 
-
-
-# This is tricky. We impute all the 1s from 2019 with the 1s from the joint distribution of 2018 & 2018 seperately.  
-# Y^1|A=2018,A=2019 \ne Y^1 2018.  We will need to filter the 2019 Ys later. 
-
-d19o<-as.data.frame(d19o)
-imputed_19_3o<- amelia(
-  set.seed=14321,
-  d19o, #dataset to impute
-  m = 10, # number of imputations
-  cs= c("Id"),
-  ts= c("wave"),
-  noms = c(
-    "EthnicCats_b"
-  ),
-  idvars=c("Wave","As")) # correct
-
-imputed_20_3o <- amelia(
-  set.seed=14321,
-  d19o, #dataset to impute
-  m = 10, # number of imputations
-  cs= c("Id"),
-  ts= c("wave"),
-  noms = c(
-    "EthnicCats_b"
-  ),
-  idvars=c("Wave","As")) # correct
-
-
-# Here filter only the 2019 Y^1s
-
-m<-10
-imputed_19s_3o<-NULL
-
-for(i in 1:m) {
-  imputed_19s_3o$imputations$imp[[i]] <- imputed_19_3o$imputations[[i]] %>%
-    dplyr::filter(Wave == 2019 & As == 1) %>%
-    arrange(Wave, Id)
-}
-
-# check
-
-imputed_19s_3o$imputations$imp[[1]]
-
-m<-10
-imputed_20s_3o<-NULL
-
-for(i in 1:m) {
-  imputed_20s_3o$imputations$imp[[i]] <- imputed_20_3o$imputations[[i]] %>%
-    dplyr::filter(Wave == 2020 & As == 1) %>%
-    arrange(Wave, Id)
-}
-
-# check
-
-imputed_19s_3o$imputations$imp[[1]]
-imputed_20s_3o$imputations$imp[[1]]
-
-
-m<-10
-imps3o <-NULL
-for(i in 1:m) {
-  imps3o$imputations$imp[[i]] <- dplyr::bind_rows(imputed_0_3o$imputations[[i]], 
-                                                  imputed_18_3o$imputations[[i]],
-                                                  imputed_19s_3o$imputations$imp[[i]],
-                                                  imputed_20s_3o$imputations$imp[[i]])
-  imps3o$imputations$imp[[i]] <- imps3o$imputations$imp[[i]] %>% arrange(Wave,Id)
-}
-
 # 
-# m<-20
-# imps<-NULL
-# for(i in 1:m) {
-#   imps$imputations$imp[[i]] <- dplyr::bind_rows(imputed_0$imputations[[i]], 
-#                                      imputed_1$imputations[[i]])
-#   imps$imputations$imp[[i]] <- imps$imputations$imp[[i]] %>% arrange(Wave,Id)
-#   
-# }
-
-
-```
-
-
-### TEST Ordinal
-
-
-```{r}
-km_all3 <- df %>%
-  dplyr::select(
-    Id,
-    Age,
-    Wave,
-    EthnicCats,
-    Employed,
-    Urban,
-    Edu,
-    Male,
-    Pol.Orient,
-    NZdep,
-    Religious,
-    GenCohort,
-    Urban,
-    TSCORE,
-    Partner,
-    Parent,
-    # Warm.Overweight,
-    # Warm.Elderly,
-    # Warm.MentalIllness,
-    Warm.Muslims,
-    # Warm.Immigrants,
-    # Warm.Asians,
-    # Warm.Refugees,
-    # Wave,
-    # Warm.Maori,
-    # Warm.NZEuro,
-    # Warm.Indians,
-    # Warm.Chinese,
-    # Warm.Refugees,
-    # Warm.Pacific,
-    YearMeasured
-  ) %>%
-  dplyr::filter(Wave == 2018 | Wave ==2019 | Wave ==2020) %>%
-  droplevels() %>%
-  dplyr::mutate(org2018 =  ifelse(Wave == 2018 & YearMeasured ==1,1,0 ))%>%
-  group_by(Id) %>%
-  dplyr::mutate(hold = mean(org2018, na.rm = TRUE)) %>%  # Hack
-  filter(hold>0) %>% # hack to enable repeate of baseline in 2019 
-  ungroup(Id) %>%
-  dplyr::mutate(Edu = as.numeric(Edu))%>%
-  arrange(Wave,Id) %>%
-  dplyr::mutate(Attack = as.numeric((ifelse(
-    (TSCORE >= 3545 & Wave == 2018)|(Wave==2019|Wave ==2020), 1, 0)))) %>% # All 2019s even if NA need to be 1
-  # dplyr::filter(Attack == 0) %>%
-  group_by(Id) %>%
-  dplyr::mutate(dys = (TSCORE - min(TSCORE)))%>% 
-  dplyr::mutate(Ys = Warm.Muslims, 
-                As = Attack)%>%
-  dplyr::mutate(yrs =  (dys/365))%>% 
-  dplyr::mutate(wave = as.numeric(Wave)-1) %>% 
-  group_by(Id)%>% # need to fill this way
-  dplyr::mutate(pol_bz = if_else(Wave == "2018", (Pol.Orient), NA_real_)) %>%
-  fill(pol_bz) %>%
-  dplyr::mutate(rel_bz = if_else(Wave == "2018", (as.numeric(Religious)), NA_real_)) %>%
-  fill(rel_bz) %>%
-  dplyr::mutate(partner_bz = if_else(Wave == "2018", (as.numeric(Partner)), NA_real_)) %>%
-  fill(partner_bz) %>%
-  dplyr::mutate(parent_bz = if_else(Wave == "2018", (as.numeric(Parent)), NA_real_)) %>%
-  fill(parent_bz) %>%
-  dplyr::mutate(age_bz = if_else(Wave == "2018", (Age), NA_real_)) %>%
-  fill(age_bz) %>%
-  dplyr::mutate(nzdep_bz = if_else(Wave == "2018", (NZdep), NA_real_)) %>%
-  fill(nzdep_bz) %>%
-  dplyr::mutate(male_2z = if_else(Wave == "2018", (as.numeric(Male))/2, NA_real_)) %>%
-  fill(male_2z) %>%
-  dplyr::mutate(employed_bz = if_else(Wave == "2018", (as.numeric(Employed)), NA_real_)) %>%
-  fill(employed_bz) %>%
-  dplyr::mutate(edu_bz = if_else(Wave == "2018", (Edu), NA_real_)) %>%
-  fill(edu_bz) %>%
-  dplyr::mutate(ubran_bz = if_else(Wave == "2018", (as.numeric(Urban)), NA_real_)) %>%
-  fill(ubran_bz) %>%
-  dplyr::mutate(EthnicCats_b = if_else(Wave == "2018", as.numeric(EthnicCats), NA_real_)) %>%
-  fill(EthnicCats_b) %>% 
-  dplyr::mutate(EthnicCats_b, as.factor(EthnicCats_b)) %>%
-  ungroup()%>%
-  rename(Wave = )
-arrange(Id,Wave) 
-levels(km_all3$Wave) <- c("Time 10", "Time 11","Time 12")
-# check N
-length(unique(km_all3$Id))
-# correct
-t13<-table1::table1(~ Warm.Muslims|Wave * as.factor(Attack), data = km_all3, overall=FALSE)
-t13
-kable(t13, format ="latex", booktabs = TRUE)
-
-#modelsummary::datasummary_crosstab(mean(Warm.Muslims) ~ Wave * as.factor(Attack), data = km_all3) #output = "latex_tabular")
-
-table1::table1(~Warm.Muslims|Wave*as.factor(Attack), data = km_all3, overall=FALSE)
-
-obtl<-table1::table1(~ Warm.Muslims|as.factor(Attack)*Wave, data = km_all3, overall=FALSE)
-
-kable(obtl, format ="latex", booktabs = TRUE)
-
-km_2018 <- km_all3 %>% 
-  dplyr::filter(Wave =="Time 10")%>%
-  droplevels()
-
-x <- table1::table1(~  Age +Edu + Employed + EthnicCats  + Male + NZdep + Parent + Partner + Religious + Pol.Orient  + Urban|Wave, data = km_all3, overall = FALSE)
-x
-
-t1kable(x, format ="latex")
-
-
-km_all3$As
-# create new data set
-library(tidyverse)
-kf3  <- km_all3 %>%
-  group_by(Id) %>%  # All ZEROS
-  # mutate(Attack == as.numeric(Attack))%>%
-  mutate(As = (ifelse(Wave=="Time 10" & Attack == 1|Wave == "Time 11"|Wave =="Time 12", 0, 
-                      ifelse(Wave=="Time 10" & Attack == 0, 1, Attack)))) %>%
-  mutate(Ys = ifelse(Wave=="Time 10" & Attack == 1|Wave == "Time 11"|Wave =="Time 12", NA, 
-                     ifelse(Wave=="Time 10" & Attack == 0, NA, Warm.Muslims)))%>%
-  ungroup() %>%
-  arrange(Wave,Id) 
-
-
-
-# Test NAs = Correct
-table1::table1(~Ys|Wave *as.factor(As), data =kf3, overall=F)
-
-
-
-## Bind - double dataset to creat missing values
-ka3 <- km_all3%>%
-  bind_rows(kf3)%>%
-  arrange(Id,Wave) %>%
-  mutate(As = as.factor(As)) #%>%
-# select(-c(Warm.Muslims,Attack))
-
-head(ka3$Ys)
-# Check 
-
-# Missing data problem
-t2<- table1::table1( ~Ys | Wave*As, data = ka3, overall=F)
-t2
-
-t1kable(t2, format ="latex")
-# impute missing data
-# avoid collineraity
-
-ka2_selected <-ka3%>%
-  dplyr::select(Id,Wave,wave,As,Ys,pol_bz,rel_bz,partner_bz,parent_bz,age_bz,nzdep_bz,male_2z,employed_bz,edu_bz,ubran_bz,EthnicCats_b)
-
-ka_amelia<-as.data.frame(ka2_selected) 
-
-
-### WITHOUT JOINT ASSUMPTION 
-# filter only 0s and only 1s for the As
-d0 <- ka_amelia %>%
-  filter(As==0 )
-
-ka_amelia$Time
-d18_only1 <- ka_amelia %>%
-  dplyr::filter(As==1 & Wave =="Time 10")
-
-nrow(d18_only1)
-
-
-# need full distribution to obtain correct marginal for 19 = 1 (because we have 2018=0, and 2018=1)
-d19_only1 <- ka_amelia %>%
-  filter(Wave =="Time 10" | (As==1 & Wave =="Time 11" ))
-
-d20_only1 <- ka_amelia %>%
-  filter(Wave =="Time 10"|(As==1 & Wave =="Time 11" )|(As==1 & Wave =="Time 12" ))
-
-
-library(Amelia)
-
-# data needs to be a data frame if passed to Amelia
-d0 <-as.data.frame(d0)
-
-
-# We impute the entire distribution of Attack = 0, on the assumption that there 2018 and 2019 have an identical distribution. 
-# assume Y^0|A=2018 = Y^0 2019
-
-imputed_0o<- amelia(
-  set.seed=1234,
-  d0, #dataset to impute
-  # cs= c("Id"),
-  # ts= c("wave"),
-  m = 10, # number of imputations
-  noms = c(
-    "EthnicCats_b"
-  ),
-  ors = c("Ys"),
-  idvars=c("Wave","As", "Id","wave")) 
-
-saveRDS(imputed_0o, here::here("_posts","mus","mods", "imputed_0o"))
-
-d18_only1<-data.frame(d18_only1)
-
-## For 2018 v 2020 contrast
-imputed_18only1o<- amelia(
-  set.seed=1234,
-  d18_only1, #dataset to impute
-  # cs= c("Id"),
-  # ts= c("wave"),
-  m = 10, # number of imputations
-  noms = c(
-    "EthnicCats_b"
-  ),
-  ors = c("Ys"),
-  idvars=c("Wave","As", "Id","wave")) 
-
-
-saveRDS(imputed_18only1o, here::here("_posts","mus","mods", "imputed_18only1o"))
-
-
-# we impute all the 1s from 2018 seperately.  Y^1|A=2018 \ne Y^1 2019
-d19_only1<-as.data.frame(d19_only1)
-
-str(d19_only1)
-# This is tricky. We impute all the 1s from 2019 with the 1s from the joint distribution of 2018 & 2018 seperately.  
-# Y^1|A=2018,A=2019 \ne Y^1 2018.  We will need to filter the 2019 Ys later. 
-
-imputed_19only1o<- amelia(
-  d19_only1, #dataset to impute
-  cs= c("Id"),
-  ts= c("wave"),
-  m = 10, # number of imputations
-  noms = c(
-    "EthnicCats_b"
-  ),
-  ors = c("Ys"),
-  idvars=c("As", "Wave"),
-  lags="Ys",
-  leads="Ys",
-  logs= "Ys") 
-
-
-
-imputed_19only1o<-transform(imputed_19only1o, Ys = exp(Ys))
-
-saveRDS(imputed_19only1o, here::here("_posts","mus","mods", "imputed_19only1o"))
-```
-
-# This is tricky. We impute all the 1s from 2019 with the 1s from the joint distribution of 2018 & 2018 seperately.  
-# Y^1|A=2018,A=2019 \ne Y^1 2018.  We will need to filter the 2019 Ys later. 
-
-```{r}
-d20_only1o<-as.data.frame(d20_only1)
-imputed_20only1o <- amelia(
-  set.seed=14321,
-  d20_only1, #dataset to impute
-  m = 10, # number of imputations
-  cs= c("Id"),
-  ts= c("wave"),
-  noms = c(
-    "EthnicCats_b"
-  ),
-  bound = rbind(c(1, 0, Inf))),
-idvars=c("Wave","As"),
-lags="Ys",
-leads="Ys")  # correct
-
-saveRDS(imputed_20only1o, here::here("_posts","mus","mods", "imputed_20only1o"))
-
-
-## 18 one
-m<-10
-imputed_18one<-NULL
-
-for(i in 1:m) {
-  imputed_18one$imputations$imp[[i]] <- imputed_18only1o$imputations[[i]] %>%
-    dplyr::filter(Wave == "Time 10" & As == 1) %>%
-    arrange(Wave, Id)
-}
-
-## 18 Zeros
-m<-10
-imputed_18zero<-NULL
-
-for(i in 1:m) {
-  imputed_18zero$imputations$imp[[i]] <- imputed_0$imputations[[i]] %>%
-    dplyr::filter(Wave == "Time 10" & As == 0) %>%
-    arrange(Wave, Id)
-}
-
-
-
-# Here filter only the 2019 Y^1s
-m<-10
-imputed_19one<-NULL
-
-# use 20 wave: King says leads give better estimates (Amelia documentation)
-for(i in 1:m) {
-  imputed_19one$imputations$imp[[i]] <- imputed_19only1o$imputations[[i]] %>%
-    dplyr::filter(Wave == "Time 11" & As == 1) %>%
-    arrange(Wave, Id)
-}
-
-# check
-
-imputed_19one$imputations$imp[[1]]
-
-## 19 Zeros
-m<-10
-imputed_19zero<-NULL
-
-for(i in 1:m) {
-  imputed_19zero$imputations$imp[[i]] <- imputed_0$imputations[[i]] %>%
-    dplyr::filter(Wave == "Time 11" & As == 0) %>%
-    arrange(Wave, Id)
-}
-
-
-
-# Here filter only the 2020 Y^1s
-m<-10
-imputed_20one<-NULL
-
-for(i in 1:m) {
-  imputed_20one$imputations$imp[[i]] <- imputed_20only1$imputations[[i]] %>%
-    dplyr::filter(Wave == "Time 12" & As == 1) %>%
-    arrange(Wave, Id)
-}
-
-m<-10
-imputed_20zero<-NULL
-
-for(i in 1:m) {
-  imputed_20zero$imputations$imp[[i]] <- imputed_0$imputations[[i]] %>%
-    dplyr::filter(Wave == "Time 12" & As == 0) %>%
-    arrange(Wave, Id)
-}
-
-
-
-# check
-
-imputed_20one$imputations$imp[[1]]
-
-
-# combine the data and arrange by wave
-
-m<-10
-imps_18 <-NULL
-for(i in 1:m) {
-  imps_18$imputations$imp[[i]] <- dplyr::bind_rows(imputed_18zero$imputations$imp[[i]], 
-                                                   imputed_18one$imputations$imp[[i]])
-}
-
-m<-10
-imps_19 <-NULL
-for(i in 1:m) {
-  imps_19$imputations$imp[[i]] <- dplyr::bind_rows(imputed_19zero$imputations$imp[[i]], 
-                                                   imputed_19one$imputations$imp[[i]])
-}
-
-m<-10
-imps_20 <-NULL
-for(i in 1:m) {
-  imps_20$imputations$imp[[i]] <- dplyr::bind_rows(imputed_20zero$imputations$imp[[i]], 
-                                                   imputed_20one$imputations$imp[[i]])
-}
-
-
-## ALL 1s
-m<-10
-imps_all <-NULL
-for(i in 1:m) {
-  imps_all$imputations$imp[[i]] <- dplyr::bind_rows(
-    imputed_18zero$imputations$imp[[i]],
-    imputed_18one$imputations$imp[[i]],
-    imputed_19zero$imputations$imp[[i]],
-    imputed_19one$imputations$imp[[i]],
-    imputed_20zero$imputations$imp[[i]],
-    imputed_20one$imputations$imp[[i]]
-  ) %>%
-    arrange(Wave, Id)
-}
-
-# Save data
-#saveRDS(imps_all, here::here("_posts","mus","mods", "imps_all"))
-
-
-#mod 2018
-m<-10
-model_18<-NULL
-for(i in 1:m) {
-  model_18[[i]] <- lm(Ys ~ As, data = imps_18$imputations$imp[[i]])
-}
-
-pool_parameters(model_18)
-pred_18<- ggeffects::ggemmeans(model_18[[6]], terms = c("As"))
-mus_plot_18 <-plot(pred_18)+ scale_y_continuous(limits=c(4,4.6))+labs(title="Effect of attack on acceptance of Muslims")
-
-mus_plot_18
-
-
-# mod 19
-#mod 2018
-m<-10
-model_19<-NULL
-for(i in 1:m) {
-  model_19[[i]] <- lm(Ys ~ As, data = imps_19$imputations$imp[[i]])
-}
-
-pool_parameters(model_19)
-pred_19<- ggeffects::ggemmeans(model_19[[6]], terms = c("As"))
-mus_plot_19 <-plot(pred_19)+ scale_y_continuous(limits=c(4,4.6))+labs(title="Effect of attack on acceptance of Muslims")
-
-mus_plot_19
-
-# mod 20
-m<-10
-model_20<-NULL
-for(i in 1:m) {
-  model_20[[i]] <- lm(Ys ~ As, data = imps_20$imputations$imp[[i]])
-}
-
-
-pool_parameters(model_18)
-pool_parameters(model_19)
-pool_parameters(model_20)
-
-
-model_20<- ggeffects::ggemmeans(model_20[[6]], terms = c("As"))
-mus_plot_20 <-plot(model_20)+ scale_y_continuous(limits=c(4,4.6))+labs(title="Effect of attack on acceptance of Muslims")
-
-mus_plot_18 + mus_plot_19 + mus_plot_20
-
-
-# all one
-
-m<-10
-model_all<-NULL
-for(i in 1:m) {
-  model_all[[i]] <- lmer(Ys ~  Wave * As + (1|Id), data = imps_all$imputations$imp[[i]])
-}
-
-
+# 
+# 
+# # Works!
+# table(imps_bind20$imputations$imp[[1]]$Wave)
+# 
+# # save
+# saveRDS(imps_bind20, here::here("_posts", "mus", "mods", "imps_bind20"))
+# 
+# # make list for bayesian models
+# listbayes20 <-imps_bind20$imputations$imp
+# 
+# # save list for bayesian models
+# saveRDS(listbayes20, here::here("_posts", "mus", "mods", "listbayes"))
+# 
+# 
+# # ml 19 wave --------------------------------------------------------------
+# 
+# 
+# # model
 # m<-10
-# model_allS<-NULL
+# model_all19<-NULL
 # for(i in 1:m) {
-#   model_allS[[i]] <- lmer(scale(Ys) ~  Wave * As + (1|Id), data = imps_all$imputations$imp[[i]])
-#   }
-# 
-# pool_parameters(model_all, digits = 3) 
-# pool_parameters(model_allS, digits = 3) 
-# 
-# # library Evalues for sensitivity analysis
-# library(EValue)
-# 
-# # Evalue
-# evalues.OLS(est=.17, se = .01, sd = 1, delta = 1)
-# 
-# # > evalues.OLS(est=.17, se = .01, sd = 1, delta = 1)
-# #             point    lower    upper
-# # RR       1.167308 1.146713 1.188272
-# # E-values 1.609235 1.556882       NA
-# 
-# #2019 AS 1
-# # > evalues.OLS(est=.14, se = .01, sd = 1, delta = 1)
-# #             point    lower    upper
-# # RR       1.135871 1.115832 1.156271
-# # E-values 1.528723 1.475343       NA
-
-
-## Another approach a little better for writing code, identical results
-library(merTools)
-modList <- lmerModList(Ys ~  Wave * As + (1|Id), data =  imps_all$imputations$imp)
-fixef(modList) # model with dropped missing
-
-modelFixedEff(modList)[,c(1:3)]%>%
-  kbl("latex",booktabs = TRUE,digits=3)
-
-
-tab<-pool_parameters(modList)[,1:6]
-tab
-plot(tab, show_labels = TRUE)
-
-pl_model_all<- ggeffects::ggemmeans(model_all[[6]], terms = c("Wave","As"))
-mus_plot_model_all <-plot(pl_model_all)+ scale_y_continuous(limits=c(4.10,4.5))+labs(title="Effect of attack on acceptance of Muslims")
-
-visualisation_matrix(model_all)
-
-estimate_means(
-  model_all[[1]],
-  contrast = "As",
-  at = c("As","Wave"),
-  # fixed = NULL,
-  # transform = "none",
-  ci = 0.95,
-  adjust = "holm",
-  length = 2
-)
-
-estimate_contrasts( model_all[[1]],
-                    contrast = "As",
-                    at = c("Wave","As") )
-%>%
-  kbl("latex",booktabs = TRUE,digits=2)
-
-
-
-
-
-mus_plot_18 + mus_plot_19 + mus_plot_20 
-
-# #for brms model
-dat_l<-imps_all$imputations$imp
-# str(dat4)
-# str(dat3)
-saveRDS(dat_l, here::here("_posts", "mus", "mods", "dat_l"))
-# # saveRDS(imps_all, here::here("_posts", "mus", "mods", "imps_all"))
-#  dat_l <- readRDS(here::here("_posts", "mus", "mods", "dat_l"))
-# 
-# tscsPlot(imputed_20only1, var = "Ys", cs =c(2,4,491,564,76,582), draws = 100, conf = 0.9, misscol = "red",
-#   obscol = "black")
-# 
-
-## 2018-2020 contrast
-# m<-10
-# imps_base2020 <-NULL
-# 
-# for(i in 1:m) {
-#   imps_base2020$imputations$imp[[i]] <- dplyr::bind_rows(imputed_18b$imputations[[i]], 
-#                                       imputed_18_3$imputations[[i]],
-#                                       imputed_20s_3$imputations$imp[[i]]%>%
-#                                        droplevels())
-#   imps_base2020$imputations$imp[[i]] <- imps_base2020$imputations$imp[[i]] %>% arrange(Wave,Id)
+#   model_all19[[i]] <- lmer(Ys ~  As * Wave + (1|Id), data = imps_bind19$imputations$imp[[i]])
 # }
 # 
-# m<-10
-# imps_d <-NULL
-# dat_d <- NULL
+# # table
+# tab19<-pool_parameters(model_all19)
+# tab19
+# tab19[,c(1:5)]%>%
+#   # print_md()%>%
+#   kbl("latex",booktabs = TRUE,digits=2)
 # 
+# plot(tab19, show_labels = TRUE)
+# 
+# pl_ml19 <- ggeffects::ggemmeans(model_all19[[2]], terms = c("Wave","As")) 
+# 
+# 
+# mus_plot_model_all <-plot(pl_ml19)+ 
+#   scale_y_continuous(limits=c(4.10,4.5))+
+#   labs(subtitle="Effect of attack on acceptance of Muslims") + 
+#   #scale_x_discrete(limits=rev) +
+#   coord_flip() 
+# mus_plot_model_all
+# 
+# 
+# estimate_contrasts(
+#   model_all19[[4]],
+#   contrast = "As",
+#   at = c("As","Wave"),
+#   # fixed = NULL,
+#   # transform = "none",
+#   ci = 0.95,
+#   adjust = "holm",
+#   length = 2
+# )
+# 
+# 
+# 
+# 
+# # ml 20 -------------------------------------------------------------------
+# 
+# 
+# # model
+# m<-10
+# model_all20<-NULL
 # for(i in 1:m) {
-#   imps_d$imputations[[i]]<- as.data.frame(imps_base2020$imputations$imp[[i]])
+#   model_all20[[i]] <- lmer(Ys ~  As * Wave + (1|Id), data = imps_bind20$imputations$imp[[i]])
 # }
 # 
-# dat_d<-imps_d$imputations
-# m<-10
-# models_d<-NULL
-# for(i in 1:m) {
-#   models_d[[i]] <- lmer(Ys ~ As * Wave  + (1|Id), data=imps_d$imputations[[i]])
-# }
-# pool_parameters(models_d)
-# pred__base20202<- ggeffects::ggemmeans(models_d[[6]], terms = c("Wave","As"))
-# plot(pred__base20202)
-# mus_plot_base20202 <-plot(pred__base20202)+ scale_y_continuous(limits=c(4,4.6))+labs(title="Effect of attack on acceptance of Muslims")
-
-mus_plot
-```
-
-## Bayesian model 3 x waves
-
-```{r}
-## Do not save residuals
-#   save_pars=save_pars(group=FALSE))
-dat_l<- readRDS(here::here("_posts","mus","mods","dat_l"))
-rm(m_b)
-m_b <- brms::brm( 
-  Ys ~ As *  Wave + (1|Id), 
-  data 
-  = dat_l, 
-  seed = 1234,
-  warmup = 1000,
-  iter = 2000,
-  chains = 4,
-  backend = "cmdstanr",
-  #save_pars=save_pars(group=FALSE))
-  file = here::here("_posts", "mus", "mods", "m_b"))
-
-lazerhawk::brms_SummaryTable(m_b)
-prior_summary(m_b)
+# # table
+# tab20<-pool_parameters(model_all20)
+# tab20
+# tab20 [,c(1:5)]%>%
+#   # print_md()%>%
+#   kbl("latex",booktabs = TRUE,digits=2)
+# 
+# plot(tab, show_labels = TRUE)
+# 
+# pl_ml <- ggeffects::ggemmeans(model_all20[[2]], terms = c("Wave","As")) 
+# 
+# 
+# mus_plot_model_all <-plot(pl_ml)+ 
+#   scale_y_continuous(limits=c(4.10,4.5))+
+#   labs(subtitle="Effect of attack on acceptance of Muslims") + 
+#   #scale_x_discrete(limits=rev) +
+#   coord_flip() 
+# mus_plot_model_all
+# 
+# 
+# estimate_contrasts(
+#   model_all20[[4]],
+#   contrast = "As",
+#   at = c("As","Wave"),
+#   # fixed = NULL,
+#   # transform = "none",
+#   ci = 0.95,
+#   adjust = "holm",
+#   length = 2
+# )
 
 
-
-# Print Table
-ouput <- tidy(m_b)
-str(ouput)
-ouput
-#output<- as.data.frame(ouput)
-
-test <-tidybayes::summaries_draws.grouped_df(m_b)
-
-library(lazerhawk)
-blh_tab <- lazerhawk::brms_SummaryTable(m_b, panderize=F)
-blh_tab
-blh_tab %>%
-  kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims") %>%
-  print()
-
-
-pred3<- ggeffects::ggemmeans(m_b, terms = c("Wave","As"))
-mus_plot3 <-plot(pred3)+ scale_y_continuous(limits=c(4,4.6))+labs(title="Effect of attack on acceptance of Muslims")
-
-p <-mcmc_intervals(m_b)
-ps<- brms::posterior_summary(m_b) 
-
-```
-
-### lognormal prior
-
-
-```{r}
-
-m_lgn <- brms::brm( 
-  bf(Ys ~ As  *  Wave + (1|Id)),#, 
-  # sigma ~ As + Wave + (1|Id)),
-  data = dat_l,
-  prior = c(prior(lognormal(0, 0.25), class = b, coef = "WaveWave11"),
-            prior(lognormal(0, 0.25), class = b, coef = "WaveWave12")), 
-  seed = 1234,
-  warmup = 1000,
-  iter = 2000,
-  chains = 4,
-  backend = "cmdstanr",
-  #save_pars=save_pars(group=FALSE))
-  file = here::here("_posts", "mus", "mods", "m_lgn"))
-```
-
-Marginal means
-
-### Graphs 
-
-
-
+# bayesian 20  ------------------------------------------------------------
+# 
+# # NO DIFF
+# b_m20 <- brms::brm( 
+#   bf(Ys ~ As  *  Wave + (1|Id)),#, 
+#   # sigma ~ As + Wave + (1|Id)),
+#   data = listbayes20,
+#   # prior = c(prior(normal(.04, .5), class = b, coef = "WaveTime11"),
+#   #           prior(normal(.08, .5), class = b, coef = "WaveTime12"),
+#   #           prior(normal(0,  1), class = b, coef = "As1"),
+#   #           prior(normal(0,.25), class=b, coef= "As1:WaveTime11"),
+#   #           prior(normal(0,.25), class=b, coef= "As1:WaveTime12")), 
+#   seed = 1234,
+#   warmup = 1000,
+#   iter = 2000,
+#   chains = 4,
+#   backend = "cmdstanr",
+#   #save_pars=save_pars(group=FALSE))
+#   file = here::here("_posts", "mus", "mods", "b_m20"))
+# 
+# tab20b<- lazerhawk::brms_SummaryTable(b_m20, panderize=F)
+# tab20b
+# tab20b %>%
+#   kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims") %>%
+#   print()
+# 
+# 
+# 
+# 
+# # bayesian 19 -------------------------------------------------------------
+# 
+# # no point
+# 
+# b_m19 <- brms::brm( 
+#   bf(Ys ~ As  *  Wave + (1|Id)),#, 
+#   # sigma ~ As + Wave + (1|Id)),
+#   data = listbayes20,
+#   # prior = c(prior(normal(.04, .5), class = b, coef = "WaveTime11"),
+#   #           prior(normal(.08, .5), class = b, coef = "WaveTime12"),
+#   #           prior(normal(0,  1), class = b, coef = "As1"),
+#   #           prior(normal(0,.25), class=b, coef= "As1:WaveTime11"),
+#   #           prior(normal(0,.25), class=b, coef= "As1:WaveTime12")), 
+#   seed = 1234,
+#   warmup = 1000,
+#   iter = 2000,
+#   chains = 4,
+#   backend = "cmdstanr",
+#   #save_pars=save_pars(group=FALSE))
+#   file = here::here("_posts", "mus", "mods", "b_m19"))
+# 
+# tab19b<- lazerhawk::brms_SummaryTable(b_m19, panderize=F)
+# tab19b
+# tab19b
+# b %>%
+#   kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims") %>%
+#   print()
+# 
+# 
