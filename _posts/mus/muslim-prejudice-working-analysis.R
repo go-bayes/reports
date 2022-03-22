@@ -1109,7 +1109,7 @@ conditional3 <- plot(conditional_effects(b_m0,  "Wave:As",  ndraws = 100, spaghe
 bayes_3 <- conditional3$`Wave:As`  +  scale_y_continuous(limits=c(4.0,4.48)) +
   labs(subtitle="Potential outcome trend in Muslim acceptance:\nattack vs. no attack",
        y= "Muslim Warmth", 
-       x = "Wave: 2018-20; N = 47948") + scale_colour_okabe_ito(alpha =.5)
+       x = "Wave: 2018-2020; N = 47948") + scale_colour_okabe_ito(alpha =.5)
 
 #scale_color_viridis_d(option = "cividis") 
 
@@ -1713,15 +1713,16 @@ lazerhawk::brms_SummaryTable(b4_m0, panderize=F)
 # graph bayes 4 -----------------------------------------------------------
 
 length(unique(imps_bind4$imputations$imp[[1]]$Id))
-labs(subtitle="Potential outcome trend in Muslim acceptance: attack vs. no attack",
-     
+
 #Used
 conditional4 <- plot(conditional_effects(b4_m0,  "Wave:As",  ndraws = 100, spaghetti = T), points = F)
+saveRDS(conditional4 here::here("_posts", "mus", "mods","conditional4"))
 
+conditional4
 bayes_4 <- conditional4$`Wave:As` +  scale_y_continuous(limits=c(4.0,4.48)) +
   labs(subtitle="Potential outcome trend in Muslim acceptance: attack vs. no attack",
        y= "Muslim Warmth", 
-       x = "Waves: 2017-20; N = 17014") + scale_colour_okabe_ito(alpha =.5)
+       x = "Waves: 2017-2020; N = 17014") + scale_colour_okabe_ito(alpha =.5)
 bayes_4
 #scale_color_viridis_d(option = "cividis") 
 
@@ -2246,7 +2247,7 @@ conditional5 <- plot(conditional_effects(b5_m0,  "Wave:As",  ndraws = 100, spagh
 bayes_5 <- conditional5$`Wave:As` +   scale_y_continuous(limits=c(4.0,4.48)) +
   labs(subtitle="Potential outcome trend in Muslim acceptance:\nattack vs. no attack",
        y= "Muslim Warmth", 
-       x = "Waves: 2016-20; N=21796") + scale_colour_okabe_ito(alpha =.5)
+       x = "Waves: 2016-2020; N=21796") + scale_colour_okabe_ito(alpha =.5)
 
 #scale_color_viridis_d(option = "cividis") 
 bayes_5
@@ -2814,30 +2815,6 @@ ggsave(
 
 
 
-
-# COMBINED GRAPH ----------------------------------------------------------
-
-robust_waves <- bayes_9 + bayes_5 + bayes_3 + plot_annotation(
-  title = "Choice of time-depth for longitudinal sample does not affect causal inference",
-  subtitle = "Nine-wave, five-wave, and fully-measured attack-waves",
- tag_levels = "a")
-robust_waves
-
-ggsave(
-  robust_waves,
-  path = here::here(here::here("_posts", "mus", "figs")),
-  width = 14,
-  height =8,
-  units = "in",
-  filename = "robust_waves.jpg",
-  device = 'jpeg',
-  limitsize = FALSE,
-  dpi = 1000
-)
-
-
-
-
 # impute stationary  ---------------------------------------------------------------
 
 
@@ -3135,10 +3112,10 @@ listbayesST <-imps_bind_st$imputations$imp
 saveRDS(listbayesST, here::here("_posts", "mus", "mods", "listbayesST"))
 
 #readRDS
-#listbayesST<- readRDS(here::here("_posts", "mus", "mods", "listbayesST"))
+listbayesST<- readRDS(here::here("_posts", "mus", "mods", "listbayesST"))
 
 
-# ML model ----------------------------------------------------------------
+# ML model  stationary ----------------------------------------------------------------
 
 # model
 m<-10
@@ -3167,6 +3144,74 @@ mus_plot_model_all <-plot(pl_ml)+
 mus_plot_model_all
 
 
+# bayesian model stationary -----------------------------------------------
+
+
+
+bst_m0 <- brms::brm( 
+  bf(Ys ~ As  *  Wave + (1|Id)),
+  family = gaussian, 
+  data = listbayesST,
+  seed = 1234,
+  warmup = 1000,
+  iter = 2000,
+  chains = 4,
+  backend = "cmdstanr",
+  file = here::here("_posts", "mus", "mods", "bst_m0")
+)
+
+lazerhawk::brms_SummaryTable(bst_m0, panderize=F)
+
+
+
+# graph bayes stationary  -----------------------------------------------------------
+
+
+#Used
+conditional_st <- plot(conditional_effects(bst_m0,  "Wave:As",  ndraws = 100, spaghetti = T), points = F)
+saveRDS(conditional_st,here::here("_posts","mus","mods","conditional_st"))
+
+bayes_st <- conditional_st$`Wave:As`  +  scale_y_continuous(limits=c(4.0,4.48)) +
+  labs(subtitle="Potential outcome trend in Muslim acceptance:\nattack vs. no attack",
+       y= "Muslim Warmth", 
+       x = "Waves: 2012-2020, N = 47948") + scale_colour_okabe_ito(alpha=.5)
+
+#scale_color_viridis_d(option = "cividis") 
+
+bayes_st
+ggsave(
+  bayes_9,
+  path = here::here(here::here("_posts", "mus", "mods")), # too large
+  width = 12,
+  height =9,
+  units = "in",
+  filename = "bayes_st.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 800
+)
+
+
+
+# COMBINED GRAPH ----------------------------------------------------------
+
+robust_waves <- (bayes_9 + bayes_3)/( bayes_5 + bayes_3) / (bayes_4 + bayes_3 )+ plot_annotation(
+  title = "Choice of time-depth for longitudinal sample does not affect causal inference",
+  subtitle = "Nine-wave, five-wave, and fully-measured attack-waves",
+  tag_levels = "a")
+robust_waves
+
+ggsave(
+  robust_waves,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 14,
+  height =14,
+  units = "in",
+  filename = "robust_waves.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1000
+)
 
 
 
