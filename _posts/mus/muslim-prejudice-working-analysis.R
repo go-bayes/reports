@@ -247,7 +247,7 @@ ggsave(
 
 
 
-# time trend --------------------------------------------------------------
+# time trajectory --------------------------------------------------------------
 
 
 ### Impute all waves of MUS PRED
@@ -420,15 +420,16 @@ imputed_m <- amelia(
   # number of imputations
   ords = "Ys",
   lags= "Ys",
-  leads="Ys",
+ # leads="Ys",
   noms = c("EthnicCats_b","GenCohort"),
   idvars = c("Wave","As", "yrs","dys","TSCORE_i"),
-  polytime = 2, # Allow polynomial, if 3, reverts to pre w10 mean!
+#  polytime = 2, # Allow polynomial?
   intercs = F, # too many vars
   bounds = bds, # lower upper bounds to Mus Prej
   empri = .05*nrow(all_d_selected)
 )
 saveRDS(imputed_m, here::here("_posts","mus", "mods","imputed_m"))
+
 
 library(splines)
 m<-10
@@ -437,7 +438,7 @@ for(i in 1:m) {
   model_m[[i]] <- lmer(Ys ~ bs(yrs)  + (1|Id), data = imputed_m$imputations[[i]])
 }
 
-# to recover linear trend
+# to recover linear trajectory
 m<-10
 model_ml<-NULL
 for(i in 1:m) {
@@ -455,7 +456,7 @@ tab [,c(1:5)]%>%
 plot(tab, show_labels = TRUE)
 
 
-# graph trend -------------------------------------------------------------
+# graph trajectory -------------------------------------------------------------
 
 
 pa <- ggeffects::ggemmeans(model_m[[3]], terms = c("yrs[all]")) 
@@ -463,66 +464,91 @@ ma <- ggeffects::ggemmeans(model_ml[[3]], terms = c("yrs[all]"))
 
 length(unique(imputed_m$imputations[[1]]$Id))
                       
-trend_spline <-plot(pa) + #  add.data   = TRUE, dot.alpha = 0.005) +
-  labs(title="National New Zealand trend in Muslim acceptance",
+trajectory_spline <-plot(pa) + #  add.data   = TRUE, dot.alpha = 0.005) +
+  labs(title="National New Zealand trajectory in Muslim acceptance",
        subtitle="years: 2012-2017; N = 12179") + 
   labs(y="Muslim Warmth",
        x = "Years") +
     scale_y_continuous(limits=c(3,4.5)) + 
   theme_classic() #coord_flip() 
-trend_spline 
+trajectory_spline 
+
+
+trajectory_1217 <-plot(ma) + #  add.data   = TRUE, dot.alpha = 0.005) +
+  labs(title="National New Zealand trajectory in Muslim acceptance",
+       subtitle="years: 2012-2017/18; N = 12179") + 
+  labs(y="Muslim Warmth",
+       x = "Years:2012-2017/19") +
+  scale_y_continuous(limits=c(3,4.5)) + 
+  theme_classic() #coord_flip() 
+trajectory_spline 
+trajectory_1217
+
 # 
-# plot_trend_linear <-plot(ma)+labs(title="Growth in Muslim Acceptance",
+# plot_trajectory_linear <-plot(ma)+labs(title="Growth in Muslim Acceptance",
 #                                   subtitle="Linear model") +  
 #   labs(y="Muslim Warmth",
 #        x = "Years") +
 #   scale_y_continuous(limits=c(3,4.5)) + theme_classic() #+ scale_colour_okabe_ito(alpha =.3)
 
 # 
-# trend_spline <- plot_trend_linear + plot_trend_spline + 
-#   plot_annotation(title = "Increasing Trend in Muslim Acceptance",
+# trajectory_spline <- plot_trajectory_linear + plot_trajectory_spline + 
+#   plot_annotation(title = "Increasing trajectory in Muslim Acceptance",
 #                   subtitle = "Years 2012-2017/12",tag_levels = "a")
 
 #scale_color_viridis_d(option = "cividis") 
 
-trend_spline 
+trajectory_spline 
 
 ggsave(
-  trend_spline,
+  trajectory_spline,
   path = here::here(here::here("_posts", "mus", "figs")),
   width = 12,
   height =9,
   units = "in",
-  filename = "trend_spline",
+  filename = "trajectory_spline",
   device = 'jpeg',
   limitsize = FALSE,
   dpi = 800
 )
 
-trend_spline
+ggsave(
+  trajectory_1217,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 12,
+  height =9,
+  units = "in",
+  filename = "trajectory_1217",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 800
+)
 
 
-# bayes time trend --------------------------------------------------------
+
+
+
+# bayes time trajectory --------------------------------------------------------
 # prepare data
 
 m <- 10
-trend <- NULL
+trajectory <- NULL
 
 for(i in 1:m) {
-  trend$imputations$imp[[i]] <-imputed_m$imputations[[i]] %>%
+  trajectory$imputations$imp[[i]] <-imputed_m$imputations[[i]] %>%
     arrange(Wave,Id) 
 }
 
 
-trendlist <- trend$imputations$imp[[i]]
-saveRDS(trendlist, here::here("_posts","mus","mods","trendlist"))
+trajectorylist <- trajectory$imputations$imp[[i]]
+saveRDS(trajectorylist, here::here("_posts","mus","mods","trajectorylist"))
 #Gamm
 library('mgcv')
 
 b_time <- brms::brm( 
   bf(Ys ~ s(yrs)  + (1|Id)),
   family = gaussian, 
-  data = trendlist,
+  data = trajectorylist,
   seed = 1234,
   warmup = 1000,
   iter = 2000,
@@ -535,7 +561,7 @@ lazerhawk::brms_SummaryTable(b_time, panderize=F)
 
 
 
-# graph bayes time trend -----------------------------------------------------------
+# graph bayes time trajectory -----------------------------------------------------------
 plot_smooth <- marginal_smooths(b_time)
 plot_smooth
 
@@ -543,7 +569,7 @@ conditional9 <- plot(marginal_smooths(b9_m0,  "Wave:As",  ndraws = 100, spaghett
 saveRDS(conditional9,here::here("_posts","mus","mods","conditional9"))
 
 bayes_9 <- conditional9$`Wave:As`  +  scale_y_continuous(limits=c(4.0,4.48)) +
-  labs(subtitle="Potential outcome trend in Muslim acceptance:\nattack vs. no attack",
+  labs(subtitle="Potential outcome trajectory in Muslim acceptance:\nattack vs. no attack",
        y= "Muslim Warmth", 
        x = "Waves: 2012-2020, N = 11799") + scale_colour_okabe_ito(alpha=.5)
 
@@ -562,7 +588,7 @@ ggsave(
   dpi = 1000
 )
 
-# df for estimating time trend in attack sample ---------------------------
+# df for estimating time trajectory in attack sample ---------------------------
 
 km_all3 <- df %>%
   dplyr::select(
@@ -985,17 +1011,18 @@ for (i in 1:m) {
 # Works!
 summary(imps_bind$imputations$imp[[1]]$Wave)
 
+
 # save
-saveRDS(imps_bind, here::here("_posts", "mus", "mods", "imps_bind"))
+#saveRDS(imps_bind, here::here("_posts", "mus", "mods", "imps_bind"))
 
 # read
 #imps_bind <- readRDS(here::here("_posts", "mus", "mods", "imps_bind"))
 
 # make list for bayesian models
-listbayes <-imps_bind$imputations$imp
+#listbayes <-imps_bind$imputations$imp
 
 # save list for bayesian models
-saveRDS(listbayes, here::here("_posts", "mus", "mods", "listbayes"))
+#saveRDS(listbayes, here::here("_posts", "mus", "mods", "listbayes"))
 
 #readRDS
 #listbayes<- readRDS(here::here("_posts", "mus", "mods", "listbayes"))
@@ -1105,23 +1132,46 @@ plot(tab_b_m0, show_labels = TRUE)
 conditional3 <- plot(conditional_effects(b_m0,  "Wave:As",  ndraws = 100, spaghetti = T), points = F)
 #saveRDS(conditional3,here::here("_posts","mus","mods","conditional3"))
 
+conditional3main <- plot(conditional_effects(b_m0,  "Wave:As",  ndraws = 200, spaghetti = T), points = F)
+saveRDS(conditional3main,here::here("_posts","mus","mods","conditional3"))
 
 bayes_3 <- conditional3$`Wave:As`  +  scale_y_continuous(limits=c(4.0,4.48)) +
-  labs(subtitle="Potential outcome trend in Muslim acceptance:\nattack vs. no attack",
+  labs(subtitle="Multiple imputation: sample from previous 6 waves prior to attack + full attack wave sample + 2 post-attack waves",
        y= "Muslim Warmth", 
-       x = "Wave: 2018-2020; N = 47948") + scale_colour_okabe_ito(alpha =.5)
+       x = "Years: 2018-2020/21; N = 47948") + scale_colour_okabe_ito(alpha =.5)
+
+bayes_3main <- conditional3main$`Wave:As` +  scale_y_continuous(limits=c(4.1,4.48)) +
+  labs(subtitle = "Single sigma for attack vs. no-attack",
+       y= "Muslim Warmth",        y= "Muslim Warmth", 
+       x = "Years: 2018-2020/21; N = 47948") + scale_colour_okabe_ito(alpha =.3)
+
 
 #scale_color_viridis_d(option = "cividis") 
 
 bayes_3 
+bayes_3main
 
 ggsave(
   bayes_3,
   path = here::here(here::here("_posts", "mus", "figs")),
   width = 12,
-  height =9,
+  height =12,
   units = "in",
   filename = "bayes_3.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 800
+)
+
+bayes_3main
+
+ggsave(
+  bayes_3main,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 12,
+  height =12,
+  units = "in",
+  filename = "bayes_3main.jpg",
   device = 'jpeg',
   limitsize = FALSE,
   dpi = 1000
@@ -1150,7 +1200,7 @@ ggsave(
 # 
 # 
 # all__ame <- b_m0 %>% 
-#   emtrends(~ As * Wave,
+#   emtrajectorys(~ As * Wave,
 #            var = "Wave",
 #            at = list(As = c(0, 1),
 #                      Wave = c(0, 2)),
@@ -1178,12 +1228,13 @@ ggsave(
 # use str prior # 2 -----------------------------------------------------------------
 
 b_m1 <- brms::brm( 
-  bf(Ys ~ As  *  Wave + (1|Id)),
+  bf(Ys ~ As  *  Wave + (1|Id),
+     sigma ~ As, set_rescor(rescor = FALSE)),
   family = gaussian, 
   data = listbayes,
-  c(prior(student_t(3, .15,.5), class = b, coef = "As1"),
-    prior(student_t(3, .02,.5), class = b, coef = "Wave"),
-    prior(normal(0,.25),  class= b, coef = "As1:Wave")), 
+  c(prior(normal(.2, .5), class = b, coef = "As1"),
+    prior(normal(.06,.5), class = b, coef = "Wave"),
+    prior(normal(0,.5),  class= b, coef = "As1:Wave")), 
   seed = 1234,
   warmup = 1000,
   iter = 2000,
@@ -1192,14 +1243,98 @@ b_m1 <- brms::brm(
   file = here::here("_posts", "mus", "mods", "b_m1")
   )
 
-lazerhawk::brms_SummaryTable(b_m1, panderize=F)
+tab <- lazerhawk::brms_SummaryTable(b_m1, panderize=F)
+tab
+tab %>%
+  kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims", digits = 2) %>%
+  print()
 
-tab_b_m1<- model_parameters(b_m1, test = c("pd"))
+
+#tab_b_m1<- model_parameters(b_m1, test = c("pd"))
+
+
+# graph strong prior ------------------------------------------------------
+
+
+conditional_b_m1 <- plot(conditional_effects(b_m1,  "Wave:As",  ndraws = 200, spaghetti = T), points = F)
+#saveRDS(conditional_b_m1,here::here("_posts","mus","mods","conditional_b_m1"))
+
+
+bayes_b_m1 <-
+  conditional_b_m1$`Wave:As`  +  scale_y_continuous(limits = c(4.1, 4.48)) +
+  labs(
+    title = "Bayesian estimate of potential outcome trajectories for Muslim acceptance Time10-Time12",
+   # labs(subtitle = "Multiple imputation: sample from previous 6 waves prior to attack + full attack wave sample + 2 post-attack waves",
+         y = "Muslim Warmth",
+         x = "Years: 2018-2020/21; N = 47948") + scale_colour_okabe_ito(alpha =.3)
+         )
+
+bayes_b_m1_c <- conditional_b_m1$`Wave:As`  +  scale_y_continuous(limits=c(4.1,4.48)) +
+  labs(subtitle = "Distinct & uncorrelated sigmas for attack vs. no-attack",
+       x = "Years: 2018-2020/21; N = 47948") + scale_colour_okabe_ito(alpha =.3)
+
+# compare sensitivity analysis
+bayes_b_m1_c2 <- conditional_b_m1$`Wave:As`  +  scale_y_continuous(limits=c(4.04,4.48)) +
+  labs(title = "Bayesian estimate of potential outcome trajectories for Muslim acceptance Time10-Time12",
+       y= "Muslim Warmth", 
+       x = "Years: 2018-2020/21; N = 47948") + scale_colour_okabe_ito(alpha =.3)
 
 
 
+#scale_color_viridis_d(option = "cividis") 
 
-# sensitivity anlaysis ----------------------------------------------------
+bayes_b_m1
+bayes_b_m1_c
+
+ggsave(
+  bayes_b_m1,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 12,
+  height =9,
+  units = "in",
+  filename = "bayes_b_m1.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 800
+)
+
+ggsave(
+  bayes_b_m1,
+  path = here::here(here::here("_posts", "mus", "mods")),
+  width = 12,
+  height =12,
+  units = "in",
+  filename = "bayes_b_m1.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 800
+)
+
+
+bayes_b_m1
+
+# compare 
+
+compare <- bayes_b_m1_c + bayes_3main + plot_annotation(tag_levels = "i",
+                                                         title = "Distinct and uncorrelated sigmas improves variance estimates of trajectories")
+compare
+
+
+# save to mods
+ggsave(
+  compare,
+  path = here::here(here::here("_posts", "mus", "mods")),
+  width = 16,
+  height =9,
+  units = "in",
+  filename = "compare.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 800
+)
+
+
+  # sensitivity anlaysis ----------------------------------------------------
 # imagine strong time effect
 
 b_sens <- brms::brm(
@@ -1220,11 +1355,82 @@ prior_summary(b_sens)
 lazerhawk::brms_SummaryTable(b_sens, panderize=F)
 
 
+b_sens2 <- brms::brm(
+  bf(Ys ~ As  *  Wave + (1 | Id),
+     sigma ~ As, set_rescor(rescor = FALSE)),
+  family = gaussian,
+  data = listbayes,
+  prior = c(set_prior("constant(0.12)", class = "b", coef = "Wave")),
+  seed = 1234,
+  warmup = 1000,
+  iter = 2000,
+  chains = 4,
+  backend = "cmdstanr",
+  #save_pars=save_pars(group=FALSE))
+  file = here::here("_posts", "mus", "mods", "b_sens2")
+)
+
+prior_summary(b_sens2)
+
+
+tab <- lazerhawk::brms_SummaryTable(b_sens2, panderize=F)
+
+
+tab
+tab %>%
+  kable(booktabs = T, "latex", caption =  "Sensitivity for effect of attack on warmth to Muslims: baseline trajectory fixed 2 $\times$ stronger than estimate", digits = 2) %>%
+  print()
+
+# graph sense analysis ----------------------------------------------------
+
+
+conditional_sens2 <- plot(conditional_effects(b_sens2,  "Wave:As",  ndraws = 200, spaghetti = T), points = F)
+saveRDS(conditional_sens2,here::here("_posts","mus","mods","conditional_sens2"))
+
+
+bayes_sense2 <- conditional_sens2$`Wave:As` + scale_y_continuous(limits=c(4.,4.48)) +
+  labs(
+    title = "Sensitivity analysis: Bayesian estimate of potential outcome trajectories for Muslim acceptance Time10-Time12",
+    y = "Muslim Warmth",
+    x = "Years: 2018-2020/21; N = 47948"
+  ) + scale_colour_okabe_ito(alpha = .5)
+
+#scale_color_viridis_d(option = "cividis") 
+bayes_sense2
+
+ggsave(
+  bayes_sense2,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 12,
+  height =12,
+  units = "in",
+  filename = "bayes_sense2.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 800
+)
+
+compare_traj <- bayes_b_m1 + bayes_sense2 + plot_annotation(tag_levels = "i",
+                                                               title = "Sensitivity analysis: assuming twice the baseline growth rate does not affect post-attack inference")  +  
+  plot_layout(guides = 'collect')
+compare_traj
+
+ggsave(
+  compare_traj,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 16,
+  height =9,
+  units = "in",
+  filename = "compare_traj.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 800
+)
 
 # impute 4 waves ----------------------------------------------------------
 
 
-# df 4 for estimating time trend in attack sample ---------------------------
+# df 4 for estimating time trajectory in attack sample ---------------------------
 km_all4 <- df %>%
   dplyr::select(
     Id,
@@ -1685,7 +1891,7 @@ estimate_contrasts(
 #   kbl("latex",booktabs = TRUE,digits=2)
 
 estimate_slopes( model_all4[[1]],
-                 trend = "Wave",
+                 trajectory = "Wave",
                  at = c("As"),
                  length=2)
 
@@ -1720,14 +1926,13 @@ saveRDS(conditional4 here::here("_posts", "mus", "mods","conditional4"))
 
 conditional4
 bayes_4 <- conditional4$`Wave:As` +  scale_y_continuous(limits=c(4.0,4.48)) +
-  labs(subtitle="Potential outcome trend in Muslim acceptance: attack vs. no attack",
+  labs(subtitle="Multiple imputation: sample from previous 1 wave prior to attack + 2 waves post-attack",
        y= "Muslim Warmth", 
-       x = "Waves: 2017-2020; N = 17014") + scale_colour_okabe_ito(alpha =.5)
+       x = "Years: 2017-2020/21; N = 17014") + scale_colour_okabe_ito(alpha =.5)
 bayes_4
 #scale_color_viridis_d(option = "cividis") 
 
 
-bayes_3
 
 ggsave(
   bayes_4,
@@ -1747,7 +1952,7 @@ ggsave(
 
 
 
-# df 5 for estimating time trend in attack sample ---------------------------
+# df 5 for estimating time trajectory in attack sample ---------------------------
 km_all5 <- df %>%
   dplyr::select(
     Id,
@@ -2212,7 +2417,7 @@ estimate_contrasts( model_all5[[1]],
   kbl("latex",booktabs = TRUE,digits=2)
 
 estimate_slopes( model_all5[[1]],
-                 trend = "Wave",
+                 trajectory = "Wave",
                  at = c("As"),
                  length=2)
 
@@ -2245,9 +2450,9 @@ conditional5 <- plot(conditional_effects(b5_m0,  "Wave:As",  ndraws = 100, spagh
 #saveRDS(conditional5,here::here("_posts","mus","mods","conditional5"))
 
 bayes_5 <- conditional5$`Wave:As` +   scale_y_continuous(limits=c(4.0,4.48)) +
-  labs(subtitle="Potential outcome trend in Muslim acceptance:\nattack vs. no attack",
+  labs(subtitle="Multiple imputation: sample from previous 2 waves prior to attack + 2 waves post-attack",
        y= "Muslim Warmth", 
-       x = "Waves: 2016-2020; N=21796") + scale_colour_okabe_ito(alpha =.5)
+       x = "Years: 2016-2020/21; N=21796") + scale_colour_okabe_ito(alpha =.5)
 
 #scale_color_viridis_d(option = "cividis") 
 bayes_5
@@ -2272,7 +2477,7 @@ ggsave(
 
 
 # IMPUTE 9wave ---------------------------------------------------------------
-# df 9 for estimating time trend in attack sample ---------------------------
+# df 9 for estimating time trajectory in attack sample ---------------------------
 km_all9 <- df %>%
   dplyr::select(
     Id,
@@ -2561,19 +2766,18 @@ table1::table1(~ Ys|Wave * As, data = imputed0_9$imputations$imp10, overall=FALS
 
 
 # impute 9 1s ---------------------------------------------------------------
-
 km_one9 <- ka9 %>%
-  filter( 
+  dplyr::filter( 
    # (As == 1 & Wave =="Time4")|
   #  (As == 1 & Wave =="Time5")|
    # (As == 1 & Wave =="Time6")|
    # (As == 1 & Wave =="Time7")|
    # (As == 1 & Wave =="Time8")|
   #  (As == 1 & Wave =="Time9")|
-    (As == 1 & Wave =="Time10") | 
+   (As == 1 & Wave =="Time10") | 
            (As == 1 & Wave =="Time11")|
            (As == 1 & Wave =="Time12"))%>%
-  droplevels() %>%
+  droplevels()%>%
   mutate(wave = wave -6) %>%
   dplyr::select(
     Id,
@@ -2595,7 +2799,8 @@ km_one9 <- ka9 %>%
     wave # include wave
   )%>%
   arrange(Wave,Id)
-
+str(km_one9)
+table(ka9$Wave)
 summary(km_one9$wave)
 
 
@@ -2629,6 +2834,7 @@ imputed1_9<- amelia(
 ) # ridge prior see: Amelia pdf documentation p.23
 
 saveRDS(imputed1_9, here::here("_posts","mus","mods","imputed1_9"))
+
 
 # check means, looks good
 
@@ -2714,7 +2920,6 @@ saveRDS(listbayes9, here::here("_posts", "mus", "mods", "listbayes9"))
 
 
 # ML model 9 ----------------------------------------------------------------
-
 # model
 m<-10
 model_all9<-NULL
@@ -2761,7 +2966,7 @@ mus_plot_model_all
 #   kbl("latex",booktabs = TRUE,digits=2)
 
 estimate_slopes( model_all4[[2]],
-                 trend = "Wave",
+                 trajectory = "Wave",
                  at = c("As","Wave"),
                  length=2)
 
@@ -2793,9 +2998,9 @@ conditional9 <- plot(conditional_effects(b9_m0,  "Wave:As",  ndraws = 100, spagh
 saveRDS(conditional9,here::here("_posts","mus","mods","conditional9"))
 
 bayes_9 <- conditional9$`Wave:As`  +  scale_y_continuous(limits=c(4.0,4.48)) +
-  labs(subtitle="Potential outcome trend in Muslim acceptance:\nattack vs. no attack",
+  labs(subtitle="Multiple imputation: sample from previous 6 waves prior to attack + 2 waves post-attack",
        y= "Muslim Warmth", 
-       x = "Waves: 2012-2020, N = 11799") + scale_colour_okabe_ito(alpha=.5)
+       x = "Waves: 2012-2020/21, N = 11799") + scale_colour_okabe_ito(alpha=.5)
 
 #scale_color_viridis_d(option = "cividis") 
 
@@ -3172,15 +3377,14 @@ conditional_st <- plot(conditional_effects(bst_m0,  "Wave:As",  ndraws = 100, sp
 saveRDS(conditional_st,here::here("_posts","mus","mods","conditional_st"))
 
 bayes_st <- conditional_st$`Wave:As`  +  scale_y_continuous(limits=c(4.0,4.48)) +
-  labs(subtitle="Potential outcome trend in Muslim acceptance:\nattack vs. no attack",
+  labs(subtitle="Multiple imputation: no previous waves",
        y= "Muslim Warmth", 
-       x = "Waves: 2012-2020, N = 47948") + scale_colour_okabe_ito(alpha=.5)
+       x = "Years: 2012-2020/21, N = 47948") + scale_colour_okabe_ito(alpha=.5)
 
 #scale_color_viridis_d(option = "cividis") 
-
 bayes_st
 ggsave(
-  bayes_9,
+  bayes_st,
   path = here::here(here::here("_posts", "mus", "mods")), # too large
   width = 12,
   height =9,
@@ -3195,26 +3399,69 @@ ggsave(
 
 # COMBINED GRAPH ----------------------------------------------------------
 
-robust_waves <- (bayes_9 + bayes_3)/( bayes_5 + bayes_3) / (bayes_4 + bayes_3 )+ plot_annotation(
-  title = "Choice of time-depth for longitudinal sample does not affect causal inference",
-  subtitle = "Nine-wave, five-wave, and fully-measured attack-waves",
-  tag_levels = "a")
+robust_waves <- trajectory_spline+((bayes_9 + bayes_3)/( bayes_5 + bayes_3) / (bayes_4 +  bayes_st ))+ plot_annotation(
+  title = "Postive trajectory in post-attack acceptance is robust to multiple imputation strategies",
+  subtitle = "Recovery of postive trajectory in counterfactual no-attack condition requires at least two waves prior to baseline",
+  tag_levels = "i")
+
+robust_waves <- trajectory_1217 + ((bayes_9 + bayes_3)/( bayes_5 + bayes_3) / (bayes_4 +  bayes_st ))+ plot_annotation(
+  title = "Postive trajectory in post-attack acceptance is robust to multiple imputation strategies",
+  subtitle = "Recovery of postive trajectory in counterfactual no-attack condition requires at least two waves prior to baseline",
+  tag_levels = "i") +  
+  plot_layout(guides = 'collect')
+
+
 robust_waves
 
 ggsave(
   robust_waves,
-  path = here::here(here::here("_posts", "mus", "figs")),
-  width = 14,
-  height =14,
+  path = here::here(here::here("_posts", "mus", "mods")),
+  width = 20,
+  height =15,
   units = "in",
   filename = "robust_waves.jpg",
   device = 'jpeg',
   limitsize = FALSE,
-  dpi = 1000
+  dpi = 1200
 )
 
 
 
+# DAG GRAPH ---------------------------------------------------------------
+
+library(ggplot2)
+library(magick)
+library(patchwork)
+ggsave
+
+
+
+
+dag1 <- image_ggplot(image_read(here::here("_posts","mus", "mods","missing.tiff")),
+                     interpolate = T)
+dag2 <- image_ggplot(image_read(here::here("_posts","mus", "mods","selection.tiff")),
+                     interpolate = T)
+dag3 <- image_ggplot(image_read(here::here("_posts","mus", "mods","impute.tiff")),
+                     interpolate = T)
+
+library(patchwork)
+daggraph <- (dag2 /dag1) + dag3  +
+  plot_annotation(subtitle = "Causal identification of missing potential outcomes\nand missing observations", 
+                  tag_levels = "i")
+daggraph
+
+
+ggsave(
+  daggraph,
+  path = here::here("_posts","mus", "mods"),
+  width = 10,
+  height = 5,
+  units = "in",
+  filename = "daggraph.jpg",
+  device = "tiff",
+  limitsize = FALSE,
+  dpi = 600
+)
 
 
 
