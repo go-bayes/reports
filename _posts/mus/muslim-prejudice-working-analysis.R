@@ -3,6 +3,19 @@
 # joseph.bulbulia@gmail.com
 # code for plots
 
+# test autoprior
+library(sjstats)
+# model <- sjstats::tidy_stan(tab)
+# 
+# f <- formula(Ys ~ As  *  Wave + (1|Id),  sigma ~ As)
+# 
+# 
+# outp <- sjstats::auto_prior(f, imps_bind$imputations$imp[[1]], TRUE)
+# saveRDS(outp, here::here("_posts", "mus" ,"mods", "outp"))
+# outp
+
+
+
 #libraries
 library("here") # file management
 library("equatiomatic") # equations
@@ -33,6 +46,8 @@ library("ggbeeswarm")   # Special distribution-shaped point jittering
 library("emmeans") # estimate marginal means
 library("table1") # tables /now with latex
 library("tidyverse") # data wrangling
+library("sjstats")
+library("magick")
 
 # rstan options
 rstan_options(auto_write = TRUE) # bayesian estimation
@@ -546,7 +561,7 @@ saveRDS(trajectorylist, here::here("_posts","mus","mods","trajectorylist"))
 library('mgcv')
 
 b_time <- brms::brm( 
-  bf(Ys ~ s(yrs)  + (1|Id)),
+  bf(Ys ~ yrs  + (1|Id)),
   family = gaussian, 
   data = trajectorylist,
   seed = 1234,
@@ -1068,11 +1083,11 @@ mus_plot_model_all
 #   length = 2
 # )
 
-# estimate_contrasts( model_all[[1]],
-#                     contrast = "As",
-#                     at = c("Wave","As") )
-# %>%
-#   kbl("latex",booktabs = TRUE,digits=2)
+estimate_contrasts( model_all[[1]],
+                    contrast = "As",
+                    at = c("Wave") )
+%>%
+  kbl("latex",booktabs = TRUE,digits=2)
 
 
 # bayesian USE  -------------------------------------------------------------
@@ -1178,52 +1193,7 @@ ggsave(
 )
 
 
-# 
-# # graph bayes use ---------------------------------------------------------
-# 
-# grand_mean <- b_m0 %>% 
-#   epred_draws(newdata = expand_grid(As = c(0,1),
-#                                     Wave = seq(0, 1, by = 0.05)), 
-#               re_formula = NA)
-# 
-# plot_grand_mean_civlib <- ggplot(grand_mean, 
-#                                  aes(x = Wave, y = .epred,fill = as.factor(As))) +
-#   stat_lineribbon() +
-#  # facet_grid(~as.factor(As)) + 
-#   scale_fill_brewer(palette = "Reds") +
-#   labs(x = "Civil liberties index", y = "Predicted media freedom index",
-#        fill = "Credible interval") +
-#   theme_clean() +
-#   theme(legend.position = "bottom")
-# # GRAPH OF THIS
-# plot_grand_mean_civlib
-# 
-# 
-# all__ame <- b_m0 %>% 
-#   emtrajectorys(~ As * Wave,
-#            var = "Wave",
-#            at = list(As = c(0, 1),
-#                      Wave = c(0, 2)),
-#            epred = TRUE, re_formula = NULL)%>% 
-#   gather_emmeans_draws()   
-# 
-# saveRDS(all__ame,  here::here("_posts", "mus", "mods", "all__ame"))
-# 
-# 
-# plot_all_regions_civlib_ame <- ggplot(all__ame,
-#                                       aes(x = .value / 10, fill = factor(As))) +
-#   stat_halfeye(slab_alpha = 0.75) +
-#   scale_fill_okabe_ito(order = c(3, 4)) +
-#   labs(x = "Average marginal effect of a 3 year increase in Time",
-#        y = "Density", fill = "Muslim Warmth") +
-#   facet_wrap(vars(As)) +
-#   theme_clean() + 
-#   theme(legend.position = "bottom")
-# # 
-# # (plot_all_regions_civlib / plot_all_regions_civlib_ame) +
-# #   plot_annotation(title = "Region-specific means",
-# #                   subtitle = "re_formula = NULL; existing region(s) included in newdata",
-# #                   theme = theme_clean())
+
 
 # use str prior # 2 -----------------------------------------------------------------
 
@@ -1243,14 +1213,340 @@ b_m1 <- brms::brm(
   file = here::here("_posts", "mus", "mods", "b_m1")
   )
 
-tab <- lazerhawk::brms_SummaryTable(b_m1, panderize=F)
+lazerhawk::brms_SummaryTable(b_m1, panderize=F)
 tab
 tab %>%
   kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims", digits = 2) %>%
   print()
 
 
-#tab_b_m1<- model_parameters(b_m1, test = c("pd"))
+stancode(b_m1)
+prior_summary(b_m1)
+
+plot(b_m1)
+traceps <- plot(b_m1, N = 7, plot=F)
+traceps
+
+  traceps[[1]]
+g1 + theme_classic()
+
+  # emtrends for main model -------------------------------------------------
+
+
+
+em_trends_bm1 <- b_m1 %>% 
+  emtrends(~ Wave,
+           var = "Wave",
+           at = list(As = c("0","1"),
+                     Wave = seq(0, 2, by = 0.05)),
+           epred = TRUE,
+           re_formula = NA)%>% 
+  gather_emmeans_draws()
+
+
+
+
+# Time intensive
+# contrast_bm1 <- estimate_contrasts( b_m1,
+#                     contrast = "As",
+#                     at = c("Wave") )
+
+trend_bm1 <- estimate_slopes(b_m1, 
+                             trend = "Wave", 
+                             at =c("Wave", "As"), length = 3,
+                             ci = 0.95)
+
+
+%>%
+  kbl("latex",booktabs = TRUE,digits=2)
+
+# graph emtrends ----------------------------------------------------------
+
+
+
+# // generated with brms 2.16.8
+# functions {
+# }
+# data {
+#   int<lower=1> N;  // total number of observations
+#   vector[N] Y;  // response variable
+#   int<lower=1> K;  // number of population-level effects
+#   matrix[N, K] X;  // population-level design matrix
+#   int<lower=1> K_sigma;  // number of population-level effects
+#   matrix[N, K_sigma] X_sigma;  // population-level design matrix
+#   // data for group-level effects of ID 1
+#   int<lower=1> N_1;  // number of grouping levels
+#   int<lower=1> M_1;  // number of coefficients per level
+#   int<lower=1> J_1[N];  // grouping indicator per observation
+#   // group-level predictor values
+#   vector[N] Z_1_1;
+#   int prior_only;  // should the likelihood be ignored?
+# }
+# transformed data {
+#   int Kc = K - 1;
+#   matrix[N, Kc] Xc;  // centered version of X without an intercept
+#   vector[Kc] means_X;  // column means of X before centering
+#   int Kc_sigma = K_sigma - 1;
+#   matrix[N, Kc_sigma] Xc_sigma;  // centered version of X_sigma without an intercept
+#   vector[Kc_sigma] means_X_sigma;  // column means of X_sigma before centering
+#   for (i in 2:K) {
+#     means_X[i - 1] = mean(X[, i]);
+#     Xc[, i - 1] = X[, i] - means_X[i - 1];
+#   }
+#   for (i in 2:K_sigma) {
+#     means_X_sigma[i - 1] = mean(X_sigma[, i]);
+#     Xc_sigma[, i - 1] = X_sigma[, i] - means_X_sigma[i - 1];
+#   }
+# }
+# parameters {
+#   vector[Kc] b;  // population-level effects
+#   real Intercept;  // temporary intercept for centered predictors
+#   vector[Kc_sigma] b_sigma;  // population-level effects
+#   real Intercept_sigma;  // temporary intercept for centered predictors
+#   vector<lower=0>[M_1] sd_1;  // group-level standard deviations
+#   vector[N_1] z_1[M_1];  // standardized group-level effects
+# }
+# transformed parameters {
+#   vector[N_1] r_1_1;  // actual group-level effects
+#   real lprior = 0;  // prior contributions to the log posterior
+#   r_1_1 = (sd_1[1] * (z_1[1]));
+#   lprior += normal_lpdf(b[1] | 0.2, 0.5);
+#   lprior += normal_lpdf(b[2] | 0.06, 0.5);
+#   lprior += normal_lpdf(b[3] | 0, 0.5);
+#   lprior += student_t_lpdf(Intercept | 3, 4, 2.5);
+#   lprior += student_t_lpdf(Intercept_sigma | 3, 0, 2.5);
+#   lprior += student_t_lpdf(sd_1 | 3, 0, 2.5)
+#   - 1 * student_t_lccdf(0 | 3, 0, 2.5);
+# }
+# model {
+#   // likelihood including constants
+#   if (!prior_only) {
+#     // initialize linear predictor term
+#     vector[N] mu = Intercept + Xc * b;
+#     // initialize linear predictor term
+#     vector[N] sigma = Intercept_sigma + Xc_sigma * b_sigma;
+#     for (n in 1:N) {
+#       // add more terms to the linear predictor
+#       mu[n] += r_1_1[J_1[n]] * Z_1_1[n];
+#     }
+#     for (n in 1:N) {
+#       // apply the inverse link function
+#       sigma[n] = exp(sigma[n]);
+#     }
+#     target += normal_lpdf(Y | mu, sigma);
+#   }
+#   // priors including constants
+#   target += lprior;
+#   target += std_normal_lpdf(z_1[1]);
+# }
+# generated quantities {
+#   // actual population-level intercept
+#   real b_Intercept = Intercept - dot_product(means_X, b);
+#   // actual population-level intercept
+#   real b_sigma_Intercept = Intercept_sigma - dot_product(means_X_sigma, b_sigma);
+# }
+# > prior_summary(b_m1)
+# prior     class      coef group resp  dpar nlpar bound       source
+# (flat)         b                                             default
+# normal(0.2, 0.5)         b       As1                                      user
+# normal(0, 0.5)         b  As1:Wave                                      user
+# normal(0.06, 0.5)         b      Wave                                      user
+# (flat)         b                      sigma             (vectorized)
+# (flat)         b       As1            sigma             (vectorized)
+# student_t(3, 4, 2.5) Intercept                                             default
+# student_t(3, 0, 2.5) Intercept                      sigma                  default
+# student_t(3, 0, 2.5)        sd                                             default
+# student_t(3, 0, 2.5)        sd              Id                        (vectorized)
+# student_t(3, 0, 2.5)        sd Intercept    Id                        (vectorized)
+
+# test rand intercept  ----------------------------------------------------
+# see This on why we might not want 
+# this: https://discourse.mc-stan.org/t/clarification-on-the-meaning-of-in-brms-syntax/8716/3
+
+b_m1_b <- brms::brm(
+  bf(Ys ~ As  *  Wave + (1 + As||Id),
+     sigma ~ As, set_rescor(rescor = FALSE)),
+  family = gaussian,
+  data = listbayes,
+  c(prior(normal(.2, .5), class = b, coef = "As1"),
+    prior(normal(.06,.5), class = b, coef = "Wave"),
+    prior(normal(0,.5),  class= b, coef = "As1:Wave")),
+  seed = 1234,
+  warmup = 1000,
+  iter = 2000,
+  chains = 4,
+  backend = "cmdstanr",
+  file = here::here("_posts", "mus", "mods", "b_m1_b")
+)
+# stancode(b_m1_b)
+# prior_summary(b_m1_b)
+# // generated with brms 2.16.8
+# functions {
+# }
+# data {
+#   int<lower=1> N;  // total number of observations
+#   vector[N] Y;  // response variable
+#   int<lower=1> K;  // number of population-level effects
+#   matrix[N, K] X;  // population-level design matrix
+#   int<lower=1> K_sigma;  // number of population-level effects
+#   matrix[N, K_sigma] X_sigma;  // population-level design matrix
+#   // data for group-level effects of ID 1
+#   int<lower=1> N_1;  // number of grouping levels
+#   int<lower=1> M_1;  // number of coefficients per level
+#   int<lower=1> J_1[N];  // grouping indicator per observation
+#   // group-level predictor values
+#   vector[N] Z_1_1;
+#   vector[N] Z_1_2;
+#   int prior_only;  // should the likelihood be ignored?
+# }
+# transformed data {
+#   int Kc = K - 1;
+#   matrix[N, Kc] Xc;  // centered version of X without an intercept
+#   vector[Kc] means_X;  // column means of X before centering
+#   int Kc_sigma = K_sigma - 1;
+#   matrix[N, Kc_sigma] Xc_sigma;  // centered version of X_sigma without an intercept
+#   vector[Kc_sigma] means_X_sigma;  // column means of X_sigma before centering
+#   for (i in 2:K) {
+#     means_X[i - 1] = mean(X[, i]);
+#     Xc[, i - 1] = X[, i] - means_X[i - 1];
+#   }
+#   for (i in 2:K_sigma) {
+#     means_X_sigma[i - 1] = mean(X_sigma[, i]);
+#     Xc_sigma[, i - 1] = X_sigma[, i] - means_X_sigma[i - 1];
+#   }
+# }
+# parameters {
+#   vector[Kc] b;  // population-level effects
+#   real Intercept;  // temporary intercept for centered predictors
+#   vector[Kc_sigma] b_sigma;  // population-level effects
+#   real Intercept_sigma;  // temporary intercept for centered predictors
+#   vector<lower=0>[M_1] sd_1;  // group-level standard deviations
+#   vector[N_1] z_1[M_1];  // standardized group-level effects
+# }
+# transformed parameters {
+#   vector[N_1] r_1_1;  // actual group-level effects
+#   vector[N_1] r_1_2;  // actual group-level effects
+#   real lprior = 0;  // prior contributions to the log posterior
+#   r_1_1 = (sd_1[1] * (z_1[1]));
+#   r_1_2 = (sd_1[2] * (z_1[2]));
+#   lprior += normal_lpdf(b[1] | 0.2, 0.5);
+#   lprior += normal_lpdf(b[2] | 0.06, 0.5);
+#   lprior += normal_lpdf(b[3] | 0, 0.5);
+#   lprior += student_t_lpdf(Intercept | 3, 4, 2.5);
+#   lprior += student_t_lpdf(Intercept_sigma | 3, 0, 2.5);
+#   lprior += student_t_lpdf(sd_1 | 3, 0, 2.5)
+#   - 2 * student_t_lccdf(0 | 3, 0, 2.5);
+# }
+# model {
+#   // likelihood including constants
+#   if (!prior_only) {
+#     // initialize linear predictor term
+#     vector[N] mu = Intercept + Xc * b;
+#     // initialize linear predictor term
+#     vector[N] sigma = Intercept_sigma + Xc_sigma * b_sigma;
+#     for (n in 1:N) {
+#       // add more terms to the linear predictor
+#       mu[n] += r_1_1[J_1[n]] * Z_1_1[n] + r_1_2[J_1[n]] * Z_1_2[n];
+#     }
+#     for (n in 1:N) {
+#       // apply the inverse link function
+#       sigma[n] = exp(sigma[n]);
+#     }
+#     target += normal_lpdf(Y | mu, sigma);
+#   }
+#   // priors including constants
+#   target += lprior;
+#   target += std_normal_lpdf(z_1[1]);
+#   target += std_normal_lpdf(z_1[2]);
+# }
+# generated quantities {
+#   // actual population-level intercept
+#   real b_Intercept = Intercept - dot_product(means_X, b);
+#   // actual population-level intercept
+#   real b_sigma_Intercept = Intercept_sigma - dot_product(means_X_sigma, b_sigma);
+# }
+# > prior_summary(b_m1_b)
+# prior     class      coef group resp  dpar nlpar bound       source
+# (flat)         b                                             default
+# normal(0.2, 0.5)         b       As1                                      user
+# normal(0, 0.5)         b  As1:Wave                                      user
+# normal(0.06, 0.5)         b      Wave                                      user
+# (flat)         b                      sigma             (vectorized)
+# (flat)         b       As1            sigma             (vectorized)
+# student_t(3, 4, 2.5) Intercept                                             default
+# student_t(3, 0, 2.5) Intercept                      sigma                  default
+# student_t(3, 0, 2.5)        sd                                             default
+# student_t(3, 0, 2.5)        sd              Id                        (vectorized)
+# student_t(3, 0, 2.5)        sd       As1    Id                        (vectorized)
+# student_t(3, 0, 2.5)        sd Intercept    Id                        (vectorized)
+
+tab_m1_b <- lazerhawk::brms_SummaryTable(b_m1_b, panderize=F)
+tab_m1_b
+
+
+tab_m1_b %>%
+  kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims", digits = 2) %>%
+  print()
+
+
+# graph test --------------------------------------------------------------
+
+
+
+conditional_b_m1_b <- plot(conditional_effects(b_m1_b,  "Wave:As",  ndraws = 200, spaghetti = T), points = F)
+saveRDS(conditional_b_m1_b,here::here("_posts","mus","mods","conditional_b_m1_b"))
+
+
+bayes_b_m1_b <-
+  conditional_b_m1_b$`Wave:As`  +  scale_y_continuous(limits = c(4.1, 4.48)) +
+  labs(
+    title = "Bayesian estimate of potential outcome trajectories for Muslim acceptance Years 2018-2021",
+    # labs(subtitle = "Multiple imputation: sample from previous 6 waves prior to attack + full attack wave sample + 2 post-attack waves",
+    y = "Muslim Warmth",
+    x = "Years: 2018-2020/21; N = 47948") + scale_colour_okabe_ito(alpha =.3)
+)
+
+bayes_b_m1_c <- conditional_b_m1$`Wave:As`  +  scale_y_continuous(limits=c(4.1,4.48)) +
+  labs(subtitle = "Distinct & uncorrelated sigmas for attack vs. no-attack",
+       x = "Years: 2018-2020/21; N = 47948") + scale_colour_okabe_ito(alpha =.3)
+
+# compare sensitivity analysis
+bayes_b_m1_c2 <- conditional_b_m1$`Wave:As`  +  scale_y_continuous(limits=c(4.04,4.48)) +
+  labs(title = "Bayesian estimate of potential outcome trajectories for Muslim acceptance Time10-Time12",
+       y= "Muslim Warmth", 
+       x = "Years: 2018-2020/21; N = 47948") + scale_colour_okabe_ito(alpha =.3)
+
+
+
+#scale_color_viridis_d(option = "cividis") 
+
+bayes_b_m1
+bayes_b_m1_c
+
+ggsave(
+  bayes_b_m1,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 12,
+  height =9,
+  units = "in",
+  filename = "bayes_b_m1.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 800
+)
+
+ggsave(
+  bayes_b_m1,
+  path = here::here(here::here("_posts", "mus", "mods")),
+  width = 12,
+  height =12,
+  units = "in",
+  filename = "bayes_b_m1.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 800
+)
+
 
 
 # graph strong prior ------------------------------------------------------
@@ -1334,7 +1630,12 @@ ggsave(
 )
 
 
-  # sensitivity anlaysis ----------------------------------------------------
+# marginal means ----------------------------------------------------------
+
+
+
+
+# sensitivity anlaysis ----------------------------------------------------
 # imagine strong time effect
 
 b_sens <- brms::brm(
@@ -1426,8 +1727,141 @@ ggsave(
   limitsize = FALSE,
   dpi = 800
 )
+summary(b_m1)
+
+# 
+# summary(b_m1)
+# Family: gaussian 
+# Links: mu = identity; sigma = log 
+# Formula: Ys ~ As * Wave + (1 | Id) 
+# sigma ~ As
+# Data: listbayes (Number of observations: 286870) 
+# Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+# total post-warmup draws = 4000
+# 
+# Group-Level Effects: 
+#   ~Id (Number of levels: 47948) 
+# Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+# sd(Intercept)     0.69      0.00     0.68     0.70 1.00     1356     2342
+# 
+# Population-Level Effects: 
+#   Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+# Intercept           4.15      0.01     4.14     4.17 1.00     5560     3309
+# sigma_Intercept     0.44      0.00     0.44     0.45 1.00     3891     3460
+# As1                 0.21      0.01     0.19     0.22 1.00     6568     3179
+# Wave                0.06      0.01     0.05     0.07 1.00     6561     3420
+# As1:Wave           -0.03      0.01    -0.04    -0.02 1.00     6924     2956
+# sigma_As1          -0.14      0.00    -0.14    -0.13 1.00     4352     3489
+# 
+# Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
+# and Tail_ESS are effective sample size measures, and Rhat is the potential
+# scale reduction factor on split chains (at convergence, Rhat = 1).
+
+
+
+# hypothesis test ---------------------------------------------------------
+prior_summary(b_m1)
+#h <- c("As1:Wave = Wave", "As1:Wave = 0")
+#hyp <- hypothesis(b_m1, h) 
+
+
+hyp0 <- hypothesis(b_m1, "As1 + As1:Wave > As1 - Wave") 
+p0 <-plot(hyp0, plot=F) 
+out_h0<-p0[[1]] + labs(title = "Post-attack warmth trajectory remains positive") + 
+  scale_fill_colorblind() + theme_classic()
+out_h0
+
+hyp1 <- hypothesis(b_m1, "Wave + As1:Wave  =  Wave") 
+p1 <-plot(hyp1, plot=F) 
+out_h1<-p1[[1]] + labs(title = "Post-attack warmth trajectory is shallower than no-attack") + 
+  scale_fill_colorblind() + theme_classic()
+out_h1
+
+
+
+hyp2<- hypothesis(b_m1, "sigma_As1 = sigma_Intercept", class = "b")
+p2 <-plot(hyp2, plot=F) 
+
+out_h2<- p2[[1]]+ labs(title = "Sigma of attack condition is lower than sigma of no-attack") + scale_fill_colorblind() + theme_classic()
+out_h2
+
+hyp3 <- hypothesis(b_m1, "As1 >0") 
+p3 <-plot(hyp3, plot=F) 
+out_h3<-p3[[1]] + labs(title = "Strong main positive effect of attack on warmth") + 
+  scale_fill_colorblind() + theme_classic()
+out_h3
+
+
+# combine graph
+bayes_hypothesis <- out_h3/  out_h0 / out_h1 / out_h2 + plot_annotation(
+  title = "Bayesian hypothesis tests",
+  tag_levels = "a")
+bayes_hypothesis
+# show plot
+results <- bayes_b_m1 + (out_h3/ out_h0 / out_h1 / out_h2 ) + plot_annotation(tag_levels = "i") + 
+  plot_layout(ncol = 2, widths = c(2, 1))
+results
+# save plot
+ggsave(
+  bayes_hypothesis,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 16,
+  height =9,
+  units = "in",
+  filename = "bayes_hypothesis.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 800
+)
+
+ggsave(
+  results,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 16,
+  height =9,
+  units = "in",
+  filename = "results.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 800
+)
+
+
+
+# posterior predictive checks ---------------------------------------------
+
+pp <-pp_check(b_m1 ) + ylab("Muslim Warmth ")
+pp
+
+brms::stancode(b_m1)
+tidys <- tidy_stan(b_m1, effects = "fixed")
+
+tab_model(b_m1, show.ci = .89)
+
+color_scheme_set("red")
+pp_plot <- ppc_dens_overlay(y = b_m1$Ys,
+                 yrep = posterior_predict(b_m1, draws = 50))
+
+
+color_scheme_set("mix-blue-pink")
+#color_scheme_set("mix-brightblue-gray")
+
+p <- mcmc_trace(b_m1,  pars = c("mu", "tau"), n_warmup = 1000,
+                facet_args = list(nrow = 2, labeller = label_parsed))
+p + facet_text(size = 15)
+
+color_scheme_set("darkgray")
+mc_test <- mcmc_parcoord(b_m1, np = np_cp)
+
+mc_test
 
 # impute 4 waves ----------------------------------------------------------
+
+
+
+
+
+
 
 
 # df 4 for estimating time trajectory in attack sample ---------------------------
@@ -1890,7 +2324,7 @@ estimate_contrasts(
 # %>%
 #   kbl("latex",booktabs = TRUE,digits=2)
 
-estimate_slopes( model_all4[[1]],
+estimate_slopes( model_all4[[2]],
                  trajectory = "Wave",
                  at = c("As"),
                  length=2)
@@ -3470,10 +3904,12 @@ ggsave(
 library(tidybayes)
 library(emmeans)
 
-marg_eff_bfCw <- b_m_dfCw %>%
+
+marg_eff_bfCw <- b_m1 %>%
   epred_draws(newdata = expand.grid(As = c(0, 1), Wave = c("Time10", "Time11","Time12")),
               re_formula = NA)
-marg_eff_bf_df
+
+
 saveRDS(marg_eff_bfCw,  here::here("_posts", "mus", "mods", "marg_eff_bfCw"))
 #marg_eff_bf_df <- readRDS(here::here("_posts", "mus", "mods", "marg_eff_bf_df"))
 
