@@ -47,6 +47,8 @@ docs/templates/**/*.html
 _posts/**/*_files/
 _posts/*.pdf
 docs/posts/**/*.pdf
+mods/*
+figs/*
 
 # full nzavs
 data-full

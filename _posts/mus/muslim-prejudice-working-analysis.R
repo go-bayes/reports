@@ -1668,6 +1668,62 @@ ggsave(
 
 # Priors  ----------------------------------------------------------
 
+b_sample_prior_strong <- brms::brm(
+  bf(Ys ~ As  *  Wave + (1 + As||Id),
+     sigma ~ As, set_rescor(rescor = FALSE)),
+  family = gaussian,
+  data = listbayes,
+  c(prior(normal(.2, .5), class = b, coef = "As1"),
+    prior(normal(.06,.5), class = b, coef = "Wave"),
+    prior(normal(0,.5),  class= b, coef = "As1:Wave"),
+    prior(normal(0,.5),  class= b, coef = "As1", dpar = "sigma")),
+  seed = 1234,
+  warmup = 1000,
+  iter = 2000,
+  sample_prior = "only",
+  chains = 4,
+  backend = "cmdstanr",
+  file = here::here("_posts", "mus", "mods", "b_sample_prior_strong"))
+
+
+conditional_b_sample_prior_strong <- plot(conditional_effects(b_sample_prior_strong,  "Wave:As",  ndraws = 200, spaghetti = T), points = F)
+
+saveRDS(conditional_b_sample_prior_strong,here::here("_posts","mus","mods","conditional_b_sample_prior_strong"))
+
+
+)
+lazerhawk::brms_SummaryTable(b_sample_prior_strong, panderize=F)
+
+
+
+
+# weak priors -------------------------------------------------------------
+b_sample_prior_weak <- brms::brm(
+  bf(Ys ~ As  *  Wave + (1 + As||Id),
+     sigma ~ As, set_rescor(rescor = FALSE)),
+  family = gaussian,
+  data = listbayes,
+  # c(prior(normal(.2, .5), class = b, coef = "As1"),
+  #   prior(normal(.06,.5), class = b, coef = "Wave"),
+  #   prior(normal(0,.5),  class= b, coef = "As1:Wave"),
+  #   prior(normal(0,.5),  class= b, coef = "As1", dpar = "sigma")),
+  seed = 1234,
+  warmup = 500,
+  iter = 1000,
+  sample_prior = "only",
+  chains = 1,
+  backend = "cmdstanr",
+  file = here::here("_posts", "mus", "mods", "b_sample_prior_weak"))
+
+
+conditional_b_sample_prior_strong <- plot(conditional_effects(b_sample_prior_strong,  "Wave:As",  ndraws = 200, spaghetti = T), points = F)
+
+saveRDS(conditional_b_sample_prior_strong,here::here("_posts","mus","mods","conditional_b_sample_prior_strong"))
+
+
+)
+lazerhawk::brms_SummaryTable(b_sample_prior_strong, panderize=F)
+
 
 
 
@@ -4645,9 +4701,6 @@ tab %>%
 # simulate bayes graph ----------------------------------------------------
 
 
-
-
-# sim missingness with directed attrition  --------------------------------
 
 
 
