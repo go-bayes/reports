@@ -33,6 +33,7 @@ models/*.rds
 _posts/**/*.html
 _posts/**/*_files/
 # data
+
 data/*df
 #data_raw
 *_cache/
