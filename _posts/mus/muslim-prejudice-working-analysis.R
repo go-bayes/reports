@@ -79,7 +79,13 @@ rarep<-df%>%
   dplyr::filter(YearMeasured == 1) %>%
   #dplyr::filter(Wave == 2018 | Wave == 2019) %>%
   # dplyr::group_by(Id) %>% filter(n() == 2) %>%
-  dplyr::filter(Wave == 2018 | Wave ==2019 | Wave ==2020 ) %>%
+  dplyr::filter(Wave == 2012 | 
+                  Wave == 2013 | 
+                  Wave == 2014 | 
+                  Wave == 2015 | 
+                  Wave == 2016 | 
+                  Wave == 2017 |
+                  Wave == 2018 | Wave ==2019 | Wave ==2020 ) %>%
   droplevels() %>%
   dplyr::mutate(org2018 =  ifelse(Wave == 2018 & YearMeasured ==1,1,0 ))%>%
   group_by(Id) %>%
@@ -763,7 +769,7 @@ kf3  <- km_all3 %>%
 
 # dat_all N
 # correct
-
+kf3
 
 # Test NAs = Correct
 table1::table1(~Ys|Wave *as.factor(As), data =kf3, overall=F)
@@ -1685,13 +1691,15 @@ b_sample_prior_strong <- brms::brm(
   backend = "cmdstanr",
   file = here::here("_posts", "mus", "mods", "b_sample_prior_strong"))
 
+# info
+stancode(b_sample_prior_strong)
+prior_summary(b_sample_prior_strong)
 
+# plot
 conditional_b_sample_prior_strong <- plot(conditional_effects(b_sample_prior_strong,  "Wave:As",  ndraws = 200, spaghetti = T), points = F)
 
 saveRDS(conditional_b_sample_prior_strong,here::here("_posts","mus","mods","conditional_b_sample_prior_strong"))
 
-
-)
 lazerhawk::brms_SummaryTable(b_sample_prior_strong, panderize=F)
 
 
@@ -1706,12 +1714,13 @@ b_sample_prior_weak <- brms::brm(
   # c(prior(normal(.2, .5), class = b, coef = "As1"),
   #   prior(normal(.06,.5), class = b, coef = "Wave"),
   #   prior(normal(0,.5),  class= b, coef = "As1:Wave"),
-  #   prior(normal(0,.5),  class= b, coef = "As1", dpar = "sigma")),
+  prior = c(prior(normal(0,1),  class= b, coef = "As1", dpar = "sigma"),
+            prior(student_t(3,0,2.5), class = b, dpar = "sigma" )),
   seed = 1234,
   warmup = 500,
   iter = 1000,
   sample_prior = "only",
-  chains = 1,
+  chains = 5,
   backend = "cmdstanr",
   file = here::here("_posts", "mus", "mods", "b_sample_prior_weak"))
 
@@ -1720,11 +1729,32 @@ conditional_b_sample_prior_strong <- plot(conditional_effects(b_sample_prior_str
 
 saveRDS(conditional_b_sample_prior_strong,here::here("_posts","mus","mods","conditional_b_sample_prior_strong"))
 
-
-)
 lazerhawk::brms_SummaryTable(b_sample_prior_strong, panderize=F)
 
 
+
+bayes_sconditional_b_sample_prior_strong <- conditional_b_sample_prior_strong$`Wave:As` + #scale_y_continuous(limits=c(4.,4.48)) +
+  labs(
+    title = "Strong prior allows greater scope for posterior exploration than is needed.",
+    y = "Muslim Warmth",
+    x = "Years: 2018-2020/21; N = 47948"
+  ) + scale_colour_okabe_ito(alpha = .5)
+
+  bayes_sconditional_b_sample_prior_strong
+#scale_color_viridis_d(option = "cividis") 
+  
+
+ggsave(
+  bayes_sconditional_b_sample_prior_strong,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 12,
+  height =12,
+  units = "in",
+  filename = "bayes_sconditional_b_sample_prior_strong.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 800
+)
 
 
 # sensitivity anlaysis ----------------------------------------------------
