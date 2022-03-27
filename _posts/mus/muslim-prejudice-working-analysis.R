@@ -55,9 +55,8 @@ library("brms") # bayesian estimation
 library("cmdstanr") # backend brms
 rstan_options(auto_write = TRUE) # bayesian estimation
 options(mc.cores = parallel::detectCores ()) # use all course
-theme_set(theme_pubclean()) # nice theme
 
-
+parallel::detectCores ()
 # cite packages
 cite_packages()
 
@@ -1069,7 +1068,7 @@ summary(imps_bind$imputations$imp[[1]]$Wave)
 #saveRDS(imps_bind, here::here("_posts", "mus", "mods", "imps_bind"))
 
 # read
-#imps_bind <- readRDS(here::here("_posts", "mus", "mods", "imps_bind"))
+imps_bind <- readRDS(here::here("_posts", "mus", "mods", "imps_bind"))
 
 # make list for bayesian models
 #listbayes <-imps_bind$imputations$imp
@@ -1502,6 +1501,37 @@ ggsave(
 listbayes<- readRDS(here::here("_posts", "mus", "mods", "listbayes"))
 #saveRDS(listbayes, here::here("_posts", "mus",  "listbayes"))
 
+# from other script = proper list and also test model 
+ameliadata<- readRDS(here::here("_posts", "mus", "mods", "ameliadata"))
+testdata<- readRDS(here::here("_posts", "mus", "mods", "testdata"))
+
+
+# default priors 
+
+system.time( def_fit  <- brms::brm_multiple( 
+  bf(Ys ~ As  *  Wave + (0 + As||Id),
+     sigma ~ 0 + As , set_rescor(rescor = FALSE)),
+  family = gaussian, 
+  data = ameliadata,
+  # c(
+  #   prior(normal(.2,.25), class = b, coef = "As1"),
+  #   prior(normal(0.05,.25), class = b, coef = "Wave"),
+  #   prior(normal(0,.25),  class= b, coef = "As1:Wave"),
+  #   prior(normal(log(1),.5),  class= b, coef = "As0", dpar = "sigma"),
+  #   prior(normal(log(1),.5),  class= b, coef = "As1", dpar = "sigma"),
+  #   prior(student_t(3,4.1,.1), class = Intercept),
+  #   prior(student_t(3,0,.1), class = "sd"),
+  #   prior(student_t(3,0,1), class = "sd", coef = "As0", group = "Id"),
+  #   prior(student_t(3,0,1), class = "sd", coef = "As1", group = "Id")),
+  seed = 1234,
+  warmup = 1000,
+  iter = 2000,
+  chains = 4,
+  backend = "cmdstanr",
+  file = here::here("_posts", "mus", "mods", "def_fit")
+) )
+
+
 
 b_m1g <- brms::brm_multiple( 
     bf(Ys ~ As  *  Wave + (1|Id),
@@ -1542,7 +1572,7 @@ b_fit <- brms::brm_multiple(
 )
 
 
-b_m1 <- b_m1 <- brms::brm( 
+b_m1 <- brms::brm_multiple( 
   bf(Ys ~ As  *  Wave + (1|Id),
      sigma ~ As, set_rescor(rescor = FALSE)),
   family = gaussian, 
