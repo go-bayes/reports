@@ -923,7 +923,9 @@ saveRDS(imputed0, here::here("_posts","mus","mods", "imputed0"))
 length(unique(imputed0$imputations$imp1$Id))
 
 # check means, looks good!
-#imputed0<- readRDS(here::here("_posts","mus","mods","imputed0"))
+imputed0<- readRDS(here::here("_posts","mus","mods","imputed0"))
+str(imputed0$imputations$imp1)
+
 
 table1::table1(~ Ys|Wave * As, data = imputed0$imputations$imp1, overall=FALSE)
 table1::table1(~ Ys|Wave * As, data = imputed0$imputations$imp2, overall=FALSE)

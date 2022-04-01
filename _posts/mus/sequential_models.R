@@ -60,16 +60,7 @@ imp9 <- as.data.frame(imps_bind$imputations$imp[[9]])
 imp10 <- as.data.frame(imps_bind$imputations$imp[[10]])
 
 
-ameliadata <- list(imp1,
-                   imp2,
-                   imp3,
-                   imp4,
-                   imp5,
-                   imp6,
-                   imp7,
-                   imp8,
-                   imp9,
-                   imp10)
+ameliadata <- list(imp1,imp2,imp3,imp4,imp5,imp6,imp7,imp8,imp9,imp10)
 
 # test llist
 str(ameliadata)
@@ -100,6 +91,65 @@ saveRDS(testdata, here::here("_posts", "mus", "mods", "testdata"))
 
 
 
+# model 1 -----------------------------------------------------------------
+
+
+system.time( m_imp1  <- brms::brm( 
+  bf(Ys ~ As  *  Wave + (0 + As|| Id),
+     sigma ~ 0 + As, set_rescor(rescor = FALSE)),
+  family = gaussian, 
+  data = imp1,
+  c(
+    prior(normal(.2,.25), class = b, coef = "As1"),
+    prior(normal(0,.25), class = b, coef = "Wave"),
+    prior(normal(0,.25),  class= b, coef = "As1:Wave"),
+    prior(normal(log(1),1),  class= b, coef = "As0", dpar = "sigma"),
+    prior(normal(log(1),1),  class= b, coef = "As1", dpar = "sigma"),
+    prior(student_t(3,4.15,1), class = Intercept),
+    prior(student_t(3,0,2.5), class = sd,  coef = "As0", group = "Id"),
+    prior(student_t(3,0,2.5), class = sd,  coef = "As1", group = "Id")
+  ),
+  seed = 1234,
+  warmup = 1000,
+  iter = 2000,
+  chains = 4,
+  backend = "cmdstanr",
+  file = here::here("_posts", "mus", "mods", "m_imp1.rds")
+) )
+
+
+# model 2 -----------------------------------------------------------------
+
+
+
+system.time( m_imp2  <- brms::brm( 
+  bf(Ys ~ As  *  Wave + (0 + As|| Id),
+     sigma ~ 0 + As, set_rescor(rescor = FALSE)),
+  family = gaussian, 
+  data = imp2,
+  c(
+    prior(normal(.2,.25), class = b, coef = "As1"),
+    prior(normal(0,.25), class = b, coef = "Wave"),
+    prior(normal(0,.25),  class= b, coef = "As1:Wave"),
+    prior(normal(log(1),1),  class= b, coef = "As0", dpar = "sigma"),
+    prior(normal(log(1),1),  class= b, coef = "As1", dpar = "sigma"),
+    prior(student_t(3,4.15,1), class = Intercept),
+    prior(student_t(3,0,2.5), class = sd,  coef = "As0", group = "Id"),
+    prior(student_t(3,0,2.5), class = sd,  coef = "As1", group = "Id")
+  ),
+  seed = 1234,
+  warmup = 1000,
+  iter = 2000,
+  chains = 4,
+  backend = "cmdstanr"
+  #, file = here::here("_posts", "mus", "mods", "m_imp2.rds")
+) )
+
+saveRDS(m_imp2.rds,  here::here("_posts", "mus", "mods", "m_imp2.rds"))
+
+
+
+
 # BAYES USE CMDSTAN str prior #  -----------------------------------------------------------------
 ameliadata<- readRDS(here::here("_posts", "mus", "mods", "ameliadata"))
 testdata<- readRDS(here::here("_posts", "mus", "mods", "testdata"))
@@ -125,14 +175,14 @@ system.time( testfit  <- brms::brm_multiple(
     prior(student_t(3,4.15,1), class = Intercept),
     prior(student_t(3,0,2.5), class = sd,  coef = "As0", group = "Id"),
     prior(student_t(3,0,2.5), class = sd,  coef = "As1", group = "Id")
- ),
+  ),
   seed = 1234,
   warmup = 1000,
   iter = 2000,
   chains = 5,
   #future = TRUE#,
   backend = "cmdstanr"
-# file = here::here("_posts", "mus", "mods", "remove_fit.rds")
+  # file = here::here("_posts", "mus", "mods", "remove_fit.rds")
 ) )
 #stancode(testfit)
 
@@ -223,6 +273,9 @@ system.time( testfit2  <- brms::brm_multiple(
   backend = "cmdstanr"#,
   #  file = here::here("_posts", "mus", "mods", "test_fit.rds")
 ) )
+
+saveRDS()
+
 prior_summary(testfit2)
 stancode(testfit2)
 

@@ -1,3 +1,4 @@
+# Home M1 laptop
 
 library("here") # file management
 #library("equatiomatic") # equations
@@ -35,12 +36,14 @@ library("simstudy")
 easystats::install_suggested()
 
 # rstan options
-library("dplyr")
+#library("dplyr")
 library("brms") # bayesian estimation
 library("cmdstanr") # backend brms
-library("rstan") # backend brms
-rstan_options(auto_write = TRUE) # bayesian estimation
-options(mc.cores = parallel::detectCores ()) # use all course
+#library("rstan") # backend brms
+#rstan_options(auto_write = TRUE) # bayesian estimation
+#options(mc.cores = parallel::detectCores ()) # use all course
+#rstan_options(threads_per_chain = 1)
+
 # library(bayesplot)
 # color_scheme_set("brightblue")
 
@@ -48,39 +51,40 @@ options(mc.cores = parallel::detectCores ()) # use all course
 imps_bind <- readRDS(here::here("_posts", "mus", "mods", "imps_bind"))
 
 # make list
-imp1 <- as.data.frame(imps_bind$imputations$imp[[1]])
-imp2 <- as.data.frame(imps_bind$imputations$imp[[2]])
-imp3 <- as.data.frame(imps_bind$imputations$imp[[3]])
-imp4 <- as.data.frame(imps_bind$imputations$imp[[4]])
-imp5 <- as.data.frame(imps_bind$imputations$imp[[5]])
-imp6 <- as.data.frame(imps_bind$imputations$imp[[6]])
-imp7 <- as.data.frame(imps_bind$imputations$imp[[7]])
-imp8 <- as.data.frame(imps_bind$imputations$imp[[8]])
-imp9 <- as.data.frame(imps_bind$imputations$imp[[9]])
-imp10 <- as.data.frame(imps_bind$imputations$imp[[10]])
+imp1 <- data.frame(imps_bind$imputations$imp[[1]])
+imp2 <- data.frame(imps_bind$imputations$imp[[2]])
+imp3 <- data.frame(imps_bind$imputations$imp[[3]])
+imp4 <- data.frame(imps_bind$imputations$imp[[4]])
+imp5 <- data.frame(imps_bind$imputations$imp[[5]])
+imp6 <- data.frame(imps_bind$imputations$imp[[6]])
+imp7 <- data.frame(imps_bind$imputations$imp[[7]])
+imp8 <- data.frame(imps_bind$imputations$imp[[8]])
+imp9 <- data.frame(imps_bind$imputations$imp[[9]])
+imp10 <-data.frame(imps_bind$imputations$imp[[10]])
 
 
-ameliadata <- list(imp1,
-                   imp2,
-                   imp3,
-                   imp4,
-                   imp5,
-                   imp6,
-                   imp7,
-                   imp8,
-                   imp9,
-                   imp10)
+
+amelia_data <- list(list(m1 = imp1),
+                    list(m2 = imp2),
+                    list(m3 = imp3),
+                    list(m4 = imp4),
+                    list(m5 = imp5),
+                    list(m6 = imp6),
+                    list(m7 = imp7),
+                    list(m8 =imp8),
+                    list(m9 = imp9),
+                    list(m10 = imp10))
 
 # test llist
-str(ameliadata)
+str(amelia_data)
 
 # save list 
-saveRDS(ameliadata, here::here("_posts", "mus", "mods", "ameliadata"))
+saveRDS(amelia_data, here::here("_posts", "mus", "mods", "amelia_data"))
 
 
 # make test data w/ 22 Ids
 
-i1 <- imp1 %>% arrange(Id, Wave) %>% slice(1:900)
+i1 <- imp1 %>% arrange(Id, Wave) %>% dplyr::slice(1:900)
 i2 <- imp2 %>% arrange(Id, Wave) %>% slice(1:900)
 i3 <- imp3 %>% arrange(Id, Wave) %>% slice(1:900)
 i4 <- imp4 %>% arrange(Id, Wave) %>% slice(1:900)
@@ -102,7 +106,7 @@ saveRDS(testdata, here::here("_posts", "mus", "mods", "testdata"))
 
 # BAYES USE CMDSTAN str prior #  -----------------------------------------------------------------
 ameliadata<- readRDS(here::here("_posts", "mus", "mods", "ameliadata"))
-testdata<- readRDS(here::here("_posts", "mus", "mods", "testdata"))
+#testdata<- readRDS(here::here("_posts", "mus", "mods", "testdata"))
 
 get_prior( bf(Ys ~ As  *  Wave + (0 + As|| Id),
               sigma ~ 0 + As, set_rescor(rescor = FALSE)), data = i10)
@@ -125,14 +129,14 @@ system.time( testfit  <- brms::brm_multiple(
     prior(student_t(3,4.15,1), class = Intercept),
     prior(student_t(3,0,2.5), class = sd,  coef = "As0", group = "Id"),
     prior(student_t(3,0,2.5), class = sd,  coef = "As1", group = "Id")
- ),
+  ),
   seed = 1234,
   warmup = 1000,
   iter = 2000,
   chains = 5,
   #future = TRUE#,
   backend = "cmdstanr"
-# file = here::here("_posts", "mus", "mods", "remove_fit.rds")
+  # file = here::here("_posts", "mus", "mods", "remove_fit.rds")
 ) )
 #stancode(testfit)
 
@@ -152,11 +156,11 @@ bayes_test
 
 
 
+# use model ---------------------------------------------------------------
+
+
 
 ### BIGMODEL 
-
-
-
 system.time( m1_model  <- brms::brm_multiple( 
   bf(Ys ~ As  *  Wave + (0 + As|| Id),
      sigma ~ 0 + As, set_rescor(rescor = FALSE)),
@@ -177,17 +181,47 @@ system.time( m1_model  <- brms::brm_multiple(
   iter = 2000,
   chains = 2,
   backend = "cmdstanr",
-  file = here::here("_posts", "mus", "mods", "m1_model.rds")
+  cores = 8
+  , file = here::here("_posts", "mus", "mods", "m1_model.rds")
 ) )
+
+#saveRDS( m1_model,  here::here("_posts", "mus", "mods", "m1_model.rds"))
+lazerhawk::brms_SummaryTable(m1_model, panderize=F)
+
+summary_model <- summary(m1_model)
+saveRDS(summary_model, here::here("_posts", "mus", "mods", "summary_model"))
+
+
 #stancode(testfit)
 
-prior_summary(testfit)
+prior_summary(m1_model)
 
-summary(testfit)
 
-plot(testfit)
+plot(m1_model)
 
-testfit_plot <- plot(conditional_effects(testfit,  "Wave:As",  ndraws = 400, spaghetti = T), points = F)
+m1_model_plot <- plot(conditional_effects(m1_model,  "Wave:As",  ndraws = 200, spaghetti = T))
+m1_model_plot
+saveRDS(m1_model_plot, here::here("_posts", "mus", "mods", "m1_model_plot"))
+
+
+# Tray this graph 
+em_trends_bm1 <- m1_model %>%
+  emtrends(~ Wave,
+           var = "Wave",
+           at = list(As = c("0","1"),
+                     Wave = seq(0, 2, by = .1)),
+           epred = TRUE,
+           re_formula = NA)%>%
+  gather_emmeans_draws()
+
+
+
+
+
+
+
+
+
 
 bayes_test <- testfit_plot$`Wave:As` + # scale_y_continuous(limits=c(1.0,8)) +
   labs(subtitle="Regularised Prior",
