@@ -32,8 +32,9 @@ library("tidyverse") # data wrangling
 library("sjstats")
 library("magick")
 library("simstudy")
+library("visibly")
 
-easystats::install_suggested()
+  #easystats::install_suggested()
 
 # rstan options
 #library("dplyr")
@@ -188,9 +189,14 @@ system.time( m1_model  <- brms::brm_multiple(
 #saveRDS( m1_model,  here::here("_posts", "mus", "mods", "m1_model.rds"))
 lazerhawk::brms_SummaryTable(m1_model, panderize=F)
 
+
 summary_model <- summary(m1_model)
 saveRDS(summary_model, here::here("_posts", "mus", "mods", "summary_model"))
 
+
+vplots <- visibly::plot_coefficients(m1_model,  palette = 'berlin')
+vplots
+saveRDS(vplots, here::here("_posts", "mus", "mods", "vplots"))
 
 #stancode(testfit)
 
@@ -199,13 +205,13 @@ prior_summary(m1_model)
 
 plot(m1_model)
 
-m1_model_plot <- plot(conditional_effects(m1_model,  "Wave:As",  ndraws = 200, spaghetti = T))
+m1_model_plot <- plot(conditional_effects(m1_model,  "Wave:As",  ndraws = 100, spaghetti = T))
 m1_model_plot
 saveRDS(m1_model_plot, here::here("_posts", "mus", "mods", "m1_model_plot"))
 
 
 # Tray this graph 
-em_trends_bm1 <- m1_model %>%
+em_trends_m1 <- m1_model %>%
   emtrends(~ Wave,
            var = "Wave",
            at = list(As = c("0","1"),
@@ -215,11 +221,21 @@ em_trends_bm1 <- m1_model %>%
   gather_emmeans_draws()
 
 
+saveRDS(em_trends_m1, here::here("_posts", "mus", "mods", "em_trends_m1"))
 
+# 
+# ## BROOM ? 
+# # function 
+# multiplot <- function(x) { 
+#   x %>% purrr::map(function(.) { 
+#     broom::tidy(., conf.int = TRUE, par_type = "non-varying") }) %>% 
+#     dplyr::bind_rows(.id = "model") %>% 
+#     ggplot(aes(term, estimate, ymin = lower, ymax = upper, color = model)) + 
+#     geom_pointrange(position = position_dodge(width = 0.3)) + coord_flip()
+# }
+# 
 
-
-
-
+# https://solomonkurz.netlify.app/post/2019-07-13-would-you-like-all-your-posteriors-in-one-plot/
 
 
 
