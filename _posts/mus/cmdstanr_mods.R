@@ -32,7 +32,12 @@ library("sjstats")
 library("magick")
 library("simstudy")
 
+<<<<<<< Updated upstream
 easystats::install_suggested()
+=======
+
+
+>>>>>>> Stashed changes
 
 # rstan options
 library("dplyr")
