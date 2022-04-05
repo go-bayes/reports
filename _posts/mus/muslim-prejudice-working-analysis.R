@@ -538,7 +538,7 @@ trajectory_spline <-plot(pa) + #  add.data   = TRUE, dot.alpha = 0.005) +
 trajectory_spline 
 
 
-trajectory_1217 <-plot(ma) + #  add.data   = TRUE, dot.alpha = 0.005) +
+trajectory_1217 <-plot_time + #  add.data   = TRUE, dot.alpha = 0.005) +
   labs(title="National New Zealand trajectory in Muslim acceptance",
        subtitle="years: 2012-2017/18; N = 12179") + 
   labs(y="Muslim Warmth",
@@ -1148,6 +1148,7 @@ plot(tab, show_labels = TRUE)
 # pl_ml
 
 
+<<<<<<< HEAD
 
 
 
@@ -1183,7 +1184,102 @@ ggsave(
   dpi = 1000
 )
 
+=======
+library(ggsci)
 
+fitted_lines_all<-
+  tibble(.imp = 1:10) %>%
+  mutate( p = map(.imp, ~  ggeffects::ggpredict(model_all$model[[.]],terms = c("Wave[0:2,by=.01]","As"))))%>%
+  data_frame() %>%
+  unnest() 
+
+
+
+plot_3 <- fitted_lines_all %>%
+  ggplot(aes(x = x)) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, group = group, colour = group),
+              alpha = 1/10) +
+  geom_line(aes(y = predicted, group =group), 
+            size = 1/4) + theme_clean() +  scale_y_continuous(limits=c(4.0,4.5)) +
+  labs(subtitle="MI from six previous waves + full attack wave",
+       y= "Muslim Warmth", 
+       x = "Years: 2018-2020/21; N = 47948") + 
+  scale_colour_npg(alpha =.5) + theme_classic()
+# scale_colour_okabe_ito(alpha =.5) + 
+theme_classic()
+plot_3
+
+
+
+fitted_lines_all<-
+  tibble(.imp = 1:10) %>%
+  mutate( p = map(.imp, ~  ggeffects::ggpredict(model_all$model[[.]],terms = c("Wave[0:2,by=.01]","As"))))%>%
+  data_frame() %>%
+  unnest() %>%
+  rename(As = group)
+
+
+library(ggsci)
+plot_3 <- fitted_lines_all %>%
+  ggplot(aes(x = x)) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, group = As, colour = As),
+              alpha = 1/10) +
+  geom_line(aes(y = predicted, group =As), 
+            size = 1/4) + theme_clean() +  scale_y_continuous(limits=c(4.0,4.5)) +
+  labs(subtitle="Frequentist MI from six previous waves + full attack wave",
+       y= "Muslim Warmth", 
+       x = "Years: 2018-2020/21; N = 47948") + 
+  scale_colour_npg(alpha =.5) + theme_classic()
+ # scale_colour_okabe_ito(alpha =.5) + 
+  theme_classic()
+plot_3
+
+
+ggsave(
+  plot_3,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 12,
+  height =9,
+  units = "in",
+  filename = "plot_3.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1000
+)
+
+
+
+## Graph this model with Bayesian model 
+
+plot_bayes_3  <- m1_test_model_plot$`Wave:As`  + scale_y_continuous(limits=c(4.0,4.5)) +
+  labs(subtitle="Bayesian MI from six previous waves + full attack wave",
+       y= "Muslim Warmth", 
+       x = "Years: 2018-2020/21; N = 47948") + 
+  scale_color_npg(alpha =.8) + 
+  # scale_colour_fivethirtyeight(alpha = .5) + 
+  #scale_colour_okabe_ito(alpha =.5) + 
+  theme_classic()
+
+
+#yola
+
+compare_graph <- plot_3 + plot_bayes_3 + plot_annotation(tag_levels = "i",
+                                                         title = "No practical difference between frequentist and Bayesian estimation") + plot_layout(guides = 'collect')
+
+compare_graph
+>>>>>>> 9f5a16fc41e9927370908b86e724d0204590a0ed
+
+ggsave(
+  compare_graph,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 12,
+  height =9,
+  units = "in",
+  filename = "compare_graph.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1000
+)
 
 
 
@@ -2893,6 +2989,7 @@ tab [,c(1:5)]%>%
 
 plot(tab, show_labels = TRUE)
 
+<<<<<<< HEAD
 
 
 # Kurz model
@@ -2904,6 +3001,19 @@ fitted_lines4 <-
   unnest()
 
 
+=======
+
+
+# Kurz model
+
+fitted_lines4 <-
+  tibble(.imp = 1:10) %>%
+  mutate( p = map(.imp, ~  ggeffects::ggpredict(model_all4$model[[.]],terms = c("Wave[0:2,by=.01]","As"))))%>%
+  data_frame() %>%
+  unnest()
+
+
+>>>>>>> 9f5a16fc41e9927370908b86e724d0204590a0ed
 
 plot_4 <- fitted_lines4 %>%
   ggplot(aes(x = x)) +
@@ -2911,9 +3021,16 @@ plot_4 <- fitted_lines4 %>%
               alpha = 1/10) +
   geom_line(aes(y = predicted, group =group), 
             size = 1/4) + theme_clean() +  scale_y_continuous(limits=c(4.0,4.5)) +
+<<<<<<< HEAD
   labs(subtitle="Multiple imputation: sample from previous 1 wave prior to attack + 2 waves post-attack",
        y= "Muslim Warmth", 
        x = "Years: 2017-2020/21; N = 17014") + scale_colour_okabe_ito(alpha =.5)
+=======
+  labs(subtitle="MI from one previous wave",
+       y= "Muslim Warmth", 
+       x = "Years: 2017-2020/21; N = 17014") +   scale_colour_npg(alpha =.5)+  theme_classic() #+ 
+#scale_colour_okabe_ito(alpha =.5)
+>>>>>>> 9f5a16fc41e9927370908b86e724d0204590a0ed
 plot_4
 
 
@@ -3386,9 +3503,16 @@ plot_5 <- fitted_lines5 %>%
               alpha = 1/10) +
   geom_line(aes(y = predicted, group =group), 
             size = 1/4) + theme_clean() +  scale_y_continuous(limits=c(4.0,4.5)) +
+<<<<<<< HEAD
   labs(subtitle="Multiple imputation: sample from previous 2 waves prior to attack + 2 waves post-attack",
        y= "Muslim Warmth", 
        x = "Years: 2016-2020/21; N=21796") + scale_colour_okabe_ito(alpha =.5)
+=======
+  labs(subtitle="MI from two previous waves",
+       y= "Muslim Warmth", 
+       x = "Years: 2016-2020/21; N=21796") +  scale_colour_npg(alpha =.5)+  theme_classic()# + 
+# scale_colour_okabe_ito(alpha =.5)
+>>>>>>> 9f5a16fc41e9927370908b86e724d0204590a0ed
 plot_5
 
 
@@ -3909,9 +4033,14 @@ plot_9 <- fitted_lines9 %>%
               alpha = 1/10) +
   geom_line(aes(y = predicted, group =group), 
             size = 1/4) + theme_clean() +  scale_y_continuous(limits=c(4.0,4.5)) +
+<<<<<<< HEAD
   labs(subtitle="Multiple imputation: sample from previous 6 waves prior to attack + 2 waves post-attack",
+=======
+  labs(subtitle="MI from previous six previous waves",
+>>>>>>> 9f5a16fc41e9927370908b86e724d0204590a0ed
        y= "Muslim Warmth", 
-       x = "Waves: 2012-2020/21, N = 11799") + scale_colour_okabe_ito(alpha=.5)
+       x = "Waves: 2012-2020/21, N = 11799") +   scale_colour_npg(alpha =.5) + theme_classic() # + 
+scale_colour_okabe_ito(alpha=.5) 
 
 
 plot_9
@@ -4275,6 +4404,7 @@ tab [,c(1:5)]%>%
 
 plot(tab, show_labels = TRUE)
 
+<<<<<<< HEAD
 
 # Kurz model
 
@@ -4299,6 +4429,33 @@ plot_st <- fitted_linesST %>%
 
 plot_st
 
+=======
+
+# Kurz model
+
+fitted_linesST <-
+  tibble(.imp = 1:10) %>%
+  mutate( p = map(.imp, ~  ggeffects::ggpredict(model_all_st$model[[.]],terms = c("Wave[0:2,by=.01]","As"))))%>%
+  data_frame() %>%
+  unnest()
+
+
+
+plot_st <- fitted_linesST %>%
+  ggplot(aes(x = x)) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, group = group, colour = group),
+              alpha = 1/10) +
+  geom_line(aes(y = predicted, group =group), 
+            size = 1/4) + theme_clean() +  scale_y_continuous(limits=c(4.0,4.5)) +
+  labs(subtitle="MI: no previous waves",
+       y= "Muslim Warmth", 
+       x = "Years: 2012-2020/21, N = 47948") +   scale_colour_npg(alpha =.5) +  theme_classic()#+ 
+scale_colour_okabe_ito(alpha=.5)
+
+
+plot_st
+
+>>>>>>> 9f5a16fc41e9927370908b86e724d0204590a0ed
 ggsave(
   plot_st,
   path = here::here(here::here("_posts", "mus", "mods")), # too large
@@ -4347,12 +4504,17 @@ ggsave(
 
 # COMBINED GRAPH ----------------------------------------------------------
 
+<<<<<<< HEAD
 robust_waves <- ((plot_9 + plot_3)/( plot_5 + plot_3) / (plot_4 +  plot_st ))+ plot_annotation(
+=======
+robust_waves <- (plot_9  + plot_5) / (  plot_4 + plot_st )+ plot_annotation(
+>>>>>>> 9f5a16fc41e9927370908b86e724d0204590a0ed
   title = "Postive trajectory in post-attack acceptance is robust to multiple imputation strategies",
   subtitle = "Recovery of postive trajectory in counterfactual no-attack condition requires at least two waves prior to baseline",
   tag_levels = "i")
 
 
+<<<<<<< HEAD
 robust_waves <- ((plot_9 + plot_5 ) / (plot_4 +  plot_st ))+ plot_annotation(
   title = "Postive trajectory in post-attack acceptance is robust to multiple imputation strategies",
   subtitle = "Recovery of postive trajectory in counterfactual no-attack condition requires at least two waves prior to baseline",
@@ -4366,6 +4528,22 @@ robust_waves
 #   subtitle = "Recovery of postive trajectory in counterfactual no-attack condition requires at least two waves prior to baseline",
 #   tag_levels = "i") +
 #   plot_layout(guides = 'collect')
+=======
+robust_waves2 <- plot_time + ((plot_9 + plot_5 ) / (plot_4 +  plot_st ))+ plot_annotation(
+  title = "Postive trajectory in post-attack acceptance is robust to multiple imputation strategies",
+  subtitle = "Recovery of postive trajectory in counterfactual no-attack condition requires at least two waves prior to baseline",
+  tag_levels = "i") + plot_layout(guides = 'collect')
+
+
+robust_waves
+robust_waves2
+
+# robust_waves2 <- trajectory_1217 + ((bayes_9 + bayes_3)/( bayes_5 + bayes_3) / (bayes_4 +  bayes_st ))+ plot_annotation(
+# #   title = "Postive trajectory in post-attack acceptance is robust to multiple imputation strategies",
+# #   subtitle = "Recovery of postive trajectory in counterfactual no-attack condition requires at least two waves prior to baseline",
+# #   tag_levels = "i") +
+# #   plot_layout(guides = 'collect')
+>>>>>>> 9f5a16fc41e9927370908b86e724d0204590a0ed
 
 
 robust_waves
@@ -4373,14 +4551,52 @@ robust_waves
 ggsave(
   robust_waves,
   path = here::here(here::here("_posts", "mus", "mods")),
+<<<<<<< HEAD
   width = 18,
   height =16,
+=======
+  width = 10,
+  height =9,
+>>>>>>> 9f5a16fc41e9927370908b86e724d0204590a0ed
   units = "in",
   filename = "robust_waves.jpg",
   device = 'jpeg',
   limitsize = FALSE,
   dpi = 1200
 )
+ggsave(
+  robust_waves2,
+  path = here::here(here::here("_posts", "mus", "mods")),
+  width = 16,
+  height =9,
+  units = "in",
+  filename = "robust_waves2.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1200
+)
+
+# z plot method --------------------------------------------------------
+
+#https://solomonkurz.netlify.app/post/2021-10-21-if-you-fit-a-model-with-multiply-imputed-data-you-can-still-plot-the-line/
+
+
+
+fitted_lines <-
+  tibble(.imp = 1:10) %>%
+  mutate( p = map(.imp, ~  ggeffects::ggpredict(model_all$model[[.]],terms = c("Wave[0:2,by=.01]","As"))))%>%
+  data_frame() %>%
+  unnest()
+
+
+
+fitted_lines %>%
+  ggplot(aes(x = x)) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, group = group, colour = group),
+              alpha = 1/10) +
+  geom_line(aes(y = predicted, group =group), 
+            size = 1/4) + 
+  ylab("Muslim Warmth") + theme_m
 
 
 # z plot method --------------------------------------------------------
