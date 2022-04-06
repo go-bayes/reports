@@ -24,7 +24,7 @@ library("ggplot2") # graphs
 library("ggthemes") #themes
 library("Amelia") # missing data imputation 
 library("ggpubr") # graphs
-library("viridis") # colours
+#library("viridis") # colours
 library("patchwork") # combine graphs
 library("ggforce") # graphs
 library("lme4") # multilevel estimation
@@ -37,19 +37,19 @@ library("brms") # bayesian estimation
 library("rstan") # backend brms
 library("rstanarm") # graphing
 library("cmdstanr") # backend brms'
-library("ipw") # inverse probability weighting
+#library("ipw") # inverse probability weighting
 library("tidybayes") # workign with posterior probability distributions
 library("bayesplot") # graphs
 library("ggokabeito")   # color palette
-library("gghalves")     #  half geoms
-library("ggbeeswarm")   # Special distribution-shaped point jittering
+#library("gghalves")     #  half geoms
+#library("ggbeeswarm")   # Special distribution-shaped point jittering
 library("emmeans") # estimate marginal means
 library("table1") # tables /now with latex
 library("tidyverse") # data wrangling
 library("sjstats")
 library("magick")
 library("simstudy")
-library(splines)
+#library(splines)
 # rstan options
 library("brms") # bayesian estimation
 library("cmdstanr") # backend brms
@@ -410,11 +410,11 @@ table1::table1(~ Attack|Wave, data = all_d, overall=FALSE)
 
 
 
-table1::table1(~ Ys|Wave, data = all_d_selected, overall=FALSE)
+tall<- table1::table1(~ Ys|Wave, data = all_d_selected, overall=FALSE)
 
 
 
-kable(t13, format ="markdown", booktabs = TRUE)
+kable(tall, format ="latex", booktabs = TRUE)
 
 
 # Amelia will center and scale continuous variables during the MI process. 
@@ -470,7 +470,8 @@ for(i in 1:m) {
 pool_parameters(model_ml$model)
 library(parameters)
 # spline
-tab<-pool_parameters(model_m)
+
+tab<-pool_parameters(model_ml$model)
 tab
 tab [,c(1:5)]%>%
   # print_md()%>%
@@ -481,7 +482,13 @@ plot(tab, show_labels = TRUE)
 
 # graph trajectory -------------------------------------------------------------
 
-
+# not run
+# fitted_lines_yrs_spx<-
+#   tibble(.imp = 1:10) %>%
+#   mutate( p = map(.imp, ~  ggeffects::ggpredict(model_m$model[[.]],terms = c("yrs[all]"), data = imputed_m$imputations$imp1$yrs)))%>%
+#   data_frame() %>%
+#   unnest()
+# fitted_lines_yrs_spx
 
 
 fitted_lines_yrs<-
@@ -506,6 +513,23 @@ plot_time <- fitted_lines_yrs %>%
   theme_classic() #coord_flip() 
 
 plot_time
+
+fitted_lines_yrs_sp
+
+# not run  
+# plot_time_sp  <- fitted_lines_yrs_sp %>%
+#   ggplot(aes(x = x)) +
+#   geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+#               alpha = 1/10) +
+#   geom_line(aes(y = predicted, group =group), 
+#             size = 1/4) + theme_clean() +  scale_y_continuous(limits=c(4.0,4.5)) +
+#   labs(title="National New Zealand trajectory in Muslim acceptance",
+#        subtitle="years: 2012-2017/18; N = 12179") + 
+#   labs(y="Muslim Warmth",
+#        x = "Years:2012-2017/19") +
+#   scale_y_continuous(limits=c(3,4.5)) + 
+#   theme_classic() #coord_flip() 
+# plot_time_sp
 
 ggsave(
   plot_time,
