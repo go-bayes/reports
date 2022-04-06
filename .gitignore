@@ -48,7 +48,7 @@ _posts/**/*_files/
 _posts/*.pdf
 docs/posts/**/*.pdf
 *mods/
-figs/*
+*/figs/
 
 # full nzavs
 data-full
