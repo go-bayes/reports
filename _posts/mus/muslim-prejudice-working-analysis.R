@@ -49,6 +49,7 @@ library("tidyverse") # data wrangling
 library("sjstats")
 library("magick")
 library("simstudy")
+library("future")
 #library(splines)
 # rstan options
 library("brms") # bayesian estimation
@@ -56,7 +57,9 @@ library("cmdstanr") # backend brms
 rstan_options(auto_write = TRUE) # bayesian estimation
 options(mc.cores = parallel::detectCores ()) # use all course
 
-parallel::detectCores ()
+options(mc.cores = 2 ) # use all course
+
+#parallel::detectCores ()
 # cite packages
 cite_packages()
 
@@ -480,6 +483,7 @@ tab [,c(1:5)]%>%
 plot(tab, show_labels = TRUE)
 
 
+
 # graph trajectory -------------------------------------------------------------
 
 # not run
@@ -497,6 +501,11 @@ fitted_lines_yrs<-
   data_frame() %>%
   unnest()
 
+fitted_lines_yrs<-
+  tibble(.imp = 1:10) %>%
+  mutate( p = map(.imp, ~  ggeffects::ggpredict(model_ml$model[[.]],terms = c("yrs[all]"))))%>%
+  data_frame() %>%
+  unnest()
 
 
 plot_time <- fitted_lines_yrs %>%
@@ -514,7 +523,7 @@ plot_time <- fitted_lines_yrs %>%
 
 plot_time
 
-fitted_lines_yrs_sp
+
 
 # not run  
 # plot_time_sp  <- fitted_lines_yrs_sp %>%
@@ -543,21 +552,21 @@ ggsave(
   dpi = 1000
 )
 
-
-
-pa <- ggeffects::ggemmeans(model_m[[3]], terms = c("yrs[all]")) 
-ma <- ggeffects::ggemmeans(model_ml[[3]], terms = c("yrs[all]")) 
-
-length(unique(imputed_m$imputations[[1]]$Id))
-
-trajectory_spline <-plot(pa) + #  add.data   = TRUE, dot.alpha = 0.005) +
-  labs(title="National New Zealand trajectory in Muslim acceptance",
-       subtitle="years: 2012-2017; N = 12179") + 
-  labs(y="Muslim Warmth",
-       x = "Years") +
-  scale_y_continuous(limits=c(3,4.5)) + 
-  theme_classic() #coord_flip() 
-trajectory_spline 
+# 
+# 
+# pa <- ggeffects::ggemmeans(model_m[[3]], terms = c("yrs[all]")) 
+# ma <- ggeffects::ggemmeans(model_ml[[3]], terms = c("yrs[all]")) 
+# 
+# length(unique(imputed_m$imputations[[1]]$Id))
+# 
+# trajectory_spline <-plot(pa) + #  add.data   = TRUE, dot.alpha = 0.005) +
+#   labs(title="National New Zealand trajectory in Muslim acceptance",
+#        subtitle="years: 2012-2017; N = 12179") + 
+#   labs(y="Muslim Warmth",
+#        x = "Years") +
+#   scale_y_continuous(limits=c(3,4.5)) + 
+#   theme_classic() #coord_flip() 
+# trajectory_spline 
 
 
 trajectory_1217 <-plot_time + #  add.data   = TRUE, dot.alpha = 0.005) +
@@ -567,8 +576,20 @@ trajectory_1217 <-plot_time + #  add.data   = TRUE, dot.alpha = 0.005) +
        x = "Years:2012-2017/19") +
   scale_y_continuous(limits=c(3,4.5)) + 
   theme_classic() #coord_flip() 
-trajectory_spline 
 trajectory_1217
+
+ggsave(
+  plot_time,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 12,
+  height =9,
+  units = "in",
+  filename = "pplot_time.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1000
+)
+
 
 # 
 # plot_trajectory_linear <-plot(ma)+labs(title="Growth in Muslim Acceptance",
@@ -614,65 +635,65 @@ ggsave(
 
 
 
-# bayes time trajectory --------------------------------------------------------
-# prepare data
+# # bayes time trajectory --------------------------------------------------------
+# # prepare data
+# 
+# m <- 10
+# trajectory <- NULL
+# 
+# for(i in 1:m) {
+#   trajectory$imputations$imp[[i]] <-imputed_m$imputations[[i]] %>%
+#     arrange(Wave,Id) 
+# }
+# 
+# 
+# trajectorylist <- trajectory$imputations$imp[[i]]
+# saveRDS(trajectorylist, here::here("_posts","mus","mods","trajectorylist"))
+# #Gamm
+# 
+# 
+# b_time <- brms::brm( 
+#   bf(Ys ~ yrs  + (1|Id)),
+#   family = gaussian, 
+#   data = trajectorylist,
+#   seed = 1234,
+#   warmup = 1000,
+#   iter = 2000,
+#   chains = 4,
+#   backend = "cmdstanr",
+#   file = here::here("_posts", "mus", "mods", "b_time")
+# )
+# 
+# lazerhawk::brms_SummaryTable(b_time, panderize=F)
 
-m <- 10
-trajectory <- NULL
 
-for(i in 1:m) {
-  trajectory$imputations$imp[[i]] <-imputed_m$imputations[[i]] %>%
-    arrange(Wave,Id) 
-}
-
-
-trajectorylist <- trajectory$imputations$imp[[i]]
-saveRDS(trajectorylist, here::here("_posts","mus","mods","trajectorylist"))
-#Gamm
-library('mgcv')
-
-b_time <- brms::brm( 
-  bf(Ys ~ yrs  + (1|Id)),
-  family = gaussian, 
-  data = trajectorylist,
-  seed = 1234,
-  warmup = 1000,
-  iter = 2000,
-  chains = 4,
-  backend = "cmdstanr",
-  file = here::here("_posts", "mus", "mods", "b_time")
-)
-
-lazerhawk::brms_SummaryTable(b_time, panderize=F)
-
-
-
-# graph bayes time trajectory -----------------------------------------------------------
-plot_smooth <- marginal_smooths(b_time)
-plot_smooth
-
-conditional9 <- plot(marginal_smooths(b9_m0,  "Wave:As",  ndraws = 100, spaghetti = T), points = F)
-saveRDS(conditional9,here::here("_posts","mus","mods","conditional9"))
-
-bayes_9 <- conditional9$`Wave:As`  +  scale_y_continuous(limits=c(4.0,4.48)) +
-  labs(subtitle="Potential outcome trajectory in Muslim acceptance:\nattack vs. no attack",
-       y= "Muslim Warmth", 
-       x = "Waves: 2012-2020, N = 11799") + scale_colour_okabe_ito(alpha=.5)
-
-#scale_color_viridis_d(option = "cividis") 
-
-bayes_9
-ggsave(
-  bayes_9,
-  path = here::here(here::here("_posts", "mus", "figs")),
-  width = 12,
-  height =9,
-  units = "in",
-  filename = "bayes_9.jpg",
-  device = 'jpeg',
-  limitsize = FALSE,
-  dpi = 1000
-)
+# 
+# # graph bayes time trajectory -----------------------------------------------------------
+# plot_smooth <- marginal_smooths(b_time)
+# plot_smooth
+# 
+# conditional9 <- plot(marginal_smooths(b9_m0,  "Wave:As",  ndraws = 100, spaghetti = T), points = F)
+# saveRDS(conditional9,here::here("_posts","mus","mods","conditional9"))
+# 
+# bayes_9 <- conditional9$`Wave:As`  +  scale_y_continuous(limits=c(4.0,4.48)) +
+#   labs(subtitle="Potential outcome trajectory in Muslim acceptance:\nattack vs. no attack",
+#        y= "Muslim Warmth", 
+#        x = "Waves: 2012-2020, N = 11799") + scale_colour_okabe_ito(alpha=.5)
+# 
+# #scale_color_viridis_d(option = "cividis") 
+# 
+# bayes_9
+# ggsave(
+#   bayes_9,
+#   path = here::here(here::here("_posts", "mus", "figs")),
+#   width = 12,
+#   height =9,
+#   units = "in",
+#   filename = "bayes_9.jpg",
+#   device = 'jpeg',
+#   limitsize = FALSE,
+#   dpi = 1000
+# )
 
 # df for estimating time trajectory in attack sample ---------------------------
 
@@ -767,7 +788,7 @@ km_all3
 length(unique(km_all3$Id))
 # correct
 km_all3
-t13<-table1::table1(~ Warm.Muslims|Wave * as.factor(Attack), data = km_all3, overall=FALSE)
+t13<-table1::table1(~ Warm.Muslims|as.factor(Attack)*Wave, data = km_all3, overall=FALSE)
 t13
 kable(t13, format ="latex", booktabs = TRUE)
 
@@ -779,23 +800,45 @@ kable(t13, format ="latex", booktabs = TRUE)
 bad_mod1 <- lmer(Ys ~ as.factor(As) + Wave + (1|Id), data = km_all3)
 
 model_parameters(bad_mod1)
-
+bad_mod1
 
 pl_drop_bad <- ggeffects::ggemmeans(bad_mod1, terms = c("Wave","As"))  
 
 drop__graph <- plot( pl_drop_bad ) + labs(
-  x = "Waves T10-T12",
+  x = "Years 2018-2021",
   y = "Warmth to Muslims",
-  title = "Pairwise deletion"
+  title = "Pairwise deletion graph: no imputation"
 )
 drop__graph
 
 
+tab_drop<-model_parameters(bad_mod1,  summary = FALSE) 
+tab_drop
+
+tab_drop[,c(1:5)]%>%
+  kbl("latex",booktabs = TRUE,digits=2)
+
+plot(tab_drop,  show_labels = TRUE)
+
+ggsave(
+  drop__graph,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 12,
+  height =9,
+  units = "in",
+  filename = "drop__graph.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1000
+)
+
 # 
-estimate_contrasts( bad_mod1,
+contrasts_tab<- estimate_contrasts( bad_mod1,
                     contrast = "As",
                     at = c("Wave","As") )
 
+contrasts_tab%>%
+  kbl("latex",booktabs = TRUE,digits=2)
 
 
 # poor imputation model that does not address for counterfactuals ---------
@@ -854,7 +897,7 @@ saveRDS(ka3, here::here("_posts","mus","mods","ka3"))
 # Missing data problem
 t2<- table1::table1( ~Ys | Wave*As, data = ka3, overall=F)
 t2
-
+t2
 t1kable(t2, format ="latex")
 #modelsummary::datasummary_crosstab(mean(Warm.Muslims) ~ Wave * as.factor(Attack), data = km_all3) #output = "latex_tabular")
 
@@ -941,9 +984,14 @@ bind_zero1 <-bind_zero %>%
 
 summary(bind_zero1$wave)
 # correct 
-table1::table1(~ Ys|Wave * As, data = bind_zero1, overall=FALSE)
 
 
+# zero table --------------------------------------------------------------
+
+
+zt <- table1::table1(~ Ys|As*Wave, data = bind_zero1, overall=F, transpose = F )
+
+t1kable(zt, format ="latex")
 
 # Impute 0s ------------------------------------------------------------
 
@@ -1035,11 +1083,19 @@ km_one <- ka3 %>%
 
 summary(km_one$wave)
 #check looks good
-table1::table1(~ yrs|Wave * As, data = km_one, overall=FALSE)
+table1::table1(~ Ys|Wave * As, data = km_one, overall=FALSE)
+
+
+
 head(km_one)
 dim(km_one)
 # make data frame
 km_one<-as.data.frame(km_one) 
+
+
+at <- table1::table1(~ Ys|As*Wave, data = km_one, overall=F, transpose = F )
+
+t1kable(at, format ="latex")
 
 # create bounds for Ys
 head(km_one)
@@ -4797,12 +4853,12 @@ table1::table1(~Warm.Muslims |Wave * Attack, data = tdat)
 #tdef <- defData(varname = "m", dist = "binary", formula = 0.5)
 rm(tdef) # remove in case object exists
 
-tdef <- defData( varname = "Y0", dist = "normal", formula = 4.4, variance = 2)
-tdef <- defData(tdef, varname = "Y1", dist = "normal", formula = "Y0 +  (Y0 * 0.005)", variance = 2)
-tdef <- defData(tdef, varname = "Y2", dist = "normal", formula = "Y1 +  (Y1 * 0.015)", variance = 2)
+tdef <- defData( varname = "Y0", dist = "normal", formula = 4.4, variance = 2, id = "id")
+tdef <- defData(tdef, varname = "Y1", dist = "normal", formula = "Y0 +  (Y0 * 0.01)", variance = 0,id = "id")
+tdef <- defData(tdef, varname = "Y2", dist = "normal", formula = "Y1 +  (Y1 * 0.01)", variance = 0, id = "id")
 
 
-dtTrial <- genData(41566, tdef)
+dtTrial <- genData(47948, tdef)
 head(dtTrial)
 
 # check
@@ -4847,17 +4903,18 @@ imputed_sim1<- amelia(
   empri = .05*nrow(dObs)) # ridge prior see: Amelia pdf documentation p.23
 
 saveRDS(imputed_sim1, here::here("_posts","mus","mods", "imputed_sim1"))
+imputed_sim1<- readRDS(here::here("_posts","mus","mods", "imputed_sim1"))
 
-table1::table1(~ Y|period, data = imputed_sim1$imputations$imp1, overall=FALSE)
-table1::table1(~ Y|period, data = imputed_sim1$imputations$imp1, overall=FALSE)
-table1::table1(~ Y|period, data = imputed_sim1$imputations$imp1, overall=FALSE)
-table1::table1(~ Y|period, data = imputed_sim1$imputations$imp1, overall=FALSE)
-table1::table1(~ Y|period, data = imputed_sim1$imputations$imp1, overall=FALSE)
-table1::table1(~ Y|period, data = imputed_sim1$imputations$imp1, overall=FALSE)
-table1::table1(~ Y|period, data = imputed_sim1$imputations$imp1, overall=FALSE)
-table1::table1(~ Y|period, data = imputed_sim1$imputations$imp1, overall=FALSE)
-table1::table1(~ Y|period, data = imputed_sim1$imputations$imp1, overall=FALSE)
-table1::table1(~ Y|period, data = imputed_sim1$imputations$imp1, overall=FALSE)
+table1::table1(~ Y|as.factor(period), data = imputed_sim1$imputations$imp1, overall=FALSE)
+table1::table1(~ Y|as.factor(period), data = imputed_sim1$imputations$imp1, overall=FALSE)
+table1::table1(~ Y|as.factor(period), data = imputed_sim1$imputations$imp1, overall=FALSE)
+table1::table1(~ Y|as.factor(period), data = imputed_sim1$imputations$imp1, overall=FALSE)
+table1::table1(~ Y|as.factor(period), data = imputed_sim1$imputations$imp1, overall=FALSE)
+table1::table1(~ Y|as.factor(period), data = imputed_sim1$imputations$imp1, overall=FALSE)
+table1::table1(~ Y|as.factor(period), data = imputed_sim1$imputations$imp1, overall=FALSE)
+table1::table1(~ Y|as.factor(period), data = imputed_sim1$imputations$imp1, overall=FALSE)
+table1::table1(~ Y|as.factor(period), data = imputed_sim1$imputations$imp1, overall=FALSE)
+table1::table1(~ Y|as.factor(period), data = imputed_sim1$imputations$imp1, overall=FALSE)
 
 # test
 imputed_sim1$imputations$imp1$Y
@@ -4867,20 +4924,43 @@ imputed_sim1$imputations$imp1$Y
 m<-10
 model_sim1<-NULL
 for(i in 1:m) {
-  model_sim1[[i]] <- lmer(Y ~ period + (1|id), data = imputed_sim1$imputations[[i]])
+  model_sim1$model[[i]] <- lmer(Y ~ period + (1|id), data = imputed_sim1$imputations[[i]])
 }
 
 # table
-tab<-pool_parameters(model_sim1)
-tab # recover effect
-tab [,c(1:5)]%>%
+tab_sim1<-pool_parameters(model_sim1$model)
+tab_sim1 # recover effect
+tab_sim1 [,c(1:5)]%>%
   # print_md()%>%
   kbl("latex",booktabs = TRUE,digits=2)
 
-plot(tab, show_labels = TRUE)
+plot(tab_sim1, show_labels = TRUE)
 
-pl_ml <- ggeffects::ggemmeans(model_sim1[[2]], terms = c("period")) 
-pl_ml
+
+
+fitted_lines_sim1 <-
+  tibble(.imp = 1:10) %>%
+  mutate( p = map(.imp, ~  ggeffects::ggpredict(model_sim1$model[[.]],terms = c("period[0:2, by =.01]"))))%>%
+  data_frame() %>%
+  unnest()
+
+library(ggsci)
+
+plot_sim1 <- fitted_lines_sim1 %>%
+  ggplot(aes(x = x)) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, group = group, colour = group),
+              alpha = 1/10) +
+  geom_line(aes(y = predicted, group =group), 
+            size = 1/4) + theme_clean() +  scale_y_continuous(limits=c(4.0,4.6)) +
+  labs(subtitle="MI from previous six previous waves",
+       y= "Muslim Warmth", 
+       x = "Waves: 2012-2020/21, N = 11799") +   scale_colour_npg(alpha =.5) + theme_classic() # + 
+#scale_colour_okabe_ito(alpha=.5) 
+
+
+plot_sim1
+
+
 
 
 ## create data
@@ -4893,6 +4973,9 @@ for(i in 1:m) {
 }
 str(self1$imputations$imp[[1]])
 
+
+
+
 # SIMULATE ZEROS ----------------------------------------------------------
 
 #Generate data with complete missingness for the zeros
@@ -4904,21 +4987,23 @@ set.seed(281726)
 rm(ztdef)
 
 # define yearly outcomes 
-ztdef <- defData(varname = "Y0", dist = "normal", formula = 3.66, variance = 1)
-ztdef <- defData(ztdef, varname = "Y1", dist = "normal", formula = "Y0 +  (Y0 * 0.030)", variance = 2)
-ztdef <- defData(ztdef, varname = "Y2", dist = "normal", formula = "Y1 +  (Y1 * 0.025)", variance = 2)
-ztdef <- defData(ztdef, varname = "Y3", dist = "normal", formula = "Y2 +  (Y2 * 0.02)", variance = 2)
-ztdef <- defData(ztdef, varname = "Y4", dist = "normal", formula = "Y3 +  (Y3 * 0.015)", variance = 2)
-ztdef <- defData(ztdef, varname = "Y5", dist = "normal", formula = "Y4 +  (Y4 * 0.015)", variance = 2)
-ztdef <- defData(ztdef, varname = "Y6", dist = "normal", formula = "Y5 +  (Y5 * 0.015)", variance = 2)
+ztdef <- defData(varname = "Y0", dist = "normal", formula = 3.7, variance = 1)
+ztdef <- defData(ztdef, varname = "Y1", dist = "normal", formula = "Y0 +  (Y0 * 0.025)", variance = 0)
+ztdef <- defData(ztdef, varname = "Y2", dist = "normal", formula = "Y1 +  (Y1 * 0.025)", variance = 0)
+ztdef <- defData(ztdef, varname = "Y3", dist = "normal", formula = "Y2 +  (Y2 * 0.02)", variance = 0)
+ztdef <- defData(ztdef, varname = "Y4", dist = "normal", formula = "Y3 +  (Y3 * 0.02)", variance = 0)
+ztdef <- defData(ztdef, varname = "Y5", dist = "normal", formula = "Y4 +  (Y4 * 0.015)", variance = 0)
+ztdef <- defData(ztdef, varname = "Y6", dist = "normal", formula = "Y5 +  (Y5 * 0.015)", variance = 0)
+ztdef <- defData(ztdef, varname = "Y7", dist = "normal", formula = "Y6 +  (Y6 * 0.015)", variance = 0)
+ztdef <- defData(ztdef, varname = "Y8", dist = "normal", formula = "Y7 +  (Y7 * 0.015)", variance = 0)
 
 
 
 head(ztdef)
 
 # Missing
-defM <- defMiss(varname = "Y7", formula = 1, logit.link = FALSE)
-defM <- defMiss(defM, varname = "Y8", formula = 1, logit.link = FALSE)
+#defM <- defMiss(varname = "Y7", formula = 1, logit.link = FALSE)
+#defM <- defMiss(defM, varname = "Y8", formula = 1, logit.link = FALSE)
 
 
 #5142/(5142 + 2020) 72 percent
@@ -4928,18 +5013,26 @@ zdtTrial <- genData(12179, ztdef)
 
 # create NA columens 
 
-zdtTrial$Y7 <- rep(NA, nrow(zdtTrial))
-zdtTrial$Y8 <- rep(NA, nrow(zdtTrial))
+# zdtTrial$Y7 <- rep(NA, nrow(zdtTrial))
+# zdtTrial$Y8 <- rep(NA, nrow(zdtTrial))
 
 # make logical values numeric
 zdtTrial<- zdtTrial %>%
   mutate(across(where(is.logical), as.numeric)) # make all numeric
 
-
-
-
 # check
 table1::table1(~Y0 + Y1 + Y2 + Y3 + Y4 + Y5 + Y6 + Y7 + Y8, data = zdtTrial)
+
+# save
+saveRDS(zdtTrial, here::here("_posts", "mus", "mods", "zdtTrial"))
+
+# check
+
+ 
+
+
+  # zdtTrial$Y8 <- rep(NA, nrow(zdtTrial))
+
 
 
 
@@ -5000,20 +5093,31 @@ zdtTime <- addPeriods(zdtTrial, nPeriods = 9, idvars = "id", timevars = c("Y0",
 # merge data 
 zdtTime
 
+
+
+
 MCAR <- defMiss(varname = "Y", formula = "-1.3", # just over 20% attrition
                 logit.link = TRUE, monotonic = TRUE
 )
+
+
 zdm <- genMiss(zdtTime, MCAR, "id", repeated = TRUE, periodvar = "period")
 
-zdObs <- genObs(zdtTime, zdm, idvars = "id")
 
-# check
+
 zdObs[, .(prop.missing = mean(is.na(Y))), keyby = period]
 
 table1::table1(~Y|as.factor(period), data = zdObs)
 
+tzdObs <- zdObs%>%
+  arrange(Y,id) %>%
+  group_by(period) %>%
+  mutate(Y = ifelse(period == 7 | period == 8, recode(Y, NA),Y))
 
-om <- rbind(zdObs,tbig)
+table1::table1(~Y|as.factor(period), data = tzdObs)
+
+
+om <- rbind(tzdObs,tbig)
 
 head(om)
 length(unique(om$id))
@@ -5021,13 +5125,16 @@ length(unique(om$id))
 
 # Inspect data
 table1::table1(~Y|as.factor(period), data = om)
-
+str(om)
+om <- om %>%
+  select(id, period, Y)
 
 saveRDS(om, here::here("_posts", "mus", "mods", "om"))
 
 ## Test imputation method for 1s
 library(Amelia)
-
+str(om)
+om<- as.data.frame(om)
 imputed_sim0<- amelia(
   set.seed=1234,
   om, 
@@ -5037,26 +5144,28 @@ imputed_sim0<- amelia(
   # idvars=c(""),
   lags="Y",
   leads="Y",
-  polytime = 2, #  polynomials perhaps not sensible given 
+  polytime = 2, #  polynomials otherwise regression to the mean
   intercs = F, # to many vars
   # bounds = bds, # lower upper bounds to Mus Prej
-  empri = .05*nrow(dObs)) # ridge prior see: Amelia pdf documentation p.23
+  empri = .05*nrow(om)) # ridge prior see: Amelia pdf documentation p.23
 
 # save data
 saveRDS(imputed_sim0, here::here("_posts","mus","mods", "imputed_sim0"))
 
-table1::table1(~ Y|period, data = imputed_sim0$imputations$imp1, overall=FALSE)
-table1::table1(~ Y|period, data = imputed_sim0$imputations$imp1, overall=FALSE)
-table1::table1(~ Y|period, data = imputed_sim0$imputations$imp1, overall=FALSE)
-table1::table1(~ Y|period, data = imputed_sim0$imputations$imp1, overall=FALSE)
-table1::table1(~ Y|period, data = imputed_sim0$imputations$imp1, overall=FALSE)
-table1::table1(~ Y|period, data = imputed_sim0$imputations$imp1, overall=FALSE)
-table1::table1(~ Y|period, data = imputed_sim0$imputations$imp1, overall=FALSE)
-table1::table1(~ Y|period, data = imputed_sim0$imputations$imp1, overall=FALSE)
-table1::table1(~ Y|period, data = imputed_sim0$imputations$imp1, overall=FALSE)
-table1::table1(~ Y|period, data = imputed_sim0$imputations$imp1, overall=FALSE)
+table1::table1(~ Y|as.factor(period), data = imputed_sim0$imputations$imp1, overall=FALSE)
+table1::table1(~ Y|as.factor(period), data = imputed_sim0$imputations$imp1, overall=FALSE)
+table1::table1(~ Y|as.factor(period), data = imputed_sim0$imputations$imp1, overall=FALSE)
+table1::table1(~ Y|as.factor(period), data = imputed_sim0$imputations$imp1, overall=FALSE)
+table1::table1(~ Y|as.factor(period), data = imputed_sim0$imputations$imp1, overall=FALSE)
+table1::table1(~ Y|as.factor(period), data = imputed_sim0$imputations$imp1, overall=FALSE)
+table1::table1(~ Y|as.factor(period), data = imputed_sim0$imputations$imp1, overall=FALSE)
+table1::table1(~ Y|as.factor(period), data = imputed_sim0$imputations$imp1, overall=FALSE)
+table1::table1(~ Y|as.factor(period), data = imputed_sim0$imputations$imp1, overall=FALSE)
+table1::table1(~ Y|as.factor(period), data = imputed_sim0$imputations$imp1, overall=FALSE)
 
-# test
+# compare
+table1::table1(~Y|as.factor(period), data = zdObs)
+
 
 # Select only final three waves
 m<-10
@@ -5075,22 +5184,21 @@ for(i in 1:m) {
 m<-10
 model_sim0<-NULL
 for(i in 1:m) {
-  model_sim0[[i]] <- lmer(Y ~ period + (1|id), data =  self0$imputations$imp[[i]])
+  model_sim0$model[[i]] <- lmer(Y ~ period + (1|id), data =  self0$imputations$imp[[i]])
 }
 
 # table
-tab<-pool_parameters(model_sim0)
-tab
-tab [,c(1:5)]%>%
+tab_simzero <-pool_parameters(model_sim0$model)
+tab_simzero
+tab_simzero [,c(1:5)]%>%
   # print_md()%>%
   kbl("latex",booktabs = TRUE,digits=2)
 
-plot(tab, show_labels = TRUE)
+plot(tab_simzero, show_labels = TRUE)
 
-pl_ml <- ggeffects::ggemmeans(model_all[[2]], terms = c("Wave","As")) 
-pl_ml
 
-str(self1$imputations$imp[[1]])
+
+
 
 ## create full data
 m<-10
@@ -5120,11 +5228,11 @@ str(listbayes)
 m<-10
 model_sim_rep <-NULL
 for(i in 1:m) {
-  model_sim_rep[[i]] <- lmer(Y ~ a * wave + (1|id), data =  model_sim_full$imputations$imp[[i]])
+  model_sim_rep$model[[i]] <- lmer(Y ~ a * wave + (1|id), data =  model_sim_full$imputations$imp[[i]])
 }
 
 # table
-tab<-pool_parameters(model_sim_rep)
+tab<-pool_parameters(model_sim_rep$model)
 tab
 tab [,c(1:5)]%>%
   # print_md()%>%
@@ -5132,15 +5240,103 @@ tab [,c(1:5)]%>%
 
 plot(tab, show_labels = TRUE)
 
-pl_ml <- ggeffects::ggemmeans(model_sim_rep[[2]], terms = c("period","a"))  
-ml_graphp <- plot( pl_ml ) + labs(
-  x = "Waves T10-T12",
-  y = "Warmth to Muslims",
-  title = "Simulation for multiple imputation of missing values and\n(complete) missing potential outcomes recovers inferred trajectories."
+ggeffects::ggemmeans( model_sim_rep$model[[2]], terms = c("wave","a"))  
+
+fitted_lines_simfull <-
+  tibble(.imp = 1:10) %>%
+  mutate( p = map(.imp, ~  ggeffects::ggpredict(model_sim_rep$model[[.]],terms = c("wave[0:2,by=.01]","a"))))%>%
+  data_frame() %>%
+  unnest()
+
+
+library(ggsci)
+plot_simall <- fitted_lines_simfull %>%
+  ggplot(aes(x = x)) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, group = group, colour = group),
+              alpha = 1/10) +
+  geom_line(aes(y = predicted, group =group), 
+            size = 1/4) + theme_clean() +  scale_y_continuous(limits=c(4.05,4.55)) +
+  labs(subtitle="Simulatin study recovers missing counteractual trajectories from multiple imputation",
+       y= "Muslim Warmth", 
+       x = "Waves: 2012-2020/21, Simulated N = 47,978") +   scale_colour_npg(alpha =.5) + theme_classic()  + 
+scale_colour_npg(alpha=.5) 
+
+
+plot_simall
+
+# compare with full data & expected values 
+table1::table1(~Y0 + Y1 + Y2 + Y3 + Y4 + Y5 + Y6 + Y7 + Y8, data = zdtTrial)
+
+
+
+ggsave(
+  plot_simall,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 12,
+  height =9,
+  units = "in",
+  filename = "plot_simall.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1000
 )
-ml_graphp
 
 
+
+
+# bayesian simulation model -----------------------------------------------
+
+
+prior = c(
+  prior(normal(0.2, 0.25), class = b, coef = "a1"),
+  prior(normal(0.05, 0.25), class = b, coef = "wave"),
+  prior(normal(0, 0.25),  class = b, coef = "a1:wave"),
+  prior(
+    normal(log(1), 1),
+    class = b,
+    coef = "a0",
+    dpar = "sigma"
+  ),
+  prior(
+    normal(log(1), 1),
+    class = b,
+    coef = "a1",
+    dpar = "sigma"
+  ),
+  prior(student_t(3, 4.1, 1), class = Intercept),
+  prior(
+    student_t(3, 0, 2.5),
+    class = sd,
+    coef = "a0",
+    group = "id"
+  ),
+  prior(
+    student_t(3, 0, 2.5),
+    class = sd,
+    coef = "a1",
+    group = "id"
+  )
+)
+
+bform =   bf(Y ~ a  *  wave + (0 + a || id),
+             sigma ~ 0 + a, set_rescor(rescor = FALSE))
+
+
+
+
+system.time(
+  m_simulation <- brms::brm_multiple(
+    bform,
+    family = gaussian,
+    data = sim_list,
+    prior = prior,
+    warmup = 1000,
+    iter =  2000,
+    chains = 2,
+    future = TRUE
+    , file = here::here("_posts", "mus", "mods", "m_simulation.rds")
+  )
+)
 
 
 # SIMULATE (BAD) DROP NA METHOD -------------------------------------------
@@ -5201,13 +5397,11 @@ estimate_contrasts( drop_sim,
                     at = c("wave","a") )
 
 
-
+sim_list <- om3
 
 #  simulation bayesian model ----------------------------------------------
 
-str(sim_list)
-str(listbayes)
-
+# not run
 b_sim <- brms::brm( 
   bf(Y ~ a  *  wave + (1|id),
      sigma ~ a, set_rescor(rescor = FALSE)),
@@ -5231,15 +5425,6 @@ summary_b_sim<- readRDS(here::here("_posts", "mus", "mods","summary_b_sim"))
 #desc_prior <- bayestestR::describe_posterior(b_sim,  test = NULL)
 #saveRDS(desc_prior, here::here("_posts", "mus", "mods","desc_prior"))
 
-lazerhawk::brms_SummaryTable(b_sim, panderize=F)
-tab
-tab %>%
-  kable(booktabs = T, "latex", caption =  "Parameter for effect of attack on warmth to Muslims", digits = 2) %>%
-  print()
-
-
-# simulate bayes graph ----------------------------------------------------
-
 
 
 
@@ -5261,9 +5446,6 @@ tab %>%
 # 
 # d18_only1 <- ka_amelia %>%
 #   filter(As==1 & Wave =="Time 10")
-# 
-# 
-# 
 # 
 # 
 # 
