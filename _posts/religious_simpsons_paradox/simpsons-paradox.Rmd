@@ -20,6 +20,7 @@ bibliography: r-references.bib
 editor_options: 
   markdown: 
     wrap: 60
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -51,6 +52,10 @@ library("TraMineR")
 library("xtable")
 library("lcsm")
 library("kableExtra")
+library("dplyr")
+library("tidyr")
+
+
 ```
 
 ## Religious change at a societial level indicates "clocklike" decline
@@ -82,8 +87,8 @@ pr <- ggplot(decline, aes(y = PercentagePopulation, x = Years)) + theme_bw() +
     fill = "white",
     size = 2,
     stroke = 1
-  ) + labs(x = "Time", y = "Percentage Christians") +
-  labs(title = "Aggregate proportional decline in Christian affiliation: New Zealand years 1966-2018")  +
+  ) + labs(x = "Time", y = "Percentage Religious") +
+  labs(title = "New ZealandCensus; proportional decline in religious affiliation: years 1966-2018")  +
   scale_y_continuous(limits = c(0, 1)) +
   theme_bw()
 pr
@@ -138,21 +143,30 @@ dat  <- df %>%
   dplyr::filter(YearMeasured == 1) %>% # filtering only people who have responded in a year
   dplyr::select(Wave, Age, Wave, Religious1 , Id, Relid, years) %>%
   dplyr::mutate(yearW  = as.numeric(Wave) - 1) %>%
-  # filter(!is.na(Religious1))%>%
-  group_by(Id) %>% filter(n() > 1) %>% # have responded to at least 2 x waves
-  filter(n() != 0) %>%
-  filter(n() != 1) %>%
-  ungroup(Id) %>%
-  group_by(Wave) %>%
-  filter(!is.na(Religious1)) %>%
-  ungroup() %>%
-  group_by(Id) %>% filter(n() > 1) %>% # have responded to at least 2 x waves
+  group_by(Id) %>%
+  filter(n() > 1) %>% # have responded to at least 2 x waves
+  add_tally(Religious1) %>%  # get at least 2 measures
+  dplyr::filter(!is.na(Religious1)) %>%
+  ungroup() %>% # get at least 2 measures
+  arrange(Id, yearW) %>% # get at least 2 measures
+  dplyr::filter(n>1) %>%
+  droplevels() %>%
+  group_by(Id) %>%
+  dplyr::filter(n() != 0) %>%
+  dplyr::filter(n() != 1) %>%
+  dplyr::filter(n>1) %>%
   ungroup() %>%
   arrange(Id, yearW)
 #nrow(df)
+head(dat)
 
+sum(dat$n < 2)
 # unique ids
-length(unique(dat$Id)) #46681
+length(unique(dat$Id)) #53990
+
+table(dat$n)
+sum(is.na(dat$Religious1))
+#table1::table1( ~Wave, data = dat)
 
 ```
 
@@ -190,6 +204,7 @@ crudeinR <-
                       data = dat,
                       qmatrix = Q0)
 
+# model
 m1  <- msm(
   Religious1 ~ yearW,
   Id,
@@ -203,9 +218,8 @@ m1  <- msm(
   gen.inits = TRUE
 )
 
-
-#saveRDS(m1, here::here( "models","mnm-simpson-paradox-religious-change.rds" ))
-saveRDS(m1, here::here( "_posts","religious_simpsons_paradox", "models","mnm-simpson-paradox-religious-change.rds" ))
+m1
+saveRDS(m1, here::here( "_posts","religious_simpsons_paradox", "mods","m1.rds" ))
 ```
 
 
@@ -214,19 +228,18 @@ Transition probabilities (averaged)
 
 ```{r}
 # read model, (saved to save time)
-m1 <-readRDS(here::here( "_posts","religious_simpsons_paradox", "models","mnm-simpson-paradox-religious-change.rds" ))
+m1 <-readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","m1.rds" ))
 m1
 #probability matrix
 dt<-  print( round( msm::pmatrix.msm( m1 ) , 2 ) )
 
 # label cols, rows:
-
 rownames(dt) = c("Not-religious time 0", "Religious time 0")
 colnames(dt) = c("Not-religious t+1","Religious t+1")
 
 #table
 dt%>%
- kbl(caption = "Hidden Markov Model: inferred population average religious state change, years 2009-2020") %>%
+ kbl(caption = "Hidden Markov Model: inferred population average religious state change, years 2009-2020")%>%
   kable_material(c("hover"))
 ```
 
@@ -246,8 +259,10 @@ We can compare this with the raw (un-modelled) state transition, which overstate
 
 ```{r}
 # example change in wave 2018/ wave 2019
+min(dat$yearW)
 dat2 <- dat %>%
-  filter(yearW == 09 | yearW == 10)
+  filter(yearW == 10 | yearW == 11)
+tail(dat2)
 
 raw <-msm::statetable.msm(Religious1, Id, data = dat2)
 # calculates proportions by rows
@@ -287,7 +302,7 @@ oz<- as.matrix( msm::pmatrix.msm( m1 ) )
 oz <- round(oz, digits = 2)
 
 
-stateNames <- c("Secular (.63)","Religious (.37)")
+stateNames <- c("Secular (.64)","Religious (.36)")
 row.names(oz) <- stateNames; colnames(oz) <- stateNames
 oz
 ## need to transpose or else arrows go in the wrong direction
@@ -310,10 +325,11 @@ plotmat(toz,
         self.cex = .4,
         self.shifty = -.01,
         self.shiftx = .12,
-        main = "Hidden Markov Model reveals religious switching
-       New Zealand: years 2009-2020")
+        main = "Hidden Markov Model reveals religious switching\nNew Zealand: N = 53990, years 2009-2021")
 
 ```
+
+
 
 
 ## Graph 
@@ -427,7 +443,7 @@ plot.con <-
               se = FALSE)  +
   scale_y_continuous(limits = c(0, .1)) +
   labs(x = "Age", y = "Religious Affiliation Transition Probability w/ 95% CI") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2009-2020")
-
+#plot.con
 #plot.con
 #m1
 
@@ -573,21 +589,82 @@ plotindividual <-
   geom_point(alpha = 1, stroke = 2) +
   geom_linerange(alpha = 1) +
   geom_smooth(se = F) +
-  scale_y_continuous(limits = c(0, 1))  +
-  labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2009-2020") +
+  scale_y_continuous(limits = c(0, .05))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand",
+  subtitle= "N = 53990, years 2009-2021") +
   #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
   scale_colour_manual(values = c("#d1495b", "#00798c")) +
   theme(legend.position = "bottom")
 
-library(patchwork)
-pr + plotindividual  + 
-  plot_annotation(title = 'Aggregated society-level change (a) differs from Individual-level religious change (b)', tag_levels = "a")
 
+plotindividual2 <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .2))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand",
+  subtitle= "N = 53990, years 2009-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_colour_manual(values = c("#d1495b", "#00798c")) +
+  theme(legend.position = "bottom")
+
+plotindividual2
+
+library(patchwork)
+
+  
+relhmm <- plotindividual  + 
+  plot_annotation(title = 'Aggregated society-level change (a) differs from Individual-level religious change (b)', tag_levels = "a")
 
 #pr / plot.combo + plot_annotation(title = "Religious Change over Time",
 #         subtitle = "(i) Society-level aggregate change (ii) Individual-level process: affiliation vs. disaffiliation",
 #tag_levels = "i")
+relhmm
 ```
+
+```{r eavl = F}
+#save graph 
+
+ggsave(
+  relhmm,
+  path = here::here(here::here("_posts", "religious_simpsons_paradox", "mods")),
+  width = 16,
+  height = 9,
+  units = "in",
+  filename = "relHMM.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1200
+)
+```
+
+
+```{r eavl = F}
+#save graph 
+ggsave(
+  pr,
+  path = here::here(here::here("_posts", "religious_simpsons_paradox", "mods")),
+  width = 8,
+  height = 4.5,
+  units = "in",
+  filename = "proprel.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1200
+)
+```
+
+
 
 However, as evident in Figure \@ref(fig:hmmchange),
 individual-level NZAVS data reveal that as people age, the
@@ -622,7 +699,7 @@ plotI <-
   geom_linerange(alpha = 1) +
   geom_smooth(se = F) +
   scale_y_continuous(limits = c(0, .96))  +
-  labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI: range: Pr = 0 to Pr = 1 ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2009--2020") +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI: range: Pr = 0 to Pr = 1 ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: N = 53990,  years 2009--2021") +
   #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
   scale_colour_manual(values = c("#d1495b", "#00798c")) +
   theme(legend.position = "bottom")
@@ -643,14 +720,14 @@ plotIb <-
   geom_linerange(alpha = 1) +
   geom_smooth(se = F) +
   scale_y_continuous(limits = c(0, .1))  +
-  labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI: range: Pr = 0 to Pr = .1 ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2009--2020") +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI: range: Pr = 0 to Pr = .1 ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand:  N = 53990, years 2009--2020") +
   #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
   scale_colour_manual(values = c("#d1495b", "#00798c")) +
   theme(legend.position = "bottom")
 
 plotIb
 
-plotI /plotIb
+plotI
 # # to save file in your directory at correct resolution, uncomment below
 #  file <- here::here("_posts","religious_simpsons_paradox", "figs", paste("aff_disaff", ".png", sep = ""))
 # #
@@ -682,11 +759,831 @@ shape within the lives of individuals.
 
 ## Appendix
 
-## Descriptive Table
+## Manifest State Change RELIGION
+
+```{r}
+m1raw  <- msm(
+  Religious1 ~ yearW,
+  Id,
+  data = dat,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+ # ematrix = rbind(c(.1, .1), c(.1, .1)),  # remove emmissons matrix 
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+
+saveRDS(m1raw, here::here( "_posts","religious_simpsons_paradox", "mods","m1raw.rds" ))
+
+m1raw <- readRDS( here::here( "_posts","religious_simpsons_paradox", "mods","m1raw.rds" ))
+
+
+## TRY ANOTHER 
+datR <- df %>%
+  dplyr::filter(YearMeasured == 1 & Wave !=2009) %>% # filtering only people who have responded in a year, no
+  droplevels() %>%
+  dplyr::select(Wave, Age, Wave, Religious1 , Id, Believe.God, Believe.Spirit, years, GenCohort, Male, Pol.Orient, Urban, Edu,
+                Partner, Parent, AGREEABLENESS, CONSCIENTIOUSNESS, OPENNESS,HONESTY_HUMILITY,EXTRAVERSION,
+                Religion.Church, NEUROTICISM,SmokerEver,EthnicCats) %>%
+  dplyr::mutate(yearW  = as.numeric(Wave) - 1) %>%
+  group_by(Id) %>% 
+  filter(n() > 1) %>% # have responded to at least 2 x waves
+  filter(n() != 0) %>%
+  filter(n() != 1) %>%
+  ungroup(Id) %>%
+  mutate(Religious1 = as.numeric(Religious1))%>%
+  mutate( cohort = as.numeric(GenCohort)-1) %>%
+  group_by(Id) %>% filter(n() > 1) %>% # have responded to at least 2 x waves
+  add_tally(Religious1) %>%
+  ungroup() %>%
+  group_by(Id) %>%
+    filter(n > 1) %>%
+  ungroup(Id) %>%
+  droplevels() %>%
+  select(-c(Wave, GenCohort, cohort, n)) %>%
+  arrange( Id, yearW,  Religious1)
+# make all numeric 
+datR= as.data.frame(sapply(datR, as.numeric))
+
+head(datR)
+dim(datR)
+# multi impute missing vales
+library(Amelia)
+
+# bounds for imp god belief 
+bdsR <- matrix(c(2, 1, 2), nrow = 1, ncol = 3)
+bdsR
+head(datR)
+datR = as.data.frame(datR)
+
+datRimp <- amelia(
+  set.seed=1234,
+  datR, 
+  cs= c("Id"),
+  ts= c("yearW"),
+  m = 1, # number of imputations
+  ords = "Religious1",
+  # noms = c(
+  #   "EthnicCats_b","GenCohort"
+  # ),
+ # idvars=c("Id"), # yrs not working
+  lags="Religious1",
+  leads="Religious1",
+  polytime = 2, # Allow polynomial
+  intercs = F, # to many vars
+  bounds = bdsR, 
+) # ridge prior see: Amelia pdf documentation p.23
+
+saveRDS(datRimp, here::here("_posts","religious_simpsons_paradox","mods", "datRimp"))
+
+
+## DOES NOTE ESIMATE AGE CORRECTLY...
+datir <-datRimp$imputations$imp1
+
+str(datir)
+min(datir$yearW, na.rm =TRUE)
+
+## EILL METHOD
+
+# make all numeric 
+datR_fill<- datR%>% 
+   tidyr::fill(Religious1, .direction = 'down') 
+
+table(datR$Religious1)
+table(datR_fill$Religious1)
+table(datir$Religious1)
 
 
 
-## Raw Trajectories
+#nrow(df)
+
+# unique ids
+length(unique(datir$Id)) # 53790
+
+table1::table1( ~Age|yearW, data = datR)
+```
+
+### HIDDEN MARKOV RELIGIOUS AMELIA 
+
+```{r  msm2, cache = TRUE, eval = FALSE}
+### MSM ANALYIS BELOW ###
+# commenting out model to save time (which I've saved in a file, below)
+# initial matrix for transitions
+library("msm")
+
+Q0 <- rbind(c(.9, .1),
+            c(.1, .9))
+
+# intensity matrix
+Q0
+
+# Initialise
+crudeinR <-
+  msm::crudeinits.msm(Religious1 ~ yearW, Id, # Id = identifier
+                      data = datir,
+                      qmatrix = Q0)
+
+# model
+m1_imp <- msm(
+  Religious1 ~ yearW,
+  Id,
+  data = datir,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+m1_imp
+saveRDS(m1_imp, here::here( "_posts","religious_simpsons_paradox", "mods","m1_impt.rds" ))
+
+
+m1_imp
+saveRDS(m1_imp, here::here( "_posts","religious_simpsons_paradox", "mods","m1_impt.rds" ))
+
+
+## FILL
+
+# Initialise
+crudeinR <-
+  msm::crudeinits.msm(Religious1 ~ yearW, Id, # Id = identifier
+                      data = datR_fill,
+                      qmatrix = Q0)
+
+
+m1_FILL <- msm(
+  Religious1 ~ yearW,
+  Id,
+  data = datR_fill,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+saveRDS(m1_FILL, here::here( "_posts","religious_simpsons_paradox", "mods","m1_FILL.rds" ))
+
+
+
+### MANIFST IMP
+
+crudeinR <-
+  msm::crudeinits.msm(Religious1 ~ yearW, Id, # Id = identifier
+                      data = datir,
+                      qmatrix = Q0)
+
+
+m1_manifest_imp  <- msm(
+  Religious1 ~ yearW,
+  Id,
+  data = datir,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+ # ematrix = rbind(c(.1, .1), c(.1, .1)),  # for manifest model 
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+saveRDS(m1_manifest_imp, here::here( "_posts","religious_simpsons_paradox", "mods","m1_manifest_imp.rds" ))
+
+m1_manifest_imp <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","m1_manifest_imp.rds" ))
+
+
+
+### MANIFEST FILLL 
+
+
+crudeinR <-
+  msm::crudeinits.msm(Religious1 ~ yearW, Id, # Id = identifier
+                      data = datR_fill,
+                      qmatrix = Q0)
+
+
+m1_manifest_fill <- msm(
+  Religious1 ~ yearW,
+  Id,
+  data = datR_fill,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+ # ematrix = rbind(c(.1, .1), c(.1, .1)),  # for manifest model 
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+saveRDS(m1_manifest_fill, here::here( "_posts","religious_simpsons_paradox", "mods","m1_manifest_fill.rds" ))
+
+m1_manifest_fill<- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","m1_manifest_fill.rds" ))
+
+
+
+
+
+
+## STANDARD
+head(daj)
+
+
+# BETTER METHOD
+daj <- df %>%
+  dplyr::filter(YearMeasured == 1 & Wave !=2009) %>% # filtering only people who have responded in a year, no
+  droplevels() %>%
+  dplyr::select(Wave, Age, Wave, Religious1 , Id, TSCORE) %>%
+  group_by(Id) %>% 
+  mutate(days = (TSCORE - min(TSCORE))) %>% # ZERO within individuals
+  mutate(yearS = (TSCORE - min(TSCORE))/365) %>% # ZERO within individuals
+  mutate(months = (TSCORE - min(TSCORE))/12) %>% # ZERO within individuals
+  filter(n() > 1) %>% # have responded to at least 2 x waves
+  filter(n() != 0) %>%
+  filter(n() != 1) %>%
+  add_tally(Religious1) %>%
+  filter(n > 1) %>%
+  mutate(notna = sum(!is.na(Religious1))) %>%
+  filter(notna > 1) %>%
+  ungroup(Id) %>%
+  mutate(id = as.character(Id)) %>%
+  mutate(yearW = as.numeric(Wave)-1) %>%
+  arrange(Id, yearW, Wave) #%>%
+ # tidyr::fill(Religious1, .direction = 'down') 
+
+length(unique(daj$Id)) # 53409
+
+#sum(is.na(daj$Religious1))
+
+
+daj%>%
+  filter(Id == 31470 | Id == 31471)
+
+# daj2<-  daj %>%
+#   group_by(Id) %>%
+#   mutate(double = when(yearS == yearS, 1, 0)) 
+
+
+# no ids measured twice 
+table(is.na(daj$Religious1))
+
+# Initialise
+crudeinR <-
+  msm::crudeinits.msm(Religious1 ~ yearW, Id, # Id = identifier
+                      data = daj,
+                      qmatrix = Q0)
+
+
+m1_standard <- msm(
+  Religious1 ~ yearW,
+  Id,
+  data = daj,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+warnings()
+
+saveRDS(m1_FILL, here::here( "_posts","religious_simpsons_paradox", "mods","m1_FILL.rds" ))
+
+```
+
+
+Transition probabilities (averaged)
+
+
+```{r}
+# read model, (saved to save time)
+m1_imp <-readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","m1_imp.rds" ))
+m1_FILL <-readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","m1_FILL.rds" ))
+m1_manifest_imp <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","m1_manifest_imp.rds" ))
+
+m1_manifest_fill <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","m1_manifest_fill.rds" ))
+
+
+### TO KEEP CODE CONSISTENT
+m1 <- m1_imp
+
+
+#probability matrix
+dt<-  print( round( msm::pmatrix.msm( m1 ) , 2 ) )
+# label cols, rows:
+rownames(dt) = c("Not-religious time 0", "Religious time 0")
+colnames(dt) = c("Not-religious t+1","Religious t+1")
+
+#table
+dt%>%
+ kbl(caption = "Hidden Markov Model: inferred population average religious state change, years 2009-2020")%>%
+  kable_material(c("hover"))
+```
+
+
+LaTeX table
+
+```{r, eval = FALSE}
+dt %>%
+  kbl(booktabs = T,
+      format = "latex",
+      caption = "Hidden Markov Model: inferred population average religious state change, years 2009-2020")
+  
+```
+
+
+We can compare this with the raw (un-modelled) state transition, which overstates overall change.
+
+
+
+LaTeX table
+
+```{r, eval = FALSE}
+out %>%
+  kbl(booktabs = T,
+      format = "latex",
+      caption ="Raw sample religious state change: years 2009-2020")
+  
+```
+
+
+
+```{r, eval=FALSE}
+# latex
+xtable(out)
+```
+
+
+
+```{r  hmmchange, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from greater disaffiliation among young people than affiliation.", echo =FALSE}
+# Graph
+m1 <- m1_imp
+m1 <- m1_FILL
+m1 <- m1_manifest_imp
+m1 <- m1_manifest_fill
+
+m1
+oz<- as.matrix( msm::pmatrix.msm( m1 ) )
+oz <- round(oz, digits = 2)
+
+
+stateNames <- c("Secular (.63)","Religious (.37)")
+row.names(oz) <- stateNames; colnames(oz) <- stateNames
+oz
+## need to transpose or else arrows go in the wrong direction
+toz <- t(oz) 
+
+#library(pracma)
+plotmat(toz,
+       # pos = c(1,2), 
+       # lwd = 1, 
+       # box.lwd = 2, 
+        cex.txt = 0.9, 
+        box.size = 0.09, 
+       # box.type = "circle", 
+        box.prop = 0.5,
+        arr.pos =  0.4, 
+        shadow.size = 0.001,
+        box.col = c("lightgreen","lightblue","orange"),
+       # arr.length=.1,
+       # arr.width=.1,
+        self.cex = .4,
+        self.shifty = -.01,
+        self.shiftx = .12,
+        main = "Hidden Markov Model reveals religious switching\nNew Zealand: N = 53990, years 2009-2021")
+
+```
+
+
+
+
+## Graph 
+
+```{r}
+
+
+p20 <-
+  pmatrix.msm(m1, covariates = list(Age = 20), ci = "normal")
+p20.Convert <- p20$estimates[1, 2]
+p20.Convert.L <- p20$L[1, 2]
+# get upper bound
+p20.Convert.U <- p20$U[1, 2]
+con.20 <- c(20, p20.Convert, p20.Convert.L, p20.Convert.U)
+## 30 year olds
+p30 <-
+  pmatrix.msm(m1, covariates = list(Age = 30), ci = "normal")
+p30.Convert <- p30$estimates[1, 2]
+# set lower bound
+p30.Convert.L <- p30$L[1, 2]
+# get upper bound
+p30.Convert.U <- p30$U[1, 2]
+#combine
+con.30 <- c(30, p30.Convert, p30.Convert.L, p30.Convert.U)
+## 40 year old
+p40 <-
+  pmatrix.msm(m1, covariates = list(Age = 40), ci = "normal")
+# Get Transition to Relid Estimate
+p40.Convert <- p40$estimates[1, 2]
+# set lower bound
+p40.Convert.L <- p40$L[1, 2]
+# get upper bound
+p40.Convert.U <- p40$U[1, 2]
+con.40 <- c(40, p40.Convert, p40.Convert.L, p40.Convert.U)
+## 50 year old
+p50 <-
+  pmatrix.msm(m1, covariates = list(Age = 50), ci = "normal")
+# Get Transition to Relid Estimate
+p50.Convert <- p50$estimates[1, 2]
+# set lower bound
+p50.Convert.L <- p50$L[1, 2]
+# get upper bound
+p50.Convert.U <- p50$U[1, 2]
+con.50 <- c(50, p50.Convert, p50.Convert.L, p50.Convert.U)
+## 60 year olds
+p60 <-
+  pmatrix.msm(m1, covariates = list(Age = 60), ci = "normal")
+# Get Transition to Relid Estimate
+p60.Convert <- p60$estimates[1, 2]
+# set lower bound
+p60.Convert.L <- p60$L[1, 2]
+# get upper bound
+p60.Convert.U <- p60$U[1, 2]
+con.60 <- c(60, p60.Convert, p60.Convert.L, p60.Convert.U)
+## 70 year olds
+p70 <-
+  pmatrix.msm(m1, covariates = list(Age = 70), ci = "normal")
+# Get Transition to Relid Estimate
+p70.Convert <- p70$estimates[1, 2]
+# set lower bound
+p70.Convert.L <- p70$L[1, 2]
+# get upper bound
+p70.Convert.U <- p70$U[1, 2]
+con.70 <- c(70, p70.Convert, p70.Convert.L, p70.Convert.U)
+### ## 80 year olds
+p80 <-
+  pmatrix.msm(m1, covariates = list(Age = 80), ci = "normal")
+# Get Transition to Relid Estimate
+p80.Convert <- p80$estimates[1, 2]
+# set lower bound
+p80.Convert.L <- p80$L[1, 2]
+# get upper bound
+p80.Convert.U <- p80$U[1, 2]
+con.80 <- c(80, p80.Convert, p80.Convert.L, p80.Convert.U)
+# ### ## 90 year olds
+p90 <-
+  pmatrix.msm(m1, covariates = list(Age = 90), ci = "normal")
+# # Get Transition to Relid Estimate
+p90.Convert <- p90$estimates[1, 2]
+# # set lower bound
+p90.Convert.L <- p90$L[1, 2]
+p90.Convert.U <- p90$U[1, 2]
+con.90 <- c(90, p90.Convert, p90.Convert.L, p90.Convert.U)
+# ### create data frame for conversion plot
+conplot <-
+  data.frame(rbind(con.20, con.30, con.40, con.50, con.60, con.70, con.80, con.90))
+colnames(conplot) <-
+  c("age", "conv_probability", "conv_lower", "conv_upper")
+library(ggplot2)
+#library(wesanderson)
+#wes_palette("Zissou1", type = c("discrete"))
+#library("ggsci")
+
+
+
+##### CREAT PLOT FOR DECONVERSION
+## 20 year olds
+p20 <-
+  pmatrix.msm(m1, covariates = list(Age = 20), ci = "normal")
+# Get Transition to Relid Estimate
+p20.decon <- p20$estimates[2, 1]
+p20.decon.L <- p20$L[2, 1]
+p20.decon.U <- p20$U[2, 1]
+decon.20 <- c(20, p20.decon, p20.decon.L, p20.decon.U)
+p30 <-
+  pmatrix.msm(m1, covariates = list(Age = 30), ci = "normal")
+p30.decon <- p30$estimates[2, 1]
+p30.decon.L <- p30$L[2, 1]
+p30.decon.U <- p30$U[2, 1]
+decon.30 <- c(30, p30.decon, p30.decon.L, p30.decon.U)
+p40 <-
+  pmatrix.msm(m1, covariates = list(Age = 40), ci = "normal")
+p40.decon <- p40$estimates[2, 1]
+p40.decon.L <- p40$L[2, 1]
+p40.decon.U <- p40$U[2, 1]
+decon.40 <- c(40, p40.decon, p40.decon.L, p40.decon.U)
+p50 <-
+  pmatrix.msm(m1, covariates = list(Age = 50), ci = "normal")
+p50.decon <- p50$estimates[2, 1]
+p50.decon.L <- p50$L[2, 1]
+p50.decon.U <- p50$U[2, 1]
+decon.50 <- c(50, p50.decon, p50.decon.L, p50.decon.U)
+p60 <-
+  pmatrix.msm(m1, covariates = list(Age = 60), ci = "normal")
+p60.decon <- p60$estimates[2, 1]
+p60.decon.L <- p60$L[2, 1]
+p60.decon.U <- p60$U[2, 1]
+decon.60 <- c(60, p60.decon, p60.decon.L, p60.decon.U)
+p70 <-
+  pmatrix.msm(m1, covariates = list(Age = 70), ci = "normal")
+p70.decon <- p70$estimates[2, 1]
+p70.decon.L <- p70$L[2, 1]
+p70.decon.U <- p70$U[2, 1]
+decon.70 <- c(70, p70.decon, p70.decon.L, p70.decon.U)
+p80 <-
+  pmatrix.msm(m1, covariates = list(Age = 80), ci = "normal")
+p80.decon <- p80$estimates[2, 1]
+p80.decon.L <- p80$L[2, 1]
+p80.decon.U <- p80$U[2, 1]
+decon.80 <- c(80, p80.decon, p80.decon.L, p80.decon.U)
+p90 <-
+  pmatrix.msm(m1, covariates = list(Age = 90), ci = "normal")
+p90.decon <- p90$estimates[2, 1]
+p90.decon.L <- p90$L[2, 1]
+p90.decon.U <- p90$U[2, 1]
+decon.90 <- c(90, p90.decon, p90.decon.L, p90.decon.U)
+
+### create data frame for conversion plot
+deconplot <-
+  data.frame(rbind(
+    decon.20,
+    decon.30,
+    decon.40,
+    decon.50,
+    decon.60,
+    decon.70,
+    decon.80,
+    decon.90
+  ))
+colnames(deconplot) <-
+  c("age", "decon_probability", "decon_lower", "decon_upper")
+library(ggplot2)
+n = "bottom")
+
+plot.decon
+#grid.arrange(plot.con,plot.decon, ncol=2)
+### SUPERIMPOSE
+deconplot$Group <- as.factor(rep("Disaffiliation", nrow(deconplot)))
+conplot$Group <- as.factor(rep("Affiliation", nrow(conplot)))
+deconplot2 <- deconplot %>%
+  dplyr::mutate(
+    conv_probability = decon_probability,
+    conv_lower = decon_lower,
+    conv_upper = decon_upper
+  ) %>%
+  dplyr::select(-c(decon_probability, decon_upper, decon_lower))
+
+comboplot <- rbind(conplot, deconplot2)
+#comboplot
+# get initial probabilities for title label
+#pmatrix.msm(m1)
+
+library(ggplot2)
+
+# plot.combo <-
+#   ggplot(
+#     aes(
+#       x = age,
+#       y = conv_probability,
+#       ymin = conv_lower,
+#       ymax = conv_upper,
+#       colour = Group
+#     ),
+#     data = comboplot
+#   ) +
+#   geom_point(alpha = 1, stroke = 2) +
+#   geom_linerange(alpha = 1) +
+#   geom_smooth(se = F) +
+#   scale_y_continuous(limits = c(0, .96))  +
+#   labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI: range: Pr = 0 to Pr = 1 ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2020 -- 2020") +
+#   #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+#   scale_colour_manual(values = c("#d1495b", "#00798c")) +
+#   theme(legend.position = "bottom")
+# plot.combo
+
+
+library(ggsci )
+
+plot_all_waves_collider_r_30 <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .30))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Affiliation w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Afilliation Dynamics in New Zealand",
+  subtitle= "N = 53790, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_aaas() + 
+  theme(legend.position = "bottom")
+
+plot_all_waves_collider_r_12<-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .12))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Affiliation w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Afilliation Dynamics in New Zealand",
+  subtitle= "N = 53790, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_aaas() + 
+  theme(legend.position = "bottom")
+
+
+plot_all_waves_collider_r_30
+
+
+
+saveRDS(plot_all_waves_collider_r_12, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_all_waves_collider_r_12"))
+saveRDS(plot_all_waves_collider_r_30, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_all_waves_collider_r_30"))
+
+
+
+plot_all_waves_no_imp_r_12
+
+
+#saveRDS(plotindividual_REL_30_imp, here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_REL_30_imp"))
+
+plotindividual_REL_30_imp <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_REL_30_imp")))
+plotindividual_REL_05_imp <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_REL_05_imp")))
+
+  
+## FILL PLOTS 
+
+plotindividual_REL_30_FILL <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .3))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Affiliation w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Afilliation Dynamics in New Zealand",
+  subtitle= "N = 53790, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_aaas() + 
+  theme(legend.position = "bottom")
+
+
+plotindividual_REL_30_FILL
+
+
+plotindividual_REL_06_FILL <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .06))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Affiliation w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Afilliation Dynamics in New Zealand",
+  subtitle= "N = 53790, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_aaas() + 
+  theme(legend.position = "bottom")
+
+plotindividual_REL_06_FILL
+
+saveRDS(plotindividual_REL_06_FILL, here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_REL_06_FILL"))
+saveRDS(plotindividual_REL_30_FILL, here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_REL_30_FILL"))
+
+plotindividual_REL_30_FILL <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_REL_30_FILL")))
+plotindividual_REL_06_FILL <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_REL_06_FILL")))
+
+plotindividual_REL_06_FILL + plotindividual_REL_06_imp
+
+
+
+### MANIFEST IMP 
+
+
+plotindividual_REL_30_imp_MANIFEST <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .3))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Affiliation w/ 95 CI ") + theme_bw() + labs(title = "Manifest Markov Model: (Dis)Afilliation Dynamics in New Zealand",
+  subtitle= "N = 53790, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_aaas() + 
+  theme(legend.position = "bottom")
+
+plotindividual_REL_30_imp_MANIFEST + plotindividual_REL_30_imp
+
+saveRDS(plotindividual_REL_30_imp_MANIFEST, here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_REL_30_imp_MANIFEST"))
+
+plotindividual_REL_30_imp_MANIFEST <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_REL_30_imp_MANIFEST")))
+
+
+#MANIFEST FILL
+
+plotindividual_REL_30_FILL_MANIFEST <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .3))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Affiliation w/ 95 CI ") + theme_bw() + labs(title = "Manifest Markov Model: (Dis)Afilliation Dynamics in New Zealand",
+  subtitle= "N = 53790, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_aaas() + 
+  theme(legend.position = "bottom")
+
+# VERY SIMILAR 
+plotindividual_REL_30_FILL_MANIFEST + plotindividual_REL_30_imp_MANIFEST
+
+plotindividual_REL_30_imp_MANIFEST + plotindividual_REL_30_imp
+
+saveRDS(plotindividual_REL_30_FILL_MANIFEST, here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_REL_30_FILL_MANIFEST"))
+
+plotindividual_REL_30_FILL_MANIFEST <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_REL_30_FILL_MANIFEST")))
+
+
+```
+
+
+LaTeX table
+
+```{r, eval = FALSE}
+dtraw %>%
+  kbl(booktabs = T,
+      format = "latex",
+      caption = "Hidden Markov Model: inferred population average religious state change, years 2009-2020")
+  
+
+# raw <-msm::statetable.msm(Religious1, Id, data = dat2)
+# # calculates proportions by rows
+# out<- round( prop.table(raw, 1), 2)
+# 
+# rownames(out) = c("Not-religious time 0", "Religious time 0")
+# colnames(out) = c("Not-religious t+1","Religious t+1")
+# 
+# out %>%
+#  kbl(caption = "Raw sample religious state change: years 2009-2020") %>%
+#   kable_material(c("hover"))
+```
+
+
+
+
+## Data Trajectories
 
 ```{r}
 library(LMest)
@@ -702,12 +1599,11 @@ head(relwide)
 
 #relwide<-relwide[complete.cases(relwide), ]
 
-
 Relidwide <-  df %>%
   dplyr::filter(YearMeasured == 1) %>%
   dplyr::filter(!is.na(Religious)) %>%
   dplyr::select(Id, Religious, Wave) %>%
-  group_by(Id) %>% filter(n() > 10) %>%
+  group_by(Id) %>% filter(n() > 11) %>%
   filter(n() != 0) %>%
   ungroup(Id) %>%
   spread(Wave, Religious)
@@ -715,7 +1611,7 @@ Relidwide <-  df %>%
 Relidwide <- Relidwide[complete.cases(Relidwide),]
 dim(Relidwide)
 
-x_var_list <- names(Relidwide[, 2:12])
+x_var_list <- names(Relidwide[, 2:13])
 
 Relidwide
 
@@ -727,17 +1623,19 @@ plot_trajectories(
   id_var = "Id",
   var_list = x_var_list,
   line_colour = "red",
-  xlab = "Time",
-  ylab = "Value",
+  xlab = "Years",
+  ylab = "Religious",
   connect_missing = F,
   scale_x_num = T,
   scale_x_num_start = 1,
-  random_sample_frac = 0.05,
+  random_sample_frac = 0.049,
   seed = 1234
  # title_n = T
 )  +
   facet_wrap( ~ Id)
 
+
+# saved as rel_trajectories 16 X 9
 
 # # to save file in your directory at correct resolution, uncomment below
 # file <- here::here("_posts","religious_simpsons_paradox", "figs", paste("trajectories", ".png", sep = ""))
@@ -790,7 +1688,7 @@ plotmat(toz_20,
         self.shifty = -.01,
         self.shiftx = .12,
         main = "Hidden Markov Model reveals religious switching
-       New Zealand: years 2009-2020, Age = 20")
+       New Zealand: years 2009-2021, N = 53990, Age = 20")
 
 
 
@@ -825,8 +1723,7 @@ plotmat(toz_20,
         self.cex = .4,
         self.shifty = -.01,
         self.shiftx = .12,
-        main = "Hidden Markov Model reveals religious switching
-       New Zealand: years 2009-2020, Age = 20")
+        main = "Hidden Markov Model: years 2009-2021, N = 53990, Age = 20")
 
 
 plotmat(toz_70,
@@ -845,10 +1742,9 @@ plotmat(toz_70,
         self.cex = .4,
         self.shifty = -.01,
         self.shiftx = .12,
-        main = "Hidden Markov Model reveals religious switching
-       New Zealand: years 2009-2020, Age = 70")
+        main = "Hidden Markov Model: years 2009-2021, N= 53990, Age = 70")
 
-#age_compare 16 x 9
+#age_compare 16 x 9  called rel_markov_age_compare
 
 # 
 # 
@@ -876,51 +1772,5068 @@ plotmat(toz_70,
 ### Three-state model 
 
 
-```{r, eval=FALSE}
-q3 <-rbind(c(.1,.1,.1),
-           c(.1,.1,.1),
-           c(.1,.1,.1)) #  Allow permitted transitions
+<!-- ```{r, eval=FALSE} -->
+<!-- q3 <-rbind(c(.1,.1,.1), -->
+<!--            c(.1,.1,.1), -->
+<!--            c(.1,.1,.1)) #  Allow permitted transitions -->
 
 
-#three state emissions model
-m3  <- msm(
+<!-- #three state emissions model -->
+<!-- m3  <- msm( -->
+<!--   Religious1 ~ yearW, -->
+<!--   Id, -->
+<!--   data = dat, -->
+<!--   covariates = ~ Age, -->
+<!--   est.initprobs = TRUE, -->
+<!--   exacttimes = TRUE,# Not running without this assumption. -->
+<!--   gen.inits = TRUE, -->
+<!--   qmatrix = q3, -->
+<!--   ematrix = rbind(c(.1, .1, .1), -->
+<!--                   c(.1, .1, .1), -->
+<!--                   c(.1, .1, .1) -->
+<!-- )) -->
+
+<!-- # saved to save timex -->
+<!-- saveRDS(m3, here::here("models","simpsons-paradox-religion-three-state")) -->
+<!-- ``` -->
+
+
+<!-- ```{r, eval=FALSE} -->
+<!-- m3 <- readRDS(here::here("models", "simpsons-paradox-religion-three-state")) -->
+
+<!-- round( pmatrix.msm(m3), 2) # works -->
+
+<!-- three_state_mean <-data.frame(print(round( pmatrix.msm(m3, covariates = "mean"), 2))) -->
+<!-- three_state_mean -->
+<!-- ``` -->
+
+
+<!-- ```{r, eval=FALSE} -->
+<!-- three_state_30 <-data.frame(print(round( pmatrix.msm(m3, covariates = list(Age = 30)), 2))) -->
+<!-- three_state_50 <-data.frame( print( round(pmatrix.msm(m3, covariates = list(Age = 50)), 2))) -->
+
+<!-- three_state_30 -->
+<!-- three_state_50 -->
+<!-- xtable(three_state_30) -->
+<!-- xtable(three_state_50) -->
+
+<!-- #round( pmatrix.msm(m3, covariates = "mean" ), 2) -->
+<!-- ``` -->
+
+
+
+## Believe in GOD
+
+
+#create dataframe
+
+```{r}
+
+df$Believe.God
+
+names(df)
+datG  <- df %>%
+  dplyr::filter(YearMeasured == 1 & Wave !=2009) %>% # filtering only people who have responded in a year, no
+  droplevels() %>%
+  dplyr::select(Wave, Age, Wave, Religious1 , Id, Believe.God, years, GenCohort, Male, Pol.Orient, Urban, Edu,
+                Partner, Parent, AGREEABLENESS, CONSCIENTIOUSNESS, OPENNESS,HONESTY_HUMILITY,EXTRAVERSION,
+                Religion.Church, NEUROTICISM,SmokerEver,EthnicCats) %>%
+  dplyr::mutate(yearW  = as.numeric(Wave) - 1) %>%
+  group_by(Id) %>% filter(n() > 1) %>% # have responded to at least 2 x waves
+  filter(n() != 0) %>%
+  filter(n() != 1) %>%
+  ungroup(Id) %>%
+  mutate(bg1 = as.numeric(Believe.God))%>%
+  mutate( cohort = as.numeric(GenCohort)-1) %>%
+  group_by(Id) %>% filter(n() > 1) %>% # have responded to at least 2 x waves
+  add_tally(bg1) %>%
+  ungroup() %>%
+  group_by(Id) %>%
+    filter(n > 1) %>%
+  ungroup(Id) %>%
+  droplevels() %>%
+  select(-c(Wave, GenCohort, cohort, n,Believe.God)) %>%
+  arrange( yearW, Id, bg1)
+# make all numeric 
+datG = as.data.frame(sapply(datG, as.numeric))
+
+head(datG)
+dim(datG)
+# multi impute missing vales
+library(Amelia)
+
+# bounds for imp god belief 
+bds <- matrix(c(21, 1, 2), nrow = 1, ncol = 3)
+bds
+head(datG)
+datG = as.data.frame(datG)
+
+datGimp <- amelia(
+  set.seed=1234,
+  datG, 
+  cs= c("Id"),
+  ts= c("yearW"),
+  m = 1, # number of imputations
+  ords = "bg1",
+  # noms = c(
+  #   "EthnicCats_b","GenCohort"
+  # ),
+ # idvars=c("Id"), # yrs not working
+  lags="bg1",
+  leads="bg1",
+  polytime = 2, # Allow polynomial
+  intercs = F, # to many vars
+  bounds = bds, # lower upper bounds to Mus Prej
+  empri = .05*nrow(datG)
+) # ridge prior see: Amelia pdf documentation p.23
+
+saveRDS(datGimp, here::here("_posts","religious_simpsons_paradox","mods", "datGimp"))
+
+datig <-datGimp$imputations$imp1
+
+str(datig)
+min(datig$yearW, na.rm =TRUE)
+
+
+#nrow(df)
+
+# unique ids
+length(unique(datig$Id)) #53388
+
+table1::table1( ~bg1|yearW, data = datig)
+
+
+
+## FILL METHOD
+ 
+datG_FILL <- df %>%
+  dplyr::filter(YearMeasured == 1 & Wave !=2009) %>% # filtering only people who have responded in a year, no
+  droplevels() %>%
+  dplyr::select(Wave, Age, Wave, Religious1 , Id, Believe.God, years, GenCohort, Male, Pol.Orient, Urban, Edu,
+                Partner, Parent, AGREEABLENESS, CONSCIENTIOUSNESS, OPENNESS,HONESTY_HUMILITY,EXTRAVERSION,
+                Religion.Church, NEUROTICISM,SmokerEver,EthnicCats) %>%
+  dplyr::mutate(yearW  = as.numeric(Wave) - 1) %>%
+  group_by(Id) %>% filter(n() > 1) %>% # have responded to at least 2 x waves
+  filter(n() != 0) %>%
+  filter(n() != 1) %>%
+  ungroup(Id) %>%
+  mutate(bg1 = as.numeric(Believe.God))%>%
+  mutate( cohort = as.numeric(GenCohort)-1) %>%
+  group_by(Id) %>% filter(n() > 1) %>% # have responded to at least 2 x waves
+  add_tally(bg1) %>%
+  ungroup() %>%
+  group_by(Id) %>%
+    filter(n > 1) %>%
+  ungroup(Id) %>%
+  droplevels() %>%
+  select(-c(Wave, GenCohort, cohort, n,Believe.God)) %>%
+  arrange( Id, yearW, bg1) %>%
+   tidyr::fill(bg1, .direction = 'down') # conservative 
+# make all numeric 
+
+datG_FILL
+
+### MARKOV METHOD 
+
+datG <- df %>%
+  dplyr::filter(YearMeasured == 1 & Wave !=2009) %>% # filtering only people who have responded in a year, no
+  droplevels() %>%
+  dplyr::select(Wave, Age, Wave, Religious1 , Id, Believe.God, years, GenCohort, Male, Pol.Orient, Urban, Edu,
+                Partner, Parent, AGREEABLENESS, CONSCIENTIOUSNESS, OPENNESS,HONESTY_HUMILITY,EXTRAVERSION,
+                Religion.Church, NEUROTICISM,SmokerEver,EthnicCats) %>%
+  dplyr::mutate(yearW  = as.numeric(Wave) - 1) %>%
+  group_by(Id) %>% filter(n() > 1) %>% # have responded to at least 2 x waves
+  filter(n() != 0) %>%
+  filter(n() != 1) %>%
+  ungroup(Id) %>%
+  mutate(bg1 = as.numeric(Believe.God))%>%
+  mutate( cohort = as.numeric(GenCohort)-1) %>%
+  group_by(Id) %>% filter(n() > 1) %>% # have responded to at least 2 x waves
+  add_tally(bg1) %>%
+  ungroup() %>%
+  group_by(Id) %>%
+    filter(n > 2) %>%  # at least two beliefs 
+  ungroup(Id) %>%
+  droplevels() %>%
+  select(-c(Wave, GenCohort, cohort, Believe.God)) %>%
+  arrange( Id, yearW, bg1)
+# make all numeric 
+datG_3 = as.data.frame(sapply(datG, as.numeric))
+
+head(datG)
+datG_3%>%
+  select(Id, n) %>%
+  group_by(Id) %>%
+  arrange((n))
+
+```
+
+
+
+
+
+MSM Analysis
+
+```{r  msm2, cache = TRUE, eval = FALSE}
+### MSM ANALYIS BELOW ###
+# commenting out model to save time (which I've saved in a file, below)
+# initial matrix for transitions
+library("msm")
+
+Q0 <- rbind(c(.9, .1),
+            c(.1, .9))
+
+# intensity matrix
+Q0
+
+head(datig)
+
+datig <- datig%>%
+  arrange(Id, yearW)
+
+# Initialise
+crudeinR <-
+  msm::crudeinits.msm(bg1 ~ yearW, Id, # Id = identifier
+                      data = datig,
+                      qmatrix = Q0)
+mg  <- msm(
+  bg1 ~ yearW,
+  Id,
+  data = datig,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  gen.inits=TRUE,
+  ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE
+  # Not running without this assumption.
+ # gen.inits = TRUE
+)
+mg
+
+print( round( msm::pmatrix.msm( mg ) , 3 ) )
+
+
+saveRDS(mg, here::here( "_posts","religious_simpsons_paradox", "mods","mg.rds" ))
+
+
+## MG FILL 
+
+
+# Initialise
+crudeinR <-
+  msm::crudeinits.msm(bg1 ~ yearW, Id, # Id = identifier
+                      data = datG_FILL,
+                      qmatrix = Q0)
+mg_fill  <- msm(
+  bg1 ~ yearW,
+  Id,
+  data = datig,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  gen.inits=TRUE,
+  ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE
+  # Not running without this assumption.
+ # gen.inits = TRUE
+)
+mg
+
+print( round( msm::pmatrix.msm( mg_fill ) , 3 ) )
+print( round( msm::pmatrix.msm( mg ) , 3 ) )  ## NO DIFFERENCE. 
+
+
+saveRDS(mg_fill, here::here( "_posts","religious_simpsons_paradox", "mods","mg_fill.rds" ))
+
+
+## ORDINARY MARKOV with THREE
+
+
+Q0 <- rbind(c(.8, .2),
+            c(.8, .2))
+
+# intensity matrix
+Q0
+
+head(datig)
+
+
+crudeinR
+# Initialise
+crudeinR <-
+  msm::crudeinits.msm(bg1 ~ yearW, Id, # Id = identifier
+                      data = datG_3,
+                      qmatrix = Q0)
+
+# 
+# # Wont run
+# mg_3  <- msm(
+#   bg1 ~ yearW,
+#   Id,
+#   data = datG_3,
+#   covariates =  ~ Age,
+#   qmatrix = crudeinR,
+#   gen.inits=TRUE,
+#   ematrix = rbind(c(.1, .1), c(.1, .1)),
+#   est.initprobs = TRUE,
+#   exacttimes = TRUE
+#   # Not running without this assumption.
+#  # gen.inits = TRUE
+# )
+# warnings()
+
+
+
+```
+
+
+Transition probabilities (averaged)
+
+
+```{r}
+# read model, (saved to save time)
+
+# note change of model name 
+# USE IMPUTED
+mg <-readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","mg" ))
+
+
+mg_fill <-readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","mg_fill.rds" ))
+
+
+m1 <- mg
+#probability matrix
+dt<-  print( round( msm::pmatrix.msm( m1 ) , 3 ) )
+
+# label cols, rows:
+rownames(dt) = c("Not-Believe God time 0", "Believe God time 0")
+colnames(dt) = c("Not-Believe God t+1","Believe God t+1")
+
+#table
+dt%>%
+ kbl(caption = "Hidden Markov Model: inferred population average Belief in God state change, years 2009-2021")%>%
+  kable_material(c("hover"))
+```
+
+
+LaTeX table
+
+```{r, eval = FALSE}
+dt %>%
+  kbl(booktabs = T,
+      format = "latex",
+      caption = "Hidden Markov Model: inferred population average belief in God state change, years 2009-2021")
+  
+```
+
+
+
+
+```{r  hmmchange, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from greater disaffiliation among young people than affiliation.", echo =FALSE}
+# Graph
+oz<- as.matrix( msm::pmatrix.msm( m1 ) )
+oz <- round(oz, digits = 3)
+m1
+oz
+stateNames <- c("No Belief God (.46)","Belief God (.54)")
+row.names(oz) <- stateNames; colnames(oz) <- stateNames
+oz
+## need to transpose or else arrows go in the wrong direction
+toz <- t(oz) 
+
+#library(pracma)
+plotmat(toz,
+       # pos = c(1,2), 
+       # lwd = 1, 
+       # box.lwd = 2, 
+        cex.txt = 0.9, 
+        box.size = 0.09, 
+       # box.type = "circle", 
+        box.prop = 0.5,
+        arr.pos =  0.4, 
+        shadow.size = 0.001,
+        box.col = c("lightgreen","lightblue","orange"),
+       # arr.length=.1,
+       # arr.width=.1,
+        self.cex = .4,
+        self.shifty = -.01,
+        self.shiftx = .12,
+        main = "Hidden Markov Model reveals low transition to Belief in God \nNew Zealand: N = 53388, years 2010-2021")
+
+# god_markov 12 x 9 
+```
+
+
+
+
+## Graph 
+
+
+```{r  hmmchange2, cache = TRUE, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from much greater disaffiliation among young people than affiliation.", include = TRUE, code_folding=TRUE}
+
+# note to self, this code can be improved
+### CREATE PLOT  ###  CONVERSION AGE PLOT
+## 20 year olds
+
+#m1 <-readRDS(here::here( "models","mnm-simpson-paradox-religious-change" ))
+
+p20 <-
+  pmatrix.msm(m1, covariates = list(Age = 20), ci = "normal")
+p20.Convert <- p20$estimates[1, 2]
+p20.Convert.L <- p20$L[1, 2]
+# get upper bound
+p20.Convert.U <- p20$U[1, 2]
+con.20 <- c(20, p20.Convert, p20.Convert.L, p20.Convert.U)
+## 30 year olds
+p30 <-
+  pmatrix.msm(m1, covariates = list(Age = 30), ci = "normal")
+p30.Convert <- p30$estimates[1, 2]
+# set lower bound
+p30.Convert.L <- p30$L[1, 2]
+# get upper bound
+p30.Convert.U <- p30$U[1, 2]
+#combine
+con.30 <- c(30, p30.Convert, p30.Convert.L, p30.Convert.U)
+## 40 year old
+p40 <-
+  pmatrix.msm(m1, covariates = list(Age = 40), ci = "normal")
+# Get Transition to Relid Estimate
+p40.Convert <- p40$estimates[1, 2]
+# set lower bound
+p40.Convert.L <- p40$L[1, 2]
+# get upper bound
+p40.Convert.U <- p40$U[1, 2]
+con.40 <- c(40, p40.Convert, p40.Convert.L, p40.Convert.U)
+## 50 year old
+p50 <-
+  pmatrix.msm(m1, covariates = list(Age = 50), ci = "normal")
+# Get Transition to Relid Estimate
+p50.Convert <- p50$estimates[1, 2]
+# set lower bound
+p50.Convert.L <- p50$L[1, 2]
+# get upper bound
+p50.Convert.U <- p50$U[1, 2]
+con.50 <- c(50, p50.Convert, p50.Convert.L, p50.Convert.U)
+## 60 year olds
+p60 <-
+  pmatrix.msm(m1, covariates = list(Age = 60), ci = "normal")
+# Get Transition to Relid Estimate
+p60.Convert <- p60$estimates[1, 2]
+# set lower bound
+p60.Convert.L <- p60$L[1, 2]
+# get upper bound
+p60.Convert.U <- p60$U[1, 2]
+con.60 <- c(60, p60.Convert, p60.Convert.L, p60.Convert.U)
+## 70 year olds
+p70 <-
+  pmatrix.msm(m1, covariates = list(Age = 70), ci = "normal")
+# Get Transition to Relid Estimate
+p70.Convert <- p70$estimates[1, 2]
+# set lower bound
+p70.Convert.L <- p70$L[1, 2]
+# get upper bound
+p70.Convert.U <- p70$U[1, 2]
+con.70 <- c(70, p70.Convert, p70.Convert.L, p70.Convert.U)
+### ## 80 year olds
+p80 <-
+  pmatrix.msm(m1, covariates = list(Age = 80), ci = "normal")
+# Get Transition to Relid Estimate
+p80.Convert <- p80$estimates[1, 2]
+# set lower bound
+p80.Convert.L <- p80$L[1, 2]
+# get upper bound
+p80.Convert.U <- p80$U[1, 2]
+con.80 <- c(80, p80.Convert, p80.Convert.L, p80.Convert.U)
+# ### ## 90 year olds
+p90 <-
+  pmatrix.msm(m1, covariates = list(Age = 90), ci = "normal")
+# # Get Transition to Relid Estimate
+p90.Convert <- p90$estimates[1, 2]
+# # set lower bound
+p90.Convert.L <- p90$L[1, 2]
+p90.Convert.U <- p90$U[1, 2]
+con.90 <- c(90, p90.Convert, p90.Convert.L, p90.Convert.U)
+# ### create data frame for conversion plot
+conplot <-
+  data.frame(rbind(con.20, con.30, con.40, con.50, con.60, con.70, con.80, con.90))
+colnames(conplot) <-
+  c("age", "conv_probability", "conv_lower", "conv_upper")
+library(ggplot2)
+#library(wesanderson)
+#wes_palette("Zissou1", type = c("discrete"))
+#library("ggsci")
+
+plot.con <-
+  ggplot(aes(
+    x = age,
+    y = conv_probability,
+    ymin = conv_lower,
+    ymax = conv_upper
+  ),
+  data = conplot) + geom_point(stroke = 2, colour = "#d1495b")  +
+  geom_linerange(alpha =   1, colour = "#d1495b") +
+  geom_smooth(colour = "#d1495b",
+              method = "loess",
+              se = FALSE)  +
+  scale_y_continuous(limits = c(0, .1)) +
+  labs(x = "Age", y = "Belief in God Transition Probability w/ 95% CI") + theme_bw() + labs(title = "Religious (Dis)Belief in God Dynamics in New Zealand: years 2010-2021")
+#plot.con
+#plot.con
+#m1
+
+##### CREAT PLOT FOR DECONVERSION
+## 20 year olds
+p20 <-
+  pmatrix.msm(m1, covariates = list(Age = 20), ci = "normal")
+# Get Transition to Relid Estimate
+p20.decon <- p20$estimates[2, 1]
+p20.decon.L <- p20$L[2, 1]
+p20.decon.U <- p20$U[2, 1]
+decon.20 <- c(20, p20.decon, p20.decon.L, p20.decon.U)
+p30 <-
+  pmatrix.msm(m1, covariates = list(Age = 30), ci = "normal")
+p30.decon <- p30$estimates[2, 1]
+p30.decon.L <- p30$L[2, 1]
+p30.decon.U <- p30$U[2, 1]
+decon.30 <- c(30, p30.decon, p30.decon.L, p30.decon.U)
+p40 <-
+  pmatrix.msm(m1, covariates = list(Age = 40), ci = "normal")
+p40.decon <- p40$estimates[2, 1]
+p40.decon.L <- p40$L[2, 1]
+p40.decon.U <- p40$U[2, 1]
+decon.40 <- c(40, p40.decon, p40.decon.L, p40.decon.U)
+p50 <-
+  pmatrix.msm(m1, covariates = list(Age = 50), ci = "normal")
+p50.decon <- p50$estimates[2, 1]
+p50.decon.L <- p50$L[2, 1]
+p50.decon.U <- p50$U[2, 1]
+decon.50 <- c(50, p50.decon, p50.decon.L, p50.decon.U)
+p60 <-
+  pmatrix.msm(m1, covariates = list(Age = 60), ci = "normal")
+p60.decon <- p60$estimates[2, 1]
+p60.decon.L <- p60$L[2, 1]
+p60.decon.U <- p60$U[2, 1]
+decon.60 <- c(60, p60.decon, p60.decon.L, p60.decon.U)
+p70 <-
+  pmatrix.msm(m1, covariates = list(Age = 70), ci = "normal")
+p70.decon <- p70$estimates[2, 1]
+p70.decon.L <- p70$L[2, 1]
+p70.decon.U <- p70$U[2, 1]
+decon.70 <- c(70, p70.decon, p70.decon.L, p70.decon.U)
+p80 <-
+  pmatrix.msm(m1, covariates = list(Age = 80), ci = "normal")
+p80.decon <- p80$estimates[2, 1]
+p80.decon.L <- p80$L[2, 1]
+p80.decon.U <- p80$U[2, 1]
+decon.80 <- c(80, p80.decon, p80.decon.L, p80.decon.U)
+p90 <-
+  pmatrix.msm(m1, covariates = list(Age = 90), ci = "normal")
+p90.decon <- p90$estimates[2, 1]
+p90.decon.L <- p90$L[2, 1]
+p90.decon.U <- p90$U[2, 1]
+decon.90 <- c(90, p90.decon, p90.decon.L, p90.decon.U)
+
+### create data frame for conversion plot
+deconplot <-
+  data.frame(rbind(
+    decon.20,
+    decon.30,
+    decon.40,
+    decon.50,
+    decon.60,
+    decon.70,
+    decon.80,
+    decon.90
+  ))
+colnames(deconplot) <-
+  c("age", "decon_probability", "decon_lower", "decon_upper")
+library(ggplot2)
+plot.decon <-
+  ggplot(aes(
+    x = age,
+    y = decon_probability,
+    ymin = decon_lower,
+    ymax = decon_upper
+  ),
+  data = deconplot) +
+  geom_point(alpha = 1,
+             colour = "#00798c",
+             stroke = 2) +   geom_linerange(alpha = 1, colour = "#00798c") +
+  #scale_y_continuous(limits=c(0,.1))    +
+  geom_smooth(colour = "#00798c", se = T) +
+  labs(x = "Age", y = "Religious Disaffiliation Transition Probability w/ 95% CI") +
+  theme_bw() +
+  labs(title = "Religious (Dis)affiliation Dynamics")  +
+  theme(legend.position = "bottom")
+
+#library(gridExtra)
+
+#grid.arrange(plot.con,plot.decon, ncol=2)
+### SUPERIMPOSE
+deconplot$Group <- as.factor(rep("Dis-Belief", nrow(deconplot)))
+conplot$Group <- as.factor(rep("Belief", nrow(conplot)))
+deconplot2 <- deconplot %>%
+  dplyr::mutate(
+    conv_probability = decon_probability,
+    conv_lower = decon_lower,
+    conv_upper = decon_upper
+  ) %>%
+  dplyr::select(-c(decon_probability, decon_upper, decon_lower))
+
+comboplot <- rbind(conplot, deconplot2)
+#comboplot
+# get initial probabilities for title label
+#pmatrix.msm(m1)
+
+library(ggplot2)
+
+# plot.combo <-
+#   ggplot(
+#     aes(
+#       x = age,
+#       y = conv_probability,
+#       ymin = conv_lower,
+#       ymax = conv_upper,
+#       colour = Group
+#     ),
+#     data = comboplot
+#   ) +
+#   geom_point(alpha = 1, stroke = 2) +
+#   geom_linerange(alpha = 1) +
+#   geom_smooth(se = F) +
+#   scale_y_continuous(limits = c(0, .96))  +
+#   labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI: range: Pr = 0 to Pr = 1 ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2020 -- 2020") +
+#   #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+#   scale_colour_manual(values = c("#d1495b", "#00798c")) +
+#   theme(legend.position = "bottom")
+# plot.combo
+
+library(ggsci )
+plotindividual_GOD_30_imp <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .3))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Belief w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Belief in God Dynamics in New Zealand",
+  subtitle= "N = 53990, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_npg() + 
+  theme(legend.position = "bottom")
+
+plotindividual_GOD_05_imp <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .05))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Belief w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Belief in God Dynamics in New Zealand",
+  subtitle= "N = 53990, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_npg() + 
+  theme(legend.position = "bottom")
+
+library(patchwork)
+
+plotindividual_GOD_30_imp
+plotindividual_GOD_05_imp
+
+saveRDS(plotindividual_GOD_05_imp, here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_GOD_05_imp"))
+saveRDS(plotindividual_GOD_30_imp, here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_GOD_30_imp"))
+
+plotindividual_GOD_30_imp <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_GOD_30_imp")))
+plotindividual_GOD_05_imp <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_GOD_05_imp")))
+
+  
+#pr / plot.combo + plot_annotation(title = "Religious Change over Time",
+#         subtitle = "(i) Society-level aggregate change (ii) Individual-level process: affiliation vs. disaffiliation",
+#tag_levels = "i")
+relhmm
+```
+
+```{r eavl = F}
+#save graph 
+ggsave(
+  plotindividual_GOD,
+  path = here::here(here::here("_posts", "religious_simpsons_paradox", "mods")),
+  width = 16,
+  height = 9,
+  units = "in",
+  filename = "plotindividual_GOD.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1200
+)
+```
+
+
+## Belief God State Change
+
+## Data Trajectories
+
+```{r}
+library(LMest)
+
+
+relwidelong <-  df %>%
+  dplyr::mutate(bg = Believe.God) %>%
+  dplyr::select(Id, bg, Wave)
+
+##THIS HANGS
+#out <- with(relwidelong, long2matrices(id = Id, X = Age, Y = Religious))
+
+relwide <- spread(relwidelong, Wave, bg)
+head(relwide)
+
+#relwide<-relwide[complete.cases(relwide), ]
+Relidwide
+
+Relidwide <-  df %>%
+  dplyr::filter(YearMeasured == 1 & Wave != 2009) %>%
+ # dplyr::filter(!is.na(Religious)) %>%
+  dplyr::select(Id, Believe.God, Wave) %>%
+  group_by(Id) %>% filter(n() > 8) %>%
+  filter(n() != 0) %>%
+  ungroup(Id) %>%
+  spread(Wave, Believe.God)
+
+#Relidwide <- Relidwide[complete.cases(Relidwide),]
+dim(Relidwide)
+
+x_var_list <- names(Relidwide[, 2:12])
+
+Relidwide
+
+
+plot_trajectories(
+  data = Relidwide,
+  id_var = "Id",
+  var_list = x_var_list,
+  line_colour = "red",
+  xlab = "Years",
+  ylab = "Belief God",
+  connect_missing = T,
+  scale_x_num = T,
+  scale_x_num_start = 1,
+  random_sample_frac = 0.011,
+  seed = 1234
+ # title_n = T
+)  +
+  facet_wrap( ~ Id)
+
+#god_trajectories 16 X9 
+
+```
+
+
+
+
+
+## Believe in GOD -- MANIFEST  
+
+
+# create dataframe
+
+```{r}
+# 
+# df$Believe.God
+# 
+# names(df)
+# datG  <- df %>%
+#   dplyr::filter(YearMeasured == 1 & Wave !=2009) %>% # filtering only people who have responded in a year, no
+#   droplevels() %>%
+#   dplyr::select(Wave, Age, Wave, Religious1 , Id, Believe.God, years, GenCohort, Male, Pol.Orient, Urban, Edu,
+#                 Partner, Parent, AGREEABLENESS, CONSCIENTIOUSNESS, OPENNESS,HONESTY_HUMILITY,EXTRAVERSION,
+#                 Religion.Church, NEUROTICISM,SmokerEver,EthnicCats) %>%
+#   dplyr::mutate(yearW  = as.numeric(Wave) - 1) %>%
+#   group_by(Id) %>% filter(n() > 1) %>% # have responded to at least 2 x waves
+#   filter(n() != 0) %>%
+#   filter(n() != 1) %>%
+#   ungroup(Id) %>%
+#   mutate(bg1 = as.numeric(Believe.God))%>%
+#   mutate( cohort = as.numeric(GenCohort)-1) %>%
+#   group_by(Id) %>% filter(n() > 1) %>% # have responded to at least 2 x waves
+#   add_tally(bg1) %>%
+#   ungroup() %>%
+#   group_by(Id) %>%
+#     filter(n > 1) %>%
+#   ungroup(Id) %>%
+#   droplevels() %>%
+#   select(-c(Wave, GenCohort, cohort, n,Believe.God)) %>%
+#   arrange( yearW, Id, bg1)
+# # make all numeric 
+# datG = as.data.frame(sapply(datG, as.numeric))
+# 
+# head(datG)
+# dim(datG)
+# # multi impute missing vales
+# 
+# library(Amelia)
+# 
+# # bounds for imp god belief 
+# bds <- matrix(c(21, 1, 2), nrow = 1, ncol = 3)
+# bds
+# head(datG)
+# datG = as.data.frame(datG)
+# 
+# datGimp <- amelia(
+#   set.seed=1234,
+#   datG, 
+#   cs= c("Id"),
+#   ts= c("yearW"),
+#   m = 1, # number of imputations
+#   ords = "bg1",
+#   # noms = c(
+#   #   "EthnicCats_b","GenCohort"
+#   # ),
+#  # idvars=c("Id"), # yrs not working
+#   lags="bg1",
+#   leads="bg1",
+#   polytime = 2, # Allow polynomial
+#   intercs = F, # to many vars
+#   bounds = bds, # lower upper bounds to Mus Prej
+#   empri = .05*nrow(datG)
+# ) # ridge prior see: Amelia pdf documentation p.23
+# 
+# saveRDS(datGimp, here::here("_posts","religious_simpsons_paradox","mods", "datGimp"))
+# 
+# datig <-datGimp$imputations$imp1
+# 
+# str(datig)
+# min(datig$yearW, na.rm =TRUE)
+# 
+
+#nrow(df)
+
+# unique ids
+length(unique(datig$Id)) #53388
+
+table1::table1( ~bg1|yearW, data = datig)
+
+
+
+
+```
+
+```{r}
+# 
+# test <- datG %>%
+# dplyr::group_by(Id)%>%
+#   add_tally(bg1) %>%
+#   ungroup %>%
+#   arrange(Id, Wave) %>% 
+#   filter(n >1)
+# 
+# test
+```
+
+
+
+MSM Analysis BELIEF MARKOV MANIFEST  HIDDEN
+
+
+```{r  msm2, cache = TRUE, eval = FALSE}
+### MSM ANALYIS BELOW ###
+# commenting out model to save time (which I've saved in a file, below)
+# initial matrix for transitions
+library("msm")
+
+Q0 <- rbind(c(.9, .1),
+            c(.1, .9))
+
+# intensity matrix
+Q0
+
+head(datig)
+
+datig <- datig%>%
+  arrange(Id, yearW)
+
+# Initialise
+crudeinR <-
+  msm::crudeinits.msm(bg1 ~ yearW, Id, # Id = identifier
+                      data = datig,
+                      qmatrix = Q0)
+
+mg_nothidden  <- msm(
+  bg1 ~ yearW,
+  Id,
+  data = datig,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  gen.inits=TRUE,
+ # ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE
+  # Not running without this assumption.
+ # gen.inits = TRUE
+)
+mg_nothidden
+
+print( round( msm::pmatrix.msm( mg_nothidden ) , 3 ) )
+
+
+saveRDS(mg_nothidden, here::here( "_posts","religious_simpsons_paradox", "mods","mg_nothidden.rds" ))
+
+```
+
+
+Transition probabilities (averaged)
+
+
+```{r}
+# read model, (saved to save time)
+
+# note change of model name 
+mg_nothidden <-readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","mg_nothidden.rds" ))
+m1 <- mg_nothidden
+#probability matrix
+dt<-  print( round( msm::pmatrix.msm( m1 ) , 3 ) )
+
+# label cols, rows:
+rownames(dt) = c("Not-Believe God time 0", "Believe God time 0")
+colnames(dt) = c("Not-Believe God t+1","Believe God t+1")
+
+#table
+dt%>%
+ kbl(caption = "State Change Markov Model: inferred population average Belief in God state change, years 2009-2021")%>%
+  kable_material(c("hover"))
+```
+
+
+LaTeX table
+
+```{r, eval = FALSE}
+dt %>%
+  kbl(booktabs = T,
+      format = "latex",
+      caption = "State Change Markov Model: inferred population average belief in God state change, years 2009-2021")
+```
+
+
+
+
+```{r  hmmchange, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from greater disaffiliation among young people than affiliation.", echo =FALSE}
+
+# Graph
+oz<- as.matrix( msm::pmatrix.msm( m1 ) )
+oz <- round(oz, digits = 3)
+m1
+oz
+stateNames <- c("No Belief God (.46)","Belief God (.54)")
+row.names(oz) <- stateNames; colnames(oz) <- stateNames
+oz
+## need to transpose or else arrows go in the wrong direction
+toz <- t(oz) 
+
+#library(pracma)
+plotmat(toz,
+       # pos = c(1,2), 
+       # lwd = 1, 
+       # box.lwd = 2, 
+        cex.txt = 0.9, 
+        box.size = 0.09, 
+       # box.type = "circle", 
+        box.prop = 0.5,
+        arr.pos =  0.4, 
+        shadow.size = 0.001,
+        box.col = c("lightgreen","lightblue","orange"),
+       # arr.length=.1,
+       # arr.width=.1,
+        self.cex = .4,
+        self.shifty = -.01,
+        self.shiftx = .12,
+        main = "State Markov Model reveals low transition to Belief in God \nNew Zealand: N = 53388, years 2010-2021")
+
+# god_markov 12 x 9 
+```
+
+
+
+
+## Graph 
+
+
+```{r  hmmchange2, cache = TRUE, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from much greater disaffiliation among young people than affiliation.", include = TRUE, code_folding=TRUE}
+
+# note to self, this code can be improved
+### CREATE PLOT  ###  CONVERSION AGE PLOT
+## 20 year olds
+
+#m1 <-readRDS(here::here( "models","mnm-simpson-paradox-religious-change" ))
+
+p20 <-
+  pmatrix.msm(m1, covariates = list(Age = 20), ci = "normal")
+p20.Convert <- p20$estimates[1, 2]
+p20.Convert.L <- p20$L[1, 2]
+# get upper bound
+p20.Convert.U <- p20$U[1, 2]
+con.20 <- c(20, p20.Convert, p20.Convert.L, p20.Convert.U)
+## 30 year olds
+p30 <-
+  pmatrix.msm(m1, covariates = list(Age = 30), ci = "normal")
+p30.Convert <- p30$estimates[1, 2]
+# set lower bound
+p30.Convert.L <- p30$L[1, 2]
+# get upper bound
+p30.Convert.U <- p30$U[1, 2]
+#combine
+con.30 <- c(30, p30.Convert, p30.Convert.L, p30.Convert.U)
+## 40 year old
+p40 <-
+  pmatrix.msm(m1, covariates = list(Age = 40), ci = "normal")
+# Get Transition to Relid Estimate
+p40.Convert <- p40$estimates[1, 2]
+# set lower bound
+p40.Convert.L <- p40$L[1, 2]
+# get upper bound
+p40.Convert.U <- p40$U[1, 2]
+con.40 <- c(40, p40.Convert, p40.Convert.L, p40.Convert.U)
+## 50 year old
+p50 <-
+  pmatrix.msm(m1, covariates = list(Age = 50), ci = "normal")
+# Get Transition to Relid Estimate
+p50.Convert <- p50$estimates[1, 2]
+# set lower bound
+p50.Convert.L <- p50$L[1, 2]
+# get upper bound
+p50.Convert.U <- p50$U[1, 2]
+con.50 <- c(50, p50.Convert, p50.Convert.L, p50.Convert.U)
+## 60 year olds
+p60 <-
+  pmatrix.msm(m1, covariates = list(Age = 60), ci = "normal")
+# Get Transition to Relid Estimate
+p60.Convert <- p60$estimates[1, 2]
+# set lower bound
+p60.Convert.L <- p60$L[1, 2]
+# get upper bound
+p60.Convert.U <- p60$U[1, 2]
+con.60 <- c(60, p60.Convert, p60.Convert.L, p60.Convert.U)
+## 70 year olds
+p70 <-
+  pmatrix.msm(m1, covariates = list(Age = 70), ci = "normal")
+# Get Transition to Relid Estimate
+p70.Convert <- p70$estimates[1, 2]
+# set lower bound
+p70.Convert.L <- p70$L[1, 2]
+# get upper bound
+p70.Convert.U <- p70$U[1, 2]
+con.70 <- c(70, p70.Convert, p70.Convert.L, p70.Convert.U)
+### ## 80 year olds
+p80 <-
+  pmatrix.msm(m1, covariates = list(Age = 80), ci = "normal")
+# Get Transition to Relid Estimate
+p80.Convert <- p80$estimates[1, 2]
+# set lower bound
+p80.Convert.L <- p80$L[1, 2]
+# get upper bound
+p80.Convert.U <- p80$U[1, 2]
+con.80 <- c(80, p80.Convert, p80.Convert.L, p80.Convert.U)
+# ### ## 90 year olds
+p90 <-
+  pmatrix.msm(m1, covariates = list(Age = 90), ci = "normal")
+# # Get Transition to Relid Estimate
+p90.Convert <- p90$estimates[1, 2]
+# # set lower bound
+p90.Convert.L <- p90$L[1, 2]
+p90.Convert.U <- p90$U[1, 2]
+con.90 <- c(90, p90.Convert, p90.Convert.L, p90.Convert.U)
+# ### create data frame for conversion plot
+conplot <-
+  data.frame(rbind(con.20, con.30, con.40, con.50, con.60, con.70, con.80, con.90))
+colnames(conplot) <-
+  c("age", "conv_probability", "conv_lower", "conv_upper")
+library(ggplot2)
+#library(wesanderson)
+#wes_palette("Zissou1", type = c("discrete"))
+#library("ggsci")
+
+plot.con <-
+  ggplot(aes(
+    x = age,
+    y = conv_probability,
+    ymin = conv_lower,
+    ymax = conv_upper
+  ),
+  data = conplot) + geom_point(stroke = 2, colour = "#d1495b")  +
+  geom_linerange(alpha =   1, colour = "#d1495b") +
+  geom_smooth(colour = "#d1495b",
+              method = "loess",
+              se = FALSE)  +
+  scale_y_continuous(limits = c(0, .1)) +
+  labs(x = "Age", y = "Belief in God Transition Probability w/ 95% CI") + theme_bw() + labs(title = "(Dis)Belief in God Dynamics in New Zealand: years 2010-2021")
+#plot.con
+#plot.con
+#m1
+
+##### CREAT PLOT FOR DECONVERSION
+## 20 year olds
+p20 <-
+  pmatrix.msm(m1, covariates = list(Age = 20), ci = "normal")
+# Get Transition to Relid Estimate
+p20.decon <- p20$estimates[2, 1]
+p20.decon.L <- p20$L[2, 1]
+p20.decon.U <- p20$U[2, 1]
+decon.20 <- c(20, p20.decon, p20.decon.L, p20.decon.U)
+p30 <-
+  pmatrix.msm(m1, covariates = list(Age = 30), ci = "normal")
+p30.decon <- p30$estimates[2, 1]
+p30.decon.L <- p30$L[2, 1]
+p30.decon.U <- p30$U[2, 1]
+decon.30 <- c(30, p30.decon, p30.decon.L, p30.decon.U)
+p40 <-
+  pmatrix.msm(m1, covariates = list(Age = 40), ci = "normal")
+p40.decon <- p40$estimates[2, 1]
+p40.decon.L <- p40$L[2, 1]
+p40.decon.U <- p40$U[2, 1]
+decon.40 <- c(40, p40.decon, p40.decon.L, p40.decon.U)
+p50 <-
+  pmatrix.msm(m1, covariates = list(Age = 50), ci = "normal")
+p50.decon <- p50$estimates[2, 1]
+p50.decon.L <- p50$L[2, 1]
+p50.decon.U <- p50$U[2, 1]
+decon.50 <- c(50, p50.decon, p50.decon.L, p50.decon.U)
+p60 <-
+  pmatrix.msm(m1, covariates = list(Age = 60), ci = "normal")
+p60.decon <- p60$estimates[2, 1]
+p60.decon.L <- p60$L[2, 1]
+p60.decon.U <- p60$U[2, 1]
+decon.60 <- c(60, p60.decon, p60.decon.L, p60.decon.U)
+p70 <-
+  pmatrix.msm(m1, covariates = list(Age = 70), ci = "normal")
+p70.decon <- p70$estimates[2, 1]
+p70.decon.L <- p70$L[2, 1]
+p70.decon.U <- p70$U[2, 1]
+decon.70 <- c(70, p70.decon, p70.decon.L, p70.decon.U)
+p80 <-
+  pmatrix.msm(m1, covariates = list(Age = 80), ci = "normal")
+p80.decon <- p80$estimates[2, 1]
+p80.decon.L <- p80$L[2, 1]
+p80.decon.U <- p80$U[2, 1]
+decon.80 <- c(80, p80.decon, p80.decon.L, p80.decon.U)
+p90 <-
+  pmatrix.msm(m1, covariates = list(Age = 90), ci = "normal")
+p90.decon <- p90$estimates[2, 1]
+p90.decon.L <- p90$L[2, 1]
+p90.decon.U <- p90$U[2, 1]
+decon.90 <- c(90, p90.decon, p90.decon.L, p90.decon.U)
+
+### create data frame for conversion plot
+deconplot <-
+  data.frame(rbind(
+    decon.20,
+    decon.30,
+    decon.40,
+    decon.50,
+    decon.60,
+    decon.70,
+    decon.80,
+    decon.90
+  ))
+colnames(deconplot) <-
+  c("age", "decon_probability", "decon_lower", "decon_upper")
+library(ggplot2)
+plot.decon <-
+  ggplot(aes(
+    x = age,
+    y = decon_probability,
+    ymin = decon_lower,
+    ymax = decon_upper
+  ),
+  data = deconplot) +
+  geom_point(alpha = 1,
+             colour = "#00798c",
+             stroke = 2) +   geom_linerange(alpha = 1, colour = "#00798c") +
+  #scale_y_continuous(limits=c(0,.1))    +
+  geom_smooth(colour = "#00798c", se = T) +
+  labs(x = "Age", y = "Religious Disaffiliation Transition Probability w/ 95% CI") +
+  theme_bw() +
+  labs(title = " (Dis)affiliation Dynamics")  +
+  theme(legend.position = "bottom")
+
+#library(gridExtra)
+
+#grid.arrange(plot.con,plot.decon, ncol=2)
+### SUPERIMPOSE
+deconplot$Group <- as.factor(rep("Dis-Belief", nrow(deconplot)))
+conplot$Group <- as.factor(rep("Belief", nrow(conplot)))
+deconplot2 <- deconplot %>%
+  dplyr::mutate(
+    conv_probability = decon_probability,
+    conv_lower = decon_lower,
+    conv_upper = decon_upper
+  ) %>%
+  dplyr::select(-c(decon_probability, decon_upper, decon_lower))
+
+comboplot <- rbind(conplot, deconplot2)
+#comboplot
+# get initial probabilities for title label
+#pmatrix.msm(m1)
+comboplot
+library(ggplot2)
+
+# plot.combo <-
+#   ggplot(
+#     aes(
+#       x = age,
+#       y = conv_probability,
+#       ymin = conv_lower,
+#       ymax = conv_upper,
+#       colour = Group
+#     ),
+#     data = comboplot
+#   ) +
+#   geom_point(alpha = 1, stroke = 2) +
+#   geom_linerange(alpha = 1) +
+#   geom_smooth(se = F) +
+#   scale_y_continuous(limits = c(0, .96))  +
+#   labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI: range: Pr = 0 to Pr = 1 ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2020 -- 2020") +
+#   #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+#   scale_colour_manual(values = c("#d1495b", "#00798c")) +
+#   theme(legend.position = "bottom")
+# plot.combo
+
+library(ggsci )
+plotindividual_GOD_STATE_CHANGE_30_imp <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .3))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Belief w/ 95 CI ") + theme_bw() + labs(title = "Manifest Markove Model: (Dis)Belief in God Dynamics in New Zealand",
+  subtitle= "N = 53990, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_colour_npg() + 
+  theme(legend.position = "bottom")
+
+plotindividual_GOD_STATE_CHANGE_30_imp
+
+
+### OUTPUT 
+saveRDS(plotindividual_GOD_STATE_CHANGE_30_imp, here::here( "_posts", "religious_simpsons_paradox", "mods", "plotindividual_GOD_STATE_CHANGE_30_imp"))
+
+plotindividual_GOD_STATE_CHANGE_30_imp <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_GOD_STATE_CHANGE_30_imp")))
+
+
+
+#save graph 
+
+ggsave(
+  plotindividual_GOD_STATE_CHANGE_FIG,
+  path = here::here(here::here("_posts", "religious_simpsons_paradox", "mods")),
+  width = 16,
+  height = 9,
+  units = "in",
+  filename = "plotindividual_GOD_STATE_CHANGE_FIG.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1200
+)
+```
+
+
+
+## Data Trajectories
+
+```{r}
+library(LMest)
+
+
+relwidelong <-  df %>%
+  dplyr::mutate(bg = Believe.God) %>%
+  dplyr::select(Id, bg, Wave)
+
+##THIS HANGS
+#out <- with(relwidelong, long2matrices(id = Id, X = Age, Y = Religious))
+
+relwide <- spread(relwidelong, Wave, bg)
+head(relwide)
+
+#relwide<-relwide[complete.cases(relwide), ]
+Relidwide
+
+Relidwide <-  df %>%
+  dplyr::filter(YearMeasured == 1 & Wave != 2009) %>%
+ # dplyr::filter(!is.na(Religious)) %>%
+  dplyr::select(Id, Believe.God, Wave) %>%
+  group_by(Id) %>% filter(n() > 8) %>%
+  filter(n() != 0) %>%
+  ungroup(Id) %>%
+  spread(Wave, Believe.God)
+
+#Relidwide <- Relidwide[complete.cases(Relidwide),]
+dim(Relidwide)
+
+x_var_list <- names(Relidwide[, 2:12])
+
+Relidwide
+
+
+plot_trajectories(
+  data = Relidwide,
+  id_var = "Id",
+  var_list = x_var_list,
+  line_colour = "red",
+  xlab = "Years",
+  ylab = "Belief God",
+  connect_missing = T,
+  scale_x_num = T,
+  scale_x_num_start = 1,
+  random_sample_frac = 0.011,
+  seed = 1234
+ # title_n = T
+)  +
+  facet_wrap( ~ Id)
+
+#god_trajectories 16 X9 
+
+```
+
+
+
+
+
+
+### BELIEF IN SPIRIT 
+
+
+
+#create dataframe
+
+```{r}
+names(df)
+datS  <- df %>%
+  dplyr::filter(YearMeasured == 1 & Wave !=2009) %>% # filtering only people who have responded in a year, no
+  droplevels() %>%
+  dplyr::select(Wave, Age, Wave, Religious1 , Id, Believe.Spirit, years, GenCohort, Male, Pol.Orient, Urban, Edu,
+                Partner, Parent, AGREEABLENESS, CONSCIENTIOUSNESS, OPENNESS,HONESTY_HUMILITY,EXTRAVERSION,
+                Religion.Church, NEUROTICISM,SmokerEver,EthnicCats) %>%
+  dplyr::mutate(yearW  = as.numeric(Wave) - 1) %>%
+  group_by(Id) %>% filter(n() > 1) %>% # have responded to at least 2 x waves
+  filter(n() != 0) %>%
+  filter(n() != 1) %>%
+  ungroup(Id) %>%
+  mutate(bs1 = as.numeric(Believe.Spirit))%>%
+  mutate( cohort = as.numeric(GenCohort)-1) %>%
+  group_by(Id) %>% filter(n() > 1) %>% # have responded to at least 2 x waves
+  add_tally(bs1) %>%
+  ungroup() %>%
+  group_by(Id) %>%
+    filter(n > 1) %>%
+  ungroup(Id) %>%
+  droplevels() %>%
+  select(-c(Wave, GenCohort, cohort, n,Believe.Spirit)) %>%
+  arrange( Id, yearW, bs1) %>%
+  tidyr::fill(bs1, .direction = 'down') # conservative 
+
+# make all numeric 
+datS = as.data.frame(sapply(datS, as.numeric))
+
+head(datS)
+dim(datS)
+# multi impute missing vales
+library(Amelia)
+
+# bounds for imp god belief 
+bds <- matrix(c(21, 1, 2), nrow = 1, ncol = 3)
+bds
+head(datS)
+datS = as.data.frame(datS)
+
+datSimp <- amelia(
+  set.seed=1234,
+  datS, 
+  cs= c("Id"),
+  ts= c("yearW"),
+  m = 1, # number of imputations
+  ords = "bs1",
+  # noms = c(
+  #   "EthnicCats_b","GenCohort"
+  # ),
+ # idvars=c("Id"), # yrs not working
+  lags="bs1",
+  leads="bs1",
+  polytime = 2, # Allow polynomial
+  intercs = F, # to many vars
+  bounds = bds, # lower upper bounds to Mus Prej
+  empri = .05*nrow(datS)
+) # ridge prior see: Amelia pdf documentation p.23
+
+saveRDS(datSimp, here::here("_posts","religious_simpsons_paradox","mods", "datSimp"))
+
+datis <-datSimp$imputations$imp1
+
+str(datis)
+min(datis$yearW, na.rm =TRUE)
+
+
+## FILL DATA FRAME = BETTER 
+datS_fill  <- df %>%
+  dplyr::filter(YearMeasured == 1 & Wave !=2009) %>% # filtering only people who have responded in a year, no
+  droplevels() %>%
+  dplyr::select(Wave, Age, Wave, Religious1 , Id, Believe.Spirit, years, GenCohort, Male, Pol.Orient, Urban, Edu,
+                Partner, Parent, AGREEABLENESS, CONSCIENTIOUSNESS, OPENNESS,HONESTY_HUMILITY,EXTRAVERSION,
+                Religion.Church, NEUROTICISM,SmokerEver,EthnicCats) %>%
+  dplyr::mutate(yearW  = as.numeric(Wave) - 1) %>%
+  group_by(Id) %>% filter(n() > 1) %>% # have responded to at least 2 x waves
+  filter(n() != 0) %>%
+  filter(n() != 1) %>%
+  ungroup(Id) %>%
+  mutate(bs1 = as.numeric(Believe.Spirit))%>%
+  mutate( cohort = as.numeric(GenCohort)-1) %>%
+  group_by(Id) %>% filter(n() > 1) %>% # have responded to at least 2 x waves
+  add_tally(bs1) %>%
+  ungroup() %>%
+  group_by(Id) %>%
+    filter(n > 1) %>%
+  ungroup(Id) %>%
+  droplevels() %>%
+  select(-c(Wave, GenCohort, cohort, n,Believe.Spirit)) %>%
+  arrange( Id, yearW, bs1) %>%
+  tidyr::fill(bs1, .direction = 'down') # conservative 
+
+
+#nrow(df)
+
+# unique ids
+length(unique(datis$Id)) #53728
+
+table1::table1( ~bs1|yearW, data = datis)
+
+```
+
+```{r}
+# 
+# test <- datG %>%
+# dplyr::group_by(Id)%>%
+#   add_tally(bg1) %>%
+#   ungroup %>%
+#   arrange(Id, Wave) %>% 
+#   filter(n >1)
+# 
+# test
+
+
+
+```
+
+
+
+MSM Analysis
+
+```{r  msm2, cache = TRUE, eval = FALSE}
+### MSM ANALYIS BELOW ###
+# commenting out model to save time (which I've saved in a file, below)
+# initial matrix for transitions
+library("msm")
+
+Q0 <- rbind(c(.9, .1),
+            c(.1, .9))
+
+# intensity matrix
+Q0
+
+head(datis)
+
+datis <- datis%>%
+  arrange(Id, yearW)
+
+
+## IMPT MANIFEST SPIRIT 
+
+crudeinR <-
+  msm::crudeinits.msm(bs1 ~ yearW, Id, # Id = identifier
+                      data = datis,
+                      qmatrix = Q0)
+ms  <- msm(
+  bs1 ~ yearW,
+  Id,
+  data = datis,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  gen.inits=TRUE,
+  ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE
+  # Not running without this assumption.
+ # gen.inits = TRUE
+)
+ms
+
+
+print( round( msm::pmatrix.msm( ms ) , 3 ) )
+
+
+saveRDS(ms, here::here( "_posts","religious_simpsons_paradox", "mods","ms.rds" ))
+
+
+
+
+# Initialise
+crudeinR <-
+  msm::crudeinits.msm(bs1 ~ yearW, Id, # Id = identifier
+                      data = datS_fill,
+                      qmatrix = Q0)
+ms_fill  <- msm(
+  bs1 ~ yearW,
+  Id,
+  data = datS_fill,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  gen.inits=TRUE,
+  ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE
+  # Not running without this assumption.
+ # gen.inits = TRUE
+)
+ms_fill
+
+print( round( msm::pmatrix.msm( ms_fill ) , 3 ) )
+
+print( round( msm::pmatrix.msm( ms ) , 3 ) )
+
+
+saveRDS(ms_fill, here::here( "_posts","religious_simpsons_paradox", "mods","ms_fill.rds" ))
+
+# MS FILL
+```
+
+
+Transition probabilities (averaged)
+
+
+```{r}
+# read model, (saved to save time)
+
+# note change of model name 
+ms <-readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","ms" ))
+
+# DON'T USE 
+#ms_fill <-readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","ms_fill.rds" ))
+
+
+m1 <- ms
+#probability matrix
+dt<-  print( round( msm::pmatrix.msm( m1 ) , 3 ) )
+
+# label cols, rows:
+rownames(dt) = c("Not-Believe Spirit time 0", "Believe Spirit time 0")
+colnames(dt) = c("Not-Believe Spirit t+1","Believe Spirit t+1")
+
+#table
+dt%>%
+ kbl(caption = "Hidden Markov Model: inferred population average belief in Spirit state change, years 2009-2021")%>%
+  kable_material(c("hover"))
+```
+
+
+LaTeX table
+
+```{r, eval = FALSE}
+dt %>%
+  kbl(booktabs = T,
+      format = "latex",
+      caption = "Hidden Markov Model: inferred population average belief in Spirit state change, years 2009-2021")
+  
+```
+
+
+
+
+```{r  hmmchange, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from greater disaffiliation among young people than affiliation.", echo =FALSE}
+# Graph
+m1
+oz<- as.matrix( msm::pmatrix.msm( m1 ) )
+oz <- round(oz, digits = 3)
+m1
+oz
+stateNames <- c("No Belief Spirit (.30)","Belief Spirit (.70)")
+row.names(oz) <- stateNames; colnames(oz) <- stateNames
+oz
+## need to transpose or else arrows go in the wrong direction
+toz <- t(oz) 
+
+#library(pracma)
+plotmat(toz,
+       # pos = c(1,2), 
+       # lwd = 1, 
+       # box.lwd = 2, 
+        cex.txt = 0.9, 
+        box.size = 0.09, 
+       # box.type = "circle", 
+        box.prop = 0.5,
+        arr.pos =  0.4, 
+        shadow.size = 0.001,
+        box.col = c("lightgreen","lightblue","orange"),
+       # arr.length=.1,
+       # arr.width=.1,
+        self.cex = .4,
+        self.shifty = -.01,
+        self.shiftx = .12,
+        main = "Hidden Markov Model reveals low transition to Belief in Spirit \nNew Zealand: N = 53728, years 2010-2021")
+
+# spirit_markov 12 x 9 
+```
+
+
+
+
+## Graph 
+
+
+```{r  hmmchange2, cache = TRUE, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from much greater disaffiliation among young people than affiliation.", include = TRUE, code_folding=TRUE}
+
+# note to self, this code can be improved
+### CREATE PLOT  ###  CONVERSION AGE PLOT
+## 20 year olds
+
+#m1 <-readRDS(here::here( "models","mnm-simpson-paradox-religious-change" ))
+
+p20 <-
+  pmatrix.msm(m1, covariates = list(Age = 20), ci = "normal")
+p20.Convert <- p20$estimates[1, 2]
+p20.Convert.L <- p20$L[1, 2]
+# get upper bound
+p20.Convert.U <- p20$U[1, 2]
+con.20 <- c(20, p20.Convert, p20.Convert.L, p20.Convert.U)
+## 30 year olds
+p30 <-
+  pmatrix.msm(m1, covariates = list(Age = 30), ci = "normal")
+p30.Convert <- p30$estimates[1, 2]
+# set lower bound
+p30.Convert.L <- p30$L[1, 2]
+# get upper bound
+p30.Convert.U <- p30$U[1, 2]
+#combine
+con.30 <- c(30, p30.Convert, p30.Convert.L, p30.Convert.U)
+## 40 year old
+p40 <-
+  pmatrix.msm(m1, covariates = list(Age = 40), ci = "normal")
+# Get Transition to Relid Estimate
+p40.Convert <- p40$estimates[1, 2]
+# set lower bound
+p40.Convert.L <- p40$L[1, 2]
+# get upper bound
+p40.Convert.U <- p40$U[1, 2]
+con.40 <- c(40, p40.Convert, p40.Convert.L, p40.Convert.U)
+## 50 year old
+p50 <-
+  pmatrix.msm(m1, covariates = list(Age = 50), ci = "normal")
+# Get Transition to Relid Estimate
+p50.Convert <- p50$estimates[1, 2]
+# set lower bound
+p50.Convert.L <- p50$L[1, 2]
+# get upper bound
+p50.Convert.U <- p50$U[1, 2]
+con.50 <- c(50, p50.Convert, p50.Convert.L, p50.Convert.U)
+## 60 year olds
+p60 <-
+  pmatrix.msm(m1, covariates = list(Age = 60), ci = "normal")
+# Get Transition to Relid Estimate
+p60.Convert <- p60$estimates[1, 2]
+# set lower bound
+p60.Convert.L <- p60$L[1, 2]
+# get upper bound
+p60.Convert.U <- p60$U[1, 2]
+con.60 <- c(60, p60.Convert, p60.Convert.L, p60.Convert.U)
+## 70 year olds
+p70 <-
+  pmatrix.msm(m1, covariates = list(Age = 70), ci = "normal")
+# Get Transition to Relid Estimate
+p70.Convert <- p70$estimates[1, 2]
+# set lower bound
+p70.Convert.L <- p70$L[1, 2]
+# get upper bound
+p70.Convert.U <- p70$U[1, 2]
+con.70 <- c(70, p70.Convert, p70.Convert.L, p70.Convert.U)
+### ## 80 year olds
+p80 <-
+  pmatrix.msm(m1, covariates = list(Age = 80), ci = "normal")
+# Get Transition to Relid Estimate
+p80.Convert <- p80$estimates[1, 2]
+# set lower bound
+p80.Convert.L <- p80$L[1, 2]
+# get upper bound
+p80.Convert.U <- p80$U[1, 2]
+con.80 <- c(80, p80.Convert, p80.Convert.L, p80.Convert.U)
+# ### ## 90 year olds
+p90 <-
+  pmatrix.msm(m1, covariates = list(Age = 90), ci = "normal")
+# # Get Transition to Relid Estimate
+p90.Convert <- p90$estimates[1, 2]
+# # set lower bound
+p90.Convert.L <- p90$L[1, 2]
+p90.Convert.U <- p90$U[1, 2]
+con.90 <- c(90, p90.Convert, p90.Convert.L, p90.Convert.U)
+# ### create data frame for conversion plot
+conplot <-
+  data.frame(rbind(con.20, con.30, con.40, con.50, con.60, con.70, con.80, con.90))
+colnames(conplot) <-
+  c("age", "conv_probability", "conv_lower", "conv_upper")
+library(ggplot2)
+#library(wesanderson)
+#wes_palette("Zissou1", type = c("discrete"))
+#library("ggsci")
+
+plot.con <-
+  ggplot(aes(
+    x = age,
+    y = conv_probability,
+    ymin = conv_lower,
+    ymax = conv_upper
+  ),
+  data = conplot) + geom_point(stroke = 2, colour = "#d1495b")  +
+  geom_linerange(alpha =   1, colour = "#d1495b") +
+  geom_smooth(colour = "#d1495b",
+              method = "loess",
+              se = FALSE)  +
+  scale_y_continuous(limits = c(0, .1)) +
+  labs(x = "Age", y = "Belief in Spirit Transition Probability w/ 95% CI") + theme_bw() + labs(title = "Religious (Dis)Belief in God Dynamics in New Zealand: years 2010-2021")
+#plot.con
+#plot.con
+#m1
+
+##### CREAT PLOT FOR DECONVERSION
+## 20 year olds
+p20 <-
+  pmatrix.msm(m1, covariates = list(Age = 20), ci = "normal")
+# Get Transition to Relid Estimate
+p20.decon <- p20$estimates[2, 1]
+p20.decon.L <- p20$L[2, 1]
+p20.decon.U <- p20$U[2, 1]
+decon.20 <- c(20, p20.decon, p20.decon.L, p20.decon.U)
+p30 <-
+  pmatrix.msm(m1, covariates = list(Age = 30), ci = "normal")
+p30.decon <- p30$estimates[2, 1]
+p30.decon.L <- p30$L[2, 1]
+p30.decon.U <- p30$U[2, 1]
+decon.30 <- c(30, p30.decon, p30.decon.L, p30.decon.U)
+p40 <-
+  pmatrix.msm(m1, covariates = list(Age = 40), ci = "normal")
+p40.decon <- p40$estimates[2, 1]
+p40.decon.L <- p40$L[2, 1]
+p40.decon.U <- p40$U[2, 1]
+decon.40 <- c(40, p40.decon, p40.decon.L, p40.decon.U)
+p50 <-
+  pmatrix.msm(m1, covariates = list(Age = 50), ci = "normal")
+p50.decon <- p50$estimates[2, 1]
+p50.decon.L <- p50$L[2, 1]
+p50.decon.U <- p50$U[2, 1]
+decon.50 <- c(50, p50.decon, p50.decon.L, p50.decon.U)
+p60 <-
+  pmatrix.msm(m1, covariates = list(Age = 60), ci = "normal")
+p60.decon <- p60$estimates[2, 1]
+p60.decon.L <- p60$L[2, 1]
+p60.decon.U <- p60$U[2, 1]
+decon.60 <- c(60, p60.decon, p60.decon.L, p60.decon.U)
+p70 <-
+  pmatrix.msm(m1, covariates = list(Age = 70), ci = "normal")
+p70.decon <- p70$estimates[2, 1]
+p70.decon.L <- p70$L[2, 1]
+p70.decon.U <- p70$U[2, 1]
+decon.70 <- c(70, p70.decon, p70.decon.L, p70.decon.U)
+p80 <-
+  pmatrix.msm(m1, covariates = list(Age = 80), ci = "normal")
+p80.decon <- p80$estimates[2, 1]
+p80.decon.L <- p80$L[2, 1]
+p80.decon.U <- p80$U[2, 1]
+decon.80 <- c(80, p80.decon, p80.decon.L, p80.decon.U)
+p90 <-
+  pmatrix.msm(m1, covariates = list(Age = 90), ci = "normal")
+p90.decon <- p90$estimates[2, 1]
+p90.decon.L <- p90$L[2, 1]
+p90.decon.U <- p90$U[2, 1]
+decon.90 <- c(90, p90.decon, p90.decon.L, p90.decon.U)
+
+### create data frame for conversion plot
+deconplot <-
+  data.frame(rbind(
+    decon.20,
+    decon.30,
+    decon.40,
+    decon.50,
+    decon.60,
+    decon.70,
+    decon.80,
+    decon.90
+  ))
+colnames(deconplot) <-
+  c("age", "decon_probability", "decon_lower", "decon_upper")
+library(ggplot2)
+plot.decon <-
+  ggplot(aes(
+    x = age,
+    y = decon_probability,
+    ymin = decon_lower,
+    ymax = decon_upper
+  ),
+  data = deconplot) +
+  geom_point(alpha = 1,
+             colour = "#00798c",
+             stroke = 2) +   geom_linerange(alpha = 1, colour = "#00798c") +
+  #scale_y_continuous(limits=c(0,.1))    +
+  geom_smooth(colour = "#00798c", se = T) +
+  labs(x = "Age", y = "Spirit DisBelief Transition Probability w/ 95% CI") +
+  theme_bw() +
+  labs(title = "Religious (Dis)affiliation Dynamics")  +
+  theme(legend.position = "bottom")
+
+#library(gridExtra)
+
+#grid.arrange(plot.con,plot.decon, ncol=2)
+### SUPERIMPOSE
+deconplot$Group <- as.factor(rep("Dis-Belief", nrow(deconplot)))
+conplot$Group <- as.factor(rep("Belief", nrow(conplot)))
+deconplot2 <- deconplot %>%
+  dplyr::mutate(
+    conv_probability = decon_probability,
+    conv_lower = decon_lower,
+    conv_upper = decon_upper
+  ) %>%
+  dplyr::select(-c(decon_probability, decon_upper, decon_lower))
+
+comboplot <- rbind(conplot, deconplot2)
+#comboplot
+# get initial probabilities for title label
+#pmatrix.msm(m1)
+
+library(ggplot2)
+
+# plot.combo <-
+#   ggplot(
+#     aes(
+#       x = age,
+#       y = conv_probability,
+#       ymin = conv_lower,
+#       ymax = conv_upper,
+#       colour = Group
+#     ),
+#     data = comboplot
+#   ) +
+#   geom_point(alpha = 1, stroke = 2) +
+#   geom_linerange(alpha = 1) +
+#   geom_smooth(se = F) +
+#   scale_y_continuous(limits = c(0, .96))  +
+#   labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI: range: Pr = 0 to Pr = 1 ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2020 -- 2020") +
+#   #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+#   scale_colour_manual(values = c("#d1495b", "#00798c")) +
+#   theme(legend.position = "bottom")
+# plot.combo
+
+library("ggokabeito")   # color palette
+ 
+
+
+plotindividual_SPIRIT_30_imp <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .3))  +
+  labs(x = "Age", y = "Annual Probability of (Dis)Belief Spirit w/ 95 CI ") + theme_bw() +
+  labs(title = "Hidden Markov Model: (Dis)Belief in Spirit Dynamics in New Zealand",
+  subtitle= "N = 53728, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_okabe_ito() + 
+  theme(legend.position = "bottom")
+
+
+plotindividual_SPIRIT_05_imp <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .05))  +
+  labs(x = "Age", y = "Annual Probability of (Dis)Belief Spirit w/ 95 CI ") + theme_bw() +
+  labs(title = "Hidden Markov Model: (Dis)Belief in Spirit Dynamics in New Zealand",
+  subtitle= "N = 53728, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_okabe_ito() + 
+  theme(legend.position = "bottom")
+
+library(patchwork)
+
+plotindividual_SPIRIT_05_imp
+plotindividual_SPIRIT_30_imp
+
+saveRDS(plotindividual_SPIRIT_05_imp,   here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_SPIRIT_05_imp")))
+saveRDS(plotindividual_SPIRIT_30_imp,   here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_SPIRIT_30_imp")))
+
+plotindividual_SPIRIT_05_imp <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_SPIRIT_05_imp")))
+plotindividual_SPIRIT_30_imp <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_SPIRIT_30_imp")))
+
+# THIS IS FILL 
+plotindividual_SPIRIT_05 <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_SPIRIT_05")))
+plotindividual_SPIRIT_25 <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_SPIRIT_25")))
+
+##  WRONG INFERENCE
+plotindividual_SPIRIT_05_imp + plotindividual_SPIRIT_05  
+
+#pr / plot.combo + plot_annotation(title = "Religious Change over Time",
+#         subtitle = "(i) Society-level aggregate change (ii) Individual-level process: affiliation vs. disaffiliation",
+#tag_levels = "i")
+
+```
+
+```{r eavl = F}
+#save graph 
+ggsave(
+  plotindividual_SPIRIT,
+  path = here::here(here::here("_posts", "religious_simpsons_paradox", "mods")),
+  width = 16,
+  height = 9,
+  units = "in",
+  filename = "plotindividual_SPIRIT.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1200
+)
+```
+
+
+## MANIFEST STATE CHANGE MODEL SPIRIT 
+
+```{r}
+# FILL FORARD DATA 
+
+datS_fill  <- df %>%
+  dplyr::filter(YearMeasured == 1 & Wave !=2009) %>% # filtering only people who have responded in a year, no
+  droplevels() %>%
+  dplyr::select(Wave, Age, Wave, Religious1 , Id, Believe.Spirit, years, GenCohort, Male, Pol.Orient, Urban, Edu,
+                Partner, Parent, AGREEABLENESS, CONSCIENTIOUSNESS, OPENNESS,HONESTY_HUMILITY,EXTRAVERSION,
+                Religion.Church, NEUROTICISM,SmokerEver,EthnicCats) %>%
+  dplyr::mutate(yearW  = as.numeric(Wave) - 1) %>%
+  group_by(Id) %>% filter(n() > 1) %>% # have responded to at least 2 x waves
+  filter(n() != 0) %>%
+  filter(n() != 1) %>%
+  ungroup(Id) %>%
+  mutate(bs1 = as.numeric(Believe.Spirit))%>%
+  mutate( cohort = as.numeric(GenCohort)-1) %>%
+  group_by(Id) %>% filter(n() > 1) %>% # have responded to at least 2 x waves
+  add_tally(bs1) %>%
+  ungroup() %>%
+  group_by(Id) %>%
+    filter(n > 1) %>%
+  ungroup(Id) %>%
+  droplevels() %>%
+  select(-c(Wave, GenCohort, cohort, n,Believe.Spirit)) %>%
+  arrange(  Id, yearW, bs1) %>%
+  tidyr::fill(bs1, .direction = 'down') # conservative 
+
+# make all numeric 
+datS_fill = as.data.frame(sapply(datS_fill, as.numeric))
+
+```
+
+
+
+### BELIEF IN SPIRIT 
+
+
+
+
+MSM Analysis
+
+```{r  msm2, cache = TRUE, eval = FALSE}
+### MSM ANALYIS BELOW ###
+# commenting out model to save time (which I've saved in a file, below)
+# initial matrix for transitions
+library("msm")
+
+Q0 <- rbind(c(.9, .1),
+            c(.1, .9))
+
+# intensity matrix
+Q0
+
+head(datis)
+
+datis <- datis%>%
+  arrange(Id, yearW)
+
+# Initialise
+crudeinR <-
+  msm::crudeinits.msm(bs1 ~ yearW, Id, # Id = identifier
+                      data = datis,
+                      qmatrix = Q0)
+
+ms_manifest_state_change <- msm(
+  bs1 ~ yearW,
+  Id,
+  data = datis,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  gen.inits=TRUE,
+  #ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE
+  # Not running without this assumption.
+ # gen.inits = TRUE
+)
+ms_manifest_state_change
+
+print( round( msm::pmatrix.msm( ms ) , 3 ) )
+
+
+saveRDS(ms_manifest_state_change, here::here( "_posts","religious_simpsons_paradox", "mods","ms_manifest_state_change.rds" ))
+
+
+### FILL METHOD  USE THIS 
+crudeinR <-
+  msm::crudeinits.msm(bs1 ~ yearW, Id, # Id = identifier
+                      data = datS_fill,
+                      qmatrix = Q0)
+
+ms_manifest_state_change_FILL <- msm(
+  bs1 ~ yearW,
+  Id,
+  data = datS_fill,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  gen.inits=TRUE,
+  #ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE
+  # Not running without this assumption.
+ # gen.inits = TRUE
+)
+ms_manifest_state_change_FILL
+
+print( round( msm::pmatrix.msm( ms_manifest_state_change_FILL ) , 3 ) )
+
+
+# ESTIMATES MORE CHANGE
+print( round( msm::pmatrix.msm( ms_manifest_state_change ) , 3 ) )
+
+
+saveRDS(ms_manifest_state_change_FILL, here::here( "_posts","religious_simpsons_paradox", "mods","ms_manifest_state_change_FILL.rds" ))
+
+
+```
+
+
+Transition probabilities (averaged)
+
+
+```{r}
+# read model, (saved to save time)
+ms_manifest_state_change
+
+# note change of model name 
+# USE
+ms_manifest_state_change <-readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","ms_manifest_state_change.rds" ))
+
+## DO NOT USE 
+#ms_manifest_state_change_FILL <-readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","ms_manifest_state_change_FILL.rds" ))
+
+#m1 <- ms_manifest_state_change
+
+m1 <- ms_manifest_state_change
+
+
+
+#probability matrix
+dt<-  print( round( msm::pmatrix.msm( m1 ) , 3 ) )
+
+# label cols, rows:
+rownames(dt) = c("Not-Believe Spirit time 0", "Believe Spirit time 0")
+colnames(dt) = c("Not-Believe Spirit t+1","Believe Spirit t+1")
+
+#table
+dt%>%
+ kbl(caption = "Manifest Markov Model: inferred population average belief in Spirit state change, years 2009-2021")%>%
+  kable_material(c("hover"))
+```
+
+
+LaTeX table
+
+```{r, eval = FALSE}
+dt %>%
+  kbl(booktabs = T,
+      format = "latex",
+      caption = "Manifest Markov Model: inferred population average belief in Spirit state change, years 2009-2021")
+  
+```
+
+
+
+
+```{r  hmmchange, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from greater disaffiliation among young people than affiliation.", echo =FALSE}
+# Graph
+m1
+oz<- as.matrix( msm::pmatrix.msm( m1 ) )
+oz <- round(oz, digits = 3)
+m1
+oz
+stateNames <- c("No Belief Spirit (.30)","Belief Spirit (.70)")
+row.names(oz) <- stateNames; colnames(oz) <- stateNames
+oz
+## need to transpose or else arrows go in the wrong direction
+toz <- t(oz) 
+
+#library(pracma)
+plotmat(toz,
+       # pos = c(1,2), 
+       # lwd = 1, 
+       # box.lwd = 2, 
+        cex.txt = 0.9, 
+        box.size = 0.09, 
+       # box.type = "circle", 
+        box.prop = 0.5,
+        arr.pos =  0.4, 
+        shadow.size = 0.001,
+        box.col = c("lightgreen","lightblue","orange"),
+       # arr.length=.1,
+       # arr.width=.1,
+        self.cex = .4,
+        self.shifty = -.01,
+        self.shiftx = .12,
+        main = "Manifest Markov Model reveals low transition to Belief in Spirit \nNew Zealand: N = 53728, years 2010-2021")
+
+# spirit_markov 12 x 9 
+```
+
+
+
+
+## Graph 
+
+
+```{r  hmmchange2, cache = TRUE, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from much greater disaffiliation among young people than affiliation.", include = TRUE, code_folding=TRUE}
+
+# note to self, this code can be improved
+### CREATE PLOT  ###  CONVERSION AGE PLOT
+## 20 year olds
+
+#m1 <-readRDS(here::here( "models","mnm-simpson-paradox-religious-change" ))
+
+p20 <-
+  pmatrix.msm(m1, covariates = list(Age = 20), ci = "normal")
+p20.Convert <- p20$estimates[1, 2]
+p20.Convert.L <- p20$L[1, 2]
+# get upper bound
+p20.Convert.U <- p20$U[1, 2]
+con.20 <- c(20, p20.Convert, p20.Convert.L, p20.Convert.U)
+## 30 year olds
+p30 <-
+  pmatrix.msm(m1, covariates = list(Age = 30), ci = "normal")
+p30.Convert <- p30$estimates[1, 2]
+# set lower bound
+p30.Convert.L <- p30$L[1, 2]
+# get upper bound
+p30.Convert.U <- p30$U[1, 2]
+#combine
+con.30 <- c(30, p30.Convert, p30.Convert.L, p30.Convert.U)
+## 40 year old
+p40 <-
+  pmatrix.msm(m1, covariates = list(Age = 40), ci = "normal")
+# Get Transition to Relid Estimate
+p40.Convert <- p40$estimates[1, 2]
+# set lower bound
+p40.Convert.L <- p40$L[1, 2]
+# get upper bound
+p40.Convert.U <- p40$U[1, 2]
+con.40 <- c(40, p40.Convert, p40.Convert.L, p40.Convert.U)
+## 50 year old
+p50 <-
+  pmatrix.msm(m1, covariates = list(Age = 50), ci = "normal")
+# Get Transition to Relid Estimate
+p50.Convert <- p50$estimates[1, 2]
+# set lower bound
+p50.Convert.L <- p50$L[1, 2]
+# get upper bound
+p50.Convert.U <- p50$U[1, 2]
+con.50 <- c(50, p50.Convert, p50.Convert.L, p50.Convert.U)
+## 60 year olds
+p60 <-
+  pmatrix.msm(m1, covariates = list(Age = 60), ci = "normal")
+# Get Transition to Relid Estimate
+p60.Convert <- p60$estimates[1, 2]
+# set lower bound
+p60.Convert.L <- p60$L[1, 2]
+# get upper bound
+p60.Convert.U <- p60$U[1, 2]
+con.60 <- c(60, p60.Convert, p60.Convert.L, p60.Convert.U)
+## 70 year olds
+p70 <-
+  pmatrix.msm(m1, covariates = list(Age = 70), ci = "normal")
+# Get Transition to Relid Estimate
+p70.Convert <- p70$estimates[1, 2]
+# set lower bound
+p70.Convert.L <- p70$L[1, 2]
+# get upper bound
+p70.Convert.U <- p70$U[1, 2]
+con.70 <- c(70, p70.Convert, p70.Convert.L, p70.Convert.U)
+### ## 80 year olds
+p80 <-
+  pmatrix.msm(m1, covariates = list(Age = 80), ci = "normal")
+# Get Transition to Relid Estimate
+p80.Convert <- p80$estimates[1, 2]
+# set lower bound
+p80.Convert.L <- p80$L[1, 2]
+# get upper bound
+p80.Convert.U <- p80$U[1, 2]
+con.80 <- c(80, p80.Convert, p80.Convert.L, p80.Convert.U)
+# ### ## 90 year olds
+p90 <-
+  pmatrix.msm(m1, covariates = list(Age = 90), ci = "normal")
+# # Get Transition to Relid Estimate
+p90.Convert <- p90$estimates[1, 2]
+# # set lower bound
+p90.Convert.L <- p90$L[1, 2]
+p90.Convert.U <- p90$U[1, 2]
+con.90 <- c(90, p90.Convert, p90.Convert.L, p90.Convert.U)
+# ### create data frame for conversion plot
+conplot <-
+  data.frame(rbind(con.20, con.30, con.40, con.50, con.60, con.70, con.80, con.90))
+colnames(conplot) <-
+  c("age", "conv_probability", "conv_lower", "conv_upper")
+library(ggplot2)
+#library(wesanderson)
+#wes_palette("Zissou1", type = c("discrete"))
+#library("ggsci")
+
+plot.con <-
+  ggplot(aes(
+    x = age,
+    y = conv_probability,
+    ymin = conv_lower,
+    ymax = conv_upper
+  ),
+  data = conplot) + geom_point(stroke = 2, colour = "#d1495b")  +
+  geom_linerange(alpha =   1, colour = "#d1495b") +
+  geom_smooth(colour = "#d1495b",
+              method = "loess",
+              se = FALSE)  +
+  scale_y_continuous(limits = c(0, .1)) +
+  labs(x = "Age", y = "Belief in Spirit Transition Probability w/ 95% CI") + theme_bw() + labs(title = "Religious (Dis)Belief in God Dynamics in New Zealand: years 2010-2021")
+#plot.con
+#plot.con
+#m1
+
+##### CREAT PLOT FOR DECONVERSION
+## 20 year olds
+p20 <-
+  pmatrix.msm(m1, covariates = list(Age = 20), ci = "normal")
+# Get Transition to Relid Estimate
+p20.decon <- p20$estimates[2, 1]
+p20.decon.L <- p20$L[2, 1]
+p20.decon.U <- p20$U[2, 1]
+decon.20 <- c(20, p20.decon, p20.decon.L, p20.decon.U)
+p30 <-
+  pmatrix.msm(m1, covariates = list(Age = 30), ci = "normal")
+p30.decon <- p30$estimates[2, 1]
+p30.decon.L <- p30$L[2, 1]
+p30.decon.U <- p30$U[2, 1]
+decon.30 <- c(30, p30.decon, p30.decon.L, p30.decon.U)
+p40 <-
+  pmatrix.msm(m1, covariates = list(Age = 40), ci = "normal")
+p40.decon <- p40$estimates[2, 1]
+p40.decon.L <- p40$L[2, 1]
+p40.decon.U <- p40$U[2, 1]
+decon.40 <- c(40, p40.decon, p40.decon.L, p40.decon.U)
+p50 <-
+  pmatrix.msm(m1, covariates = list(Age = 50), ci = "normal")
+p50.decon <- p50$estimates[2, 1]
+p50.decon.L <- p50$L[2, 1]
+p50.decon.U <- p50$U[2, 1]
+decon.50 <- c(50, p50.decon, p50.decon.L, p50.decon.U)
+p60 <-
+  pmatrix.msm(m1, covariates = list(Age = 60), ci = "normal")
+p60.decon <- p60$estimates[2, 1]
+p60.decon.L <- p60$L[2, 1]
+p60.decon.U <- p60$U[2, 1]
+decon.60 <- c(60, p60.decon, p60.decon.L, p60.decon.U)
+p70 <-
+  pmatrix.msm(m1, covariates = list(Age = 70), ci = "normal")
+p70.decon <- p70$estimates[2, 1]
+p70.decon.L <- p70$L[2, 1]
+p70.decon.U <- p70$U[2, 1]
+decon.70 <- c(70, p70.decon, p70.decon.L, p70.decon.U)
+p80 <-
+  pmatrix.msm(m1, covariates = list(Age = 80), ci = "normal")
+p80.decon <- p80$estimates[2, 1]
+p80.decon.L <- p80$L[2, 1]
+p80.decon.U <- p80$U[2, 1]
+decon.80 <- c(80, p80.decon, p80.decon.L, p80.decon.U)
+p90 <-
+  pmatrix.msm(m1, covariates = list(Age = 90), ci = "normal")
+p90.decon <- p90$estimates[2, 1]
+p90.decon.L <- p90$L[2, 1]
+p90.decon.U <- p90$U[2, 1]
+decon.90 <- c(90, p90.decon, p90.decon.L, p90.decon.U)
+
+### create data frame for conversion plot
+deconplot <-
+  data.frame(rbind(
+    decon.20,
+    decon.30,
+    decon.40,
+    decon.50,
+    decon.60,
+    decon.70,
+    decon.80,
+    decon.90
+  ))
+colnames(deconplot) <-
+  c("age", "decon_probability", "decon_lower", "decon_upper")
+library(ggplot2)
+plot.decon <-
+  ggplot(aes(
+    x = age,
+    y = decon_probability,
+    ymin = decon_lower,
+    ymax = decon_upper
+  ),
+  data = deconplot) +
+  geom_point(alpha = 1,
+             colour = "#00798c",
+             stroke = 2) +   geom_linerange(alpha = 1, colour = "#00798c") +
+  #scale_y_continuous(limits=c(0,.1))    +
+  geom_smooth(colour = "#00798c", se = T) +
+  labs(x = "Age", y = "Spirit DisBelief Transition Probability w/ 95% CI") +
+  theme_bw() +
+  labs(title = "Religious (Dis)affiliation Dynamics")  +
+  theme(legend.position = "bottom")
+
+#library(gridExtra)
+
+#grid.arrange(plot.con,plot.decon, ncol=2)
+### SUPERIMPOSE
+deconplot$Group <- as.factor(rep("Dis-Belief", nrow(deconplot)))
+conplot$Group <- as.factor(rep("Belief", nrow(conplot)))
+deconplot2 <- deconplot %>%
+  dplyr::mutate(
+    conv_probability = decon_probability,
+    conv_lower = decon_lower,
+    conv_upper = decon_upper
+  ) %>%
+  dplyr::select(-c(decon_probability, decon_upper, decon_lower))
+
+comboplot <- rbind(conplot, deconplot2)
+#comboplot
+# get initial probabilities for title label
+#pmatrix.msm(m1)
+
+library(ggplot2)
+
+# plot.combo <-
+#   ggplot(
+#     aes(
+#       x = age,
+#       y = conv_probability,
+#       ymin = conv_lower,
+#       ymax = conv_upper,
+#       colour = Group
+#     ),
+#     data = comboplot
+#   ) +
+#   geom_point(alpha = 1, stroke = 2) +
+#   geom_linerange(alpha = 1) +
+#   geom_smooth(se = F) +
+#   scale_y_continuous(limits = c(0, .96))  +
+#   labs(x = "Age", y = "Annual Probability of Religious (Dis)affiliation w/ 95 CI: range: Pr = 0 to Pr = 1 ") + theme_bw() + labs(title = "Religious (Dis)affiliation Dynamics in New Zealand: years 2020 -- 2020") +
+#   #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+#   scale_colour_manual(values = c("#d1495b", "#00798c")) +
+#   theme(legend.position = "bottom")
+# plot.combo
+
+library("ggokabeito")   # color palette
+ 
+
+
+plotindividual_SPIRIT_MANIFEST_STATE_CHANGE_30_imp <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .3))  +
+  labs(x = "Age", y = "Annual Probability of (Dis)Belief Spirit w/ 95 CI ") + theme_bw() + labs(title = "Manifest Markov Model: (Dis)Belief in Spirit Dynamics in New Zealand",
+  subtitle= "N = 53728, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_okabe_ito() + 
+  theme(legend.position = "bottom")
+
+library(patchwork)
+plotindividual_SPIRIT_MANIFEST_STATE_CHANGE_30_imp
+
+
+saveRDS(plotindividual_SPIRIT_MANIFEST_STATE_CHANGE_30_imp , here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_SPIRIT_MANIFEST_STATE_CHANGE_30_imp"))
+
+plotindividual_SPIRIT_MANIFEST_STATE_CHANGE_30_imp <- readRDS( here::here("_posts", "religious_simpsons_paradox", "mods", "plotindividual_SPIRIT_MANIFEST_STATE_CHANGE_30_imp"))
+
+
+
+#pr / plot.combo + plot_annotation(title = "Religious Change over Time",
+#         subtitle = "(i) Society-level aggregate change (ii) Individual-level process: affiliation vs. disaffiliation",
+#tag_levels = "i")
+
+```
+
+```{r eavl = F}
+#save graph 
+ggsave(
+  plotindividual_SPIRIT,
+  path = here::here(here::here("_posts", "religious_simpsons_paradox", "mods")),
+  width = 16,
+  height = 9,
+  units = "in",
+  filename = "plotindividual_SPIRIT.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1200
+)
+```
+
+
+
+
+## GRAPH ALL THREE
+
+
+```{r}
+ bigplot <- plotindividual + plotindividual_GOD + plotindividual_SPIRIT +
+  plot_annotation(tag_levels = "i", title = "Hidden Markov Model of (i) Religious Affiliation (ii) Belief in God (iii) Belief in a Spirit in New Zealand, Years 2009/10 - 2021, N > 53,000")
+bigplot
+
+
+ggsave(
+  bigplot,
+  path = here::here(here::here("_posts", "religious_simpsons_paradox", "mods")),
+  width = 16,
+  height = 9,
+  units = "in",
+  filename = "bigplot.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1200
+)
+```
+
+
+## Data Trajectories
+
+```{r}
+library(LMest)
+relwidelong <-  df %>%
+  dplyr::mutate(Religious = Religious1 - 1) %>%
+  dplyr::select(Id, Religious, Wave)
+
+##THIS HANGS
+#out <- with(relwidelong, long2matrices(id = Id, X = Age, Y = Religious))
+
+relwide <- spread(relwidelong, Wave, Religious)
+head(relwide)
+
+#relwide<-relwide[complete.cases(relwide), ]
+
+Relidwide <-  df %>%
+  dplyr::filter(YearMeasured == 1) %>%
+  dplyr::filter(!is.na(Religious)) %>%
+  dplyr::select(Id, Religious, Wave) %>%
+  group_by(Id) %>% filter(n() > 11) %>%
+  filter(n() != 0) %>%
+  ungroup(Id) %>%
+  spread(Wave, Religious)
+
+Relidwide <- Relidwide[complete.cases(Relidwide),]
+dim(Relidwide)
+
+x_var_list <- names(Relidwide[, 2:13])
+
+Relidwide
+
+library(lcsm)
+
+
+plot_trajectories(
+  data = Relidwide,
+  id_var = "Id",
+  var_list = x_var_list,
+  line_colour = "red",
+  xlab = "Years",
+  ylab = "Religious",
+  connect_missing = F,
+  scale_x_num = T,
+  scale_x_num_start = 1,
+  random_sample_frac = 0.049,
+  seed = 1234
+ # title_n = T
+)  +
+  facet_wrap( ~ Id)
+
+```
+
+
+
+
+```{r}
+library(LMest)
+
+
+Relidwide <-  df %>%
+  dplyr::filter(YearMeasured == 1 & Wave != 2009) %>%
+ # dplyr::filter(!is.na(Religious)) %>%
+  dplyr::select(Id, Believe.Spirit, Wave) %>%
+  group_by(Id) %>% filter(n() > 8) %>%
+  filter(n() != 0) %>%
+  ungroup(Id) %>%
+  spread(Wave, Believe.Spirit)
+
+#Relidwide <- Relidwide[complete.cases(Relidwide),]
+dim(Relidwide)
+
+x_var_list <- names(Relidwide[, 2:12])
+
+Relidwide
+
+
+plot_trajectories(
+  data = Relidwide,
+  id_var = "Id",
+  var_list = x_var_list,
+  line_colour = "red",
+  xlab = "Years",
+  ylab = "Belief Spirit",
+  connect_missing = T,
+  scale_x_num = T,
+  scale_x_num_start = 1,
+  random_sample_frac = 0.011,
+  seed = 1234
+ # title_n = T
+)  +
+  facet_wrap( ~ Id)
+
+#spirit_trajectories 16 X9 
+
+```
+
+
+## IMPUTE RELIGION SENSITIVITY ANALYSIS TIME 8 2016
+
+
+```{r}
+all5 <- df %>%
+  dplyr::select(
+    Id,
+    Age,
+    Wave,
+    EthnicCats,
+    Employed,
+    Urban,
+    Edu,
+    Male,
+    Pol.Orient,
+    NZdep,
+    Religious1,
+    GenCohort,
+    Urban,
+    TSCORE,
+    Partner,
+    Parent,
+    Religious1,
+    Believe.God, 
+    Believe.Spirit,
+    AGREEABLENESS, 
+    CONSCIENTIOUSNESS, 
+    OPENNESS,
+    HONESTY_HUMILITY,
+    EXTRAVERSION,
+    NEUROTICISM,
+    Religion.Church, 
+    SmokerEver,
+    YearMeasured
+  ) %>%
+  dplyr::filter(Wave == 2016  | Wave == 2017  | Wave == 2018 | 
+                  Wave ==2019 | Wave ==2020 ) %>%
+  droplevels() %>%
+  dplyr::mutate(org2016 =  ifelse(Wave == 2016 & YearMeasured ==1,1,0 ))%>%
+  group_by(Id) %>%
+  dplyr::mutate(hold = mean(org2016, na.rm = TRUE)) %>%  # Hack
+  filter(hold>0) %>% # hack to enable repeat of baseline in 2016 
+  dplyr::filter(YearMeasured != -1)%>% # remove people who passed away
+  ungroup(Id) %>%
+  dplyr::mutate(Edu = as.numeric(Edu))%>%
+  arrange(Id,Wave) %>%
+  group_by(Id) %>%
+  # dplyr::mutate(dys = (TSCORE_i - min(TSCORE_i)))%>% 
+  # dplyr::mutate(yrs =  (dys/365))%>% 
+  # dplyr::mutate(wave = as.numeric(Wave)-1) %>% 
+   dplyr::mutate(agr_bz = if_else(Wave == "2016", (as.numeric(AGREEABLENESS)), NA_real_)) %>%
+  fill(agr_bz) %>%
+  dplyr::mutate(cs_bz = if_else(Wave == "2016", (as.numeric(CONSCIENTIOUSNESS)), NA_real_)) %>%
+  fill(cs_bz) %>%
+     dplyr::mutate(op_bz = if_else(Wave == "2016", (as.numeric(OPENNESS)), NA_real_)) %>%
+  fill(op_bz) %>%
+     dplyr::mutate(h_bz = if_else(Wave == "2016", (as.numeric(HONESTY_HUMILITY)), NA_real_)) %>%
+  fill(h_bz) %>%
+     dplyr::mutate(ex_bz = if_else(Wave == "2016", (as.numeric(EXTRAVERSION)), NA_real_)) %>%
+  fill(ex_bz)%>%
+     dplyr::mutate(nr_bz = if_else(Wave == "2016", (as.numeric(NEUROTICISM)), NA_real_)) %>%
+  fill(nr_bz) %>%
+     dplyr::mutate(lch_bz = if_else(Wave == "2016", (as.numeric(log(Religion.Church+1))), NA_real_)) %>%
+  fill(lch_bz) %>%
+  # dplyr::mutate(bs_bz = if_else(Wave == "2016", (as.numeric(Believe.Spirit)), NA_real_)) %>%
+  # fill(bs_bz) %>%
+  #   dplyr::mutate(bg_bz = if_else(Wave == "2016", (as.numeric(Believe.God)), NA_real_)) %>%
+  # fill(bg_bz) %>%
+  dplyr::mutate(pol_bz = if_else(Wave == "2016", (Pol.Orient), NA_real_)) %>%
+  fill(pol_bz) %>%
+  dplyr::mutate(rel_bz = if_else(Wave == "2016", (as.numeric(Religious1)), NA_real_)) %>%
+  fill(rel_bz) %>%
+  dplyr::mutate(partner_bz = if_else(Wave == "2016", (as.numeric(Partner)), NA_real_)) %>%
+  fill(partner_bz) %>%
+  dplyr::mutate(parent_bz = if_else(Wave == "2016", (as.numeric(Parent)), NA_real_)) %>%
+  fill(parent_bz) %>%
+  # dplyr::mutate(age_bz = if_else(Wave == "2016", (Age), NA_real_)) %>%
+  # fill(age_bz) %>%
+  dplyr::mutate(nzdep_bz = if_else(Wave == "2016", (NZdep), NA_real_)) %>%
+  fill(nzdep_bz) %>%
+  dplyr::mutate(male_2z = if_else(Wave == "2016", (as.numeric(Male))/2, NA_real_)) %>%
+  fill(male_2z)  %>%
+  dplyr::mutate(employed_bz = if_else(Wave == "2016", (as.numeric(Employed)), NA_real_)) %>%
+  fill(employed_bz) %>%
+  dplyr::mutate(edu_bz = if_else(Wave == "2016", (Edu), NA_real_)) %>%
+  fill(edu_bz) %>%
+  dplyr::mutate(ubran_bz = if_else(Wave == "2016", (as.numeric(Urban)), NA_real_)) %>%
+  fill(ubran_bz) %>%
+  dplyr::mutate(EthnicCats_b = if_else(Wave == "2016", as.numeric(EthnicCats), NA_real_)) %>%
+  fill(EthnicCats_b) %>%
+  dplyr::mutate(yearW = as.numeric(Wave) - 1) %>%
+  arrange(Id, yearW) %>%
+  mutate(bg1 = as.numeric(Believe.God) ) %>%
+  mutate(bs1 = as.numeric(Believe.Spirit) )%>%
+  select(
+    -c(
+      Wave,
+      Male,
+      Urban,
+      Edu,
+      Employed,
+      Male,
+      NZdep,
+      Parent,
+      Partner,
+      Pol.Orient,
+      Religion.Church,
+      AGREEABLENESS,
+      CONSCIENTIOUSNESS,
+      OPENNESS,
+      HONESTY_HUMILITY,
+      EXTRAVERSION,
+      NEUROTICISM,
+      YearMeasured,
+      EthnicCats,
+      hold,
+      GenCohort,
+      Believe.God,
+      Believe.Spirit
+    )
+  )
+head(all5)
+saveRDS(all5, here::here("_posts", "religious_simpsons_paradox", "mods", "all5"))
+all5 <- readRDS(here::here("_posts", "religious_simpsons_paradox", "mods", "all5"))
+countid <-length(unique(all5$Id))
+
+countid
+```
+
+### Amelia Imputation Religion GOD SPIRIT 
+
+```{r}
+head(all5)
+
+# bounds for imp god belief 
+match("Religious1",names(all5))
+
+# bind outcomes to 1 and 2
+bdsR <- matrix(c(3, 1, 2), nrow = 1, ncol = 3)
+bdsR
+head(all5)
+
+all5 = as.data.frame(all5)
+
+dat_all_5_r  <- amelia(
+  set.seed=1234,
+  all5, 
+  cs= c("Id"),
+  ts= c("yearW"),
+  m = 5, # number of imputations
+  ords = "Religious1",
+  noms = c(
+    "EthnicCats_b"  # preserve categories
+  ),
+ # idvars=c("Id"), # yrs not working
+  lags="Religious1",
+  leads="Religious1",
+  # polytime = 2, # Allow polynomial
+  intercs = F, # 
+  bounds = bdsR
+) # ridge prior if needed see: Amelia pdf documentation p.23
+
+saveRDS(dat_all_5_r, here::here("_posts","religious_simpsons_paradox","mods", "dat_all_5_r"))
+dat_all_5_r <- readRDS( here::here("_posts","religious_simpsons_paradox","mods", "dat_all_5_r"))
+
+
+# Random samp for traceplot
+out0<- as.character(sample(dat_all_5_r$imputations$imp1$Id, 12, replace = FALSE))
+out0
+
+
+# traceplot to inspect's  # chage rows with nr = 6,
+tscsPlot(dat_all_5_r, cs = c(out0), main = "Religious",
+         var = "Religious1",  nr=3, ylim = c(1,2))
+
+# inspect means
+table1::table1( ~ Religious1 |yearW, dat_all_5_r$imputations$imp1)
+table1::table1( ~ Religious1 |yearW, all5)
+
+
+## DOES NOTE ESIMATE AGE CORRECTLY...
+a_imp_5_r <-as.data.frame(dat_all_5_r$imputations$imp1)
+str(dat_allR)
+
+saveRDS(a_imp_5_r, here::here("_posts","religious_simpsons_paradox","mods", "a_imp_5_r"))
+a_imp_5_r <- readRDS( here::here("_posts","religious_simpsons_paradox","mods", "a_imp_5_r"))
+
+
+#### GOD 
+
+# bounds for imp god belief 
+match("bg1",names(all5))
+
+# bind outcomes to 1 and 2
+bdg <- matrix(c(25, 1, 2), nrow = 1, ncol = 3)
+bdg
+
+all5 = as.data.frame(all5)
+
+dat_all_5_g  <- amelia(
+  set.seed=1234,
+  all5, 
+  cs= c("Id"),
+  ts= c("yearW"),
+  m = 5, # number of imputations
+  ords = "bg1",
+  noms = c(
+    "EthnicCats_b"  # preserve categories
+  ),
+ # idvars=c("Id"), # yrs not working
+  lags="bg1",
+  leads="bg1",
+  # polytime = 2, # Allow polynomial
+  intercs = F, # 
+  bounds = bdg
+) # ridge prior if needed see: Amelia pdf documentation p.23
+
+saveRDS(dat_all_5_g, here::here("_posts","religious_simpsons_paradox","mods", "dat_all_5_g"))
+
+
+# Random samp for traceplot
+out0<- as.character(sample(dat_all_5_g$imputations$imp1$Id, 12, replace = FALSE))
+out0
+
+## DOES NOTE ESIMATE AGE CORRECTLY...
+a_imp_5_g <-as.data.frame(dat_all_5_g$imputations$imp1)
+
+
+
+
+saveRDS(a_imp_5_g, here::here("_posts","religious_simpsons_paradox","mods", "a_imp_5_g"))
+a_imp_5_g <- readRDS(here::here("_posts","religious_simpsons_paradox","mods", "a_imp_5_g"))
+
+
+# traceplot to inspect's  # chage rows with nr = 6,
+tscsPlot(dat_all_5_g, cs = c(out0), main = "bg1",
+         var = "bg1", nr = 3, ylim = c(1,2))
+
+# inspect means
+table1::table1( ~ bg1 |yearW, a_imp_5_g)
+table1::table1( ~ bg1 |yearW, all5)
+
+
+
+
+
+#### SPIRIT 
+
+
+# bounds for imp god belief 
+match("bs1",names(all5))
+
+# bind outcomes to 1 and 2
+bds <- matrix(c(26, 1, 2), nrow = 1, ncol = 3)
+bds
+
+all5 = as.data.frame(all5)
+
+dat_all_5_s  <- amelia(
+  set.seed=1234,
+  all5, 
+  cs= c("Id"),
+  ts= c("yearW"),
+  m = 5, # number of imputations
+  ords = "bs1",
+  noms = c(
+    "EthnicCats_b"  # preserve categories
+  ),
+ # idvars=c("Id"), # yrs not working
+  lags="bs1",
+  leads="bs1",
+  # polytime = 2, # Allow polynomial
+  intercs = F, # 
+  bounds = bds
+) # ridge prior if needed see: Amelia pdf documentation p.23
+
+saveRDS(dat_all_5_s, here::here("_posts","religious_simpsons_paradox","mods", "dat_all_5_s"))
+
+
+# Random samp for traceplot
+out0<- as.character(sample(dat_all_5_s$imputations$imp1$Id, 12, replace = FALSE))
+out0
+
+## DOES NOTE ESIMATE AGE CORRECTLY...
+a_imp_5_s <-as.data.frame(dat_all_5_s$imputations$imp1)
+str(a_imp_5_s)
+
+head(a_imp_5_s)
+
+
+# traceplot to inspect's  # chage rows with nr = 6,
+tscsPlot(dat_all_5_s, cs = c(out0), main = "bs1",
+         var = "bs1", nr = 3, ylim = c(1,2))
+
+# inspect means
+table1::table1( ~ bg1 |yearW, a_imp_5_s)
+table1::table1( ~ bg1 |yearW, all5)
+
+
+saveRDS(a_imp_5_s, here::here("_posts","religious_simpsons_paradox","mods", "a_imp_5_s"))
+a_imp_5_s <- readRDS(here::here("_posts","religious_simpsons_paradox","mods", "a_imp_5_s"))
+
+
+
+
+```
+
+### DATA SET FOR MISSING 10 YEARS 
+
+```{r}
+# TRY 9 
+
+# note education is not part of this wave 
+
+all_god_10 <- df %>%
+  dplyr::select(
+    Id,
+    Age,
+    Wave,
+    EthnicCats,
+    Employed,
+    Urban,
+    Edu,
+    Male,
+    Pol.Orient,
+    NZdep,
+    Religious1,
+    GenCohort,
+    Urban,
+    TSCORE,
+    Partner,
+    Parent,
+    Religious1,
+    Believe.God, 
+    Believe.Spirit,
+    AGREEABLENESS, 
+    CONSCIENTIOUSNESS, 
+    OPENNESS,
+    HONESTY_HUMILITY,
+    EXTRAVERSION,
+    NEUROTICISM,
+    Religion.Church, 
+    SmokerEver,
+    YearMeasured
+  ) %>%
+  dplyr::filter(Wave !=2009 ) %>%
+  droplevels() %>%
+  dplyr::mutate(org2010 =  ifelse(Wave == 2010 & YearMeasured ==1,1,0 ))%>%
+  group_by(Id) %>%
+  dplyr::mutate(hold = mean(org2010, na.rm = TRUE)) %>%  # Hack
+  filter(hold>0) %>% # hack to enable repeat of baseline in 2016 
+  dplyr::filter(YearMeasured != -1)%>% # remove people who passed away
+  ungroup(Id) %>%
+  dplyr::mutate(Edu = as.numeric(Edu))%>%
+  arrange(Id,Wave) %>%
+  group_by(Id) %>%
+   dplyr::mutate(agr_bz = if_else(Wave == "2010", (as.numeric(AGREEABLENESS)), NA_real_)) %>%
+  fill(agr_bz) %>%
+  dplyr::mutate(cs_bz = if_else(Wave == "2010", (as.numeric(CONSCIENTIOUSNESS)), NA_real_)) %>%
+  fill(cs_bz) %>%
+     dplyr::mutate(op_bz = if_else(Wave == "2010", (as.numeric(OPENNESS)), NA_real_)) %>%
+  fill(op_bz) %>%
+     dplyr::mutate(h_bz = if_else(Wave == "2010", (as.numeric(HONESTY_HUMILITY)), NA_real_)) %>%
+  fill(h_bz) %>%
+     dplyr::mutate(ex_bz = if_else(Wave == "2010", (as.numeric(EXTRAVERSION)), NA_real_)) %>%
+  fill(ex_bz)%>%
+     dplyr::mutate(nr_bz = if_else(Wave == "2010", (as.numeric(NEUROTICISM)), NA_real_)) %>%
+  fill(nr_bz) %>%
+     dplyr::mutate(lch_bz = if_else(Wave == "2010", (as.numeric(log(Religion.Church+1))), NA_real_)) %>%
+  fill(lch_bz) %>%
+  dplyr::mutate(pol_bz = if_else(Wave == "2010", (Pol.Orient), NA_real_)) %>%
+  fill(pol_bz) %>%
+  # dplyr::mutate(rel_bz = if_else(Wave == "2010", (as.numeric(Religious1)), NA_real_)) %>%
+  # fill(rel_bz) %>%
+  dplyr::mutate(partner_bz = if_else(Wave == "2010", (as.numeric(Partner)), NA_real_)) %>%
+  fill(partner_bz) %>%
+  dplyr::mutate(parent_bz = if_else(Wave == "2010", (as.numeric(Parent)), NA_real_)) %>%
+  fill(parent_bz) %>%
+  dplyr::mutate(nzdep_bz = if_else(Wave == "2010", (NZdep), NA_real_)) %>%
+  fill(nzdep_bz) %>%
+  dplyr::mutate(male_2z = if_else(Wave == "2010", (as.numeric(Male))/2, NA_real_)) %>%
+  fill(male_2z)  %>%
+  dplyr::mutate(employed_bz = if_else(Wave == "2010", (as.numeric(Employed)), NA_real_)) %>%
+  fill(employed_bz) %>%
+  dplyr::mutate(edu_bz = if_else(Wave == "2010", (Edu), NA_real_)) %>%
+  fill(edu_bz) %>%
+  dplyr::mutate(ubran_bz = if_else(Wave == "2010", (as.numeric(Urban)), NA_real_)) %>%
+  fill(ubran_bz) %>%
+  dplyr::mutate(EthnicCats_b = if_else(Wave == "2010", as.numeric(EthnicCats), NA_real_)) %>%
+  fill(EthnicCats_b) %>%
+  dplyr::mutate(yearW = as.numeric(Wave) - 1) %>%
+  arrange(Id, yearW) %>%
+  dplyr::mutate(bg1 = as.numeric(Believe.God) ) %>%
+    dplyr::mutate(bs1 = as.numeric(Believe.Spirit) ) %>%
+  select(Id, yearW, bg1, bs1, Religious1, EthnicCats_b, ubran_bz,,employed_bz,male_2z,employed_bz,nzdep_bz,parent_bz, 
+         partner_bz,pol_bz,lch_bz,nr_bz,ex_bz,h_bz,op_bz,cs_bz,agr_bz,Age) # remove edu_bz
+
+saveRDS(all_god_10, here::here( "_posts","religious_simpsons_paradox", "mods","all_god_10.rds" ))
+```
+
+
+### Amelia for 10 years
+
+
+```{r}
+all_god_10 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","all_god_10.rds" ))
+
+#### religious 
+head(all_god_10)
+min(all_god_10$yearW)
+summary(all_god_10$Religious1)
+length(unique(all_god_10$Id))
+head(all_god_10)
+
+match("Religious1",names(all_god_10))
+
+# bind outcomes to 1 and 2
+bdsR <- matrix(c(5, 1, 2), nrow = 1, ncol = 3)
+bdsR
+summary(all_god_10$Religious1)
+
+all_god_10 = as.data.frame(all_god_10)
+
+dat_all_10_r <- amelia(
+  set.seed=1234,
+  all_god_10, 
+  cs= c("Id"),
+  ts= c("yearW"),
+  m = 5, # number of imputations
+  ords = "Religious1",
+  noms = c(
+    "EthnicCats_b"  # preserve categories
+  ),
+ # idvars=c("Id"), # yrs not working
+  lags="Religious1",
+  leads="Religious1",
+  # polytime = 2, # Allow polynomial
+  intercs = F, # 
+  bounds = bdsR
+) # ridge prior if needed see: Amelia pdf documentation p.23
+
+saveRDS(dat_all_10_r, here::here("_posts","religious_simpsons_paradox","mods", "dat_all_10_r"))
+dat_all_10_r <- readRDS( here::here("_posts","religious_simpsons_paradox","mods", "dat_all_10_r"))
+
+
+
+#### TRACE 
+
+# Random samp for traceplot
+out0<- as.character(sample(dat_all_10_r$imputations$imp1$Id, 12, replace = FALSE))
+out0
+
+
+library(Amelia)
+# traceplot to inspec
+tscsPlot(dat_all_10_r, cs = c(out0), main = "Religious1",
+         var = "Religious1",  nr = 3,  ylim = c(1,2))
+
+# inspect means
+table1::table1( ~ Religious1 |yearW, dat_all_10_r$imputations$imp1)
+table1::table1( ~ Religious1 |yearW, all5)
+
+
+## 
+a_imp_10_r <-as.data.frame(dat_all_10_r$imputations$imp1)
+
+# save
+saveRDS(a_imp_10_r, here::here("_posts","religious_simpsons_paradox","mods", "a_imp_10_r"))
+a_imp_10_r <- readRDS(here::here("_posts","religious_simpsons_paradox","mods", "a_imp_10_r"))
+
+head(a_imp_r)
+
+
+
+####  GOD
+
+
+head(all_god_10)
+min(all_god_10$yearW)
+summary(all_god_10$Religious1)
+length(unique(all_god_10$Id))
+
+# bounds for imp god belief 
+match("bg1",names(all_god_10))
+
+# bind outcomes to 1 and 2
+bdsG <- matrix(c(3, 1, 2), nrow = 1, ncol = 3)
+bdsG
+summary(all_god_10$bg1)
+
+all_god_10 = as.data.frame(all_god_10)
+
+dat_all_10_g  <- amelia(
+  set.seed=1234,
+  all_god_10, 
+  cs= c("Id"),
+  ts= c("yearW"),
+  m = 5, # number of imputations
+  ords = "bg1",
+  noms = c(
+    "EthnicCats_b"  # preserve categories
+  ),
+ # idvars=c("Id"), # yrs not working
+  lags="bg1",
+  leads="bg1",
+  # polytime = 2, # Allow polynomial
+  intercs = F, # 
+  bounds = bdsG
+) # ridge prior if needed see: Amelia pdf documentation p.23
+
+saveRDS(dat_all_10_g, here::here("_posts","religious_simpsons_paradox","mods", "dat_all_10_g"))
+
+dat_all_10_g <- readRDS(here::here("_posts","religious_simpsons_paradox","mods", "dat_all_10_g"))
+
+
+#### TRACE 
+
+# Random samp for traceplot
+out0<- as.character(sample(dat_all_10_g$imputations$imp1$Id, 18, replace = FALSE))
+out0
+
+
+# traceplot to inspect's  # chage rows with nr = 6,
+tscsPlot(dat_all_10_g, cs = c(out0), main = "bg1",
+         var = "bg1",  nr = 3, ylim = c(1,2))
+
+# inspect means
+table1::table1( ~ bg1 |yearW, dat_all_10_g$imputations$imp1)
+table1::table1( ~ bg1 |yearW, all5)
+
+
+## DOES NOTE ESIMATE AGE CORRECTLY...
+a_imp_10_g <-as.data.frame(dat_all_10_g$imputations$imp1)
+
+saveRDS(a_imp_10_g, here::here("_posts","religious_simpsons_paradox","mods", "a_imp_10_g"))
+a_imp_10_g <- readRDS(here::here("_posts","religious_simpsons_paradox","mods", "a_imp_10_g"))
+
+
+str(dat_all_10_g)
+
+head(a_imp_g)
+
+
+#### SPIRIT 
+
+head(all_god_10)
+min(all_god_10$yearW)
+summary(all_god_10$Religious1)
+length(unique(all_god_10$Id))
+
+# bounds for imp god belief 
+match("bs1",names(all_god_10))
+
+# bind outcomes to 1 and 2
+bds <- matrix(c(4, 1, 2), nrow = 1, ncol = 3)
+bds
+summary(all_god_10$bs1)
+
+all_god_10 = as.data.frame(all_god_10)
+
+dat_all_10_s  <- amelia(
+  set.seed=1234,
+  all_god_10, 
+  cs= c("Id"),
+  ts= c("yearW"),
+  m = 5, # number of imputations
+  ords = "bs1",
+  noms = c(
+    "EthnicCats_b"  # preserve categories
+  ),
+ # idvars=c("Id"), # yrs not working
+  lags="bs1",
+  leads="bs1",
+  # polytime = 2, # Allow polynomial
+  intercs = F, # 
+  bounds = bds
+) # ridge prior if needed see: Amelia pdf documentation p.23
+
+saveRDS(dat_all_10_s, here::here("_posts","religious_simpsons_paradox","mods", "dat_all_10_s"))
+
+#### TRACE 
+
+# Random samp for traceplot
+out0<- as.character(sample(dat_all_10_s$imputations$imp1$Id, 12, replace = FALSE))
+out0
+
+dev.off()
+
+# traceplot to inspect's  # chage rows with nr = 6,
+tscsPlot(dat_all_10_s, cs = c(out0), main = "bs1",
+         var = "bs1",  nr = 3, ylim = c(1,2))
+
+# inspect means
+table1::table1( ~ as.factor(bs1 )|yearW, dat_all_10_s$imputations$imp1)
+table1::table1( ~ as.factor(bs1) |yearW, all5)
+
+
+## DOES NOTE ESIMATE AGE CORRECTLY...
+a_imp_10_s <-as.data.frame(dat_all_10_s$imputations$imp1)
+str(a_imp_10_s)
+
+
+saveRDS(a_imp_10_s, here::here("_posts","religious_simpsons_paradox","mods", "a_imp_10_s"))
+a_imp_10_s <- readRDS(here::here("_posts","religious_simpsons_paradox","mods", "a_imp_10_s"))
+
+```
+
+
+### HIDDEN MARKOV RELIGIOUS AMELIA 
+
+```{r  msm2, cache = TRUE, eval = FALSE}
+### MSM ANALYIS BELOW ###
+# commenting out model to save time (which I've saved in a file, below)
+# initial matrix for transitions
+library("msm")
+
+# DATA 
+a_imp_5_r <- readRDS( here::here("_posts","religious_simpsons_paradox","mods", "a_imp_5_r"))
+
+a_imp_10_r <- readRDS( here::here("_posts","religious_simpsons_paradox","mods", "a_imp_10_r"))
+
+
+
+Q0 <- rbind(c(.9, .1),
+            c(.1, .9))
+
+# intensity matrix
+Q0
+
+# Initialise
+crudeinR <-
+  msm::crudeinits.msm(Religious1 ~ yearW, Id, # Id = identifier
+                      data = a_imp_5_r,
+                      qmatrix = Q0)
+
+# model
+msm_5_r_imp1  <- msm(
   Religious1 ~ yearW,
   Id,
-  data = dat,
-  covariates = ~ Age,
+  data = a_imp_5_r,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  ematrix = rbind(c(.1, .1), c(.1, .1)),
   est.initprobs = TRUE,
-  exacttimes = TRUE,# Not running without this assumption.
-  gen.inits = TRUE,
-  qmatrix = q3,
-  ematrix = rbind(c(.1, .1, .1),
-                  c(.1, .1, .1),
-                  c(.1, .1, .1)
-))
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
 
-# saved to save time
-#saveRDS(m3, here::here("models","simpsons-paradox-religion-three-state"))
+msm_5_r_imp1
+
+saveRDS(msm_5_r_imp1, here::here( "_posts","religious_simpsons_paradox", "mods","msm_5_r_imp1" ))
+msm_5_r_imp1 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","msm_5_r_imp1" ))
+
+### MODEL ALL 10 
+
+
+# Initialise
+crudeinR <-
+  msm::crudeinits.msm(Religious1 ~ yearW, Id, # Id = identifier
+                      data = a_imp_10_r,
+                      qmatrix = Q0)
+
+# model
+msm_10_r_imp1 <- msm(
+  Religious1 ~ yearW,
+  Id,
+  data = a_imp_10_r,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+m_all_imp_10_r
+
+saveRDS(m_all_imp_10_r, here::here( "_posts","religious_simpsons_paradox", "mods","m_all_imp_10_r.rds" ))
+
+
+
+### MANIFEST MODELS 
+
+### 5 year
+crudeinR <-
+  msm::crudeinits.msm(Religious1 ~ yearW, Id, # Id = identifier
+                      data = a_imp_5_r,
+                      qmatrix = Q0)
+
+# model
+msm_5_r_MAN_imp1  <- msm(
+  Religious1 ~ yearW,
+  Id,
+  data = a_imp_5_r,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+ # ematrix = rbind(c(.1, .1), c(.1, .1)),  # remove for manifest 
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+msm_5_r_MAN_imp1
+
+saveRDS(msm_5_r_MAN_imp1, here::here( "_posts","religious_simpsons_paradox", "mods","msm_5_r_MAN_imp1" ))
+msm_5_r_MAN_imp1 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","msm_5_r_MAN_imp1" ))
+
+
+## 10 year 
+
+crudeinR <-
+  msm::crudeinits.msm(Religious1 ~ yearW, Id, # Id = identifier
+                      data = a_imp_10_r,
+                      qmatrix = Q0)
+
+# model
+msm_10_r_MAN_imp1  <- msm(
+  Religious1 ~ yearW,
+  Id,
+  data = a_imp_10_r,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+ # ematrix = rbind(c(.1, .1), c(.1, .1)),  # remove for manifest 
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+msm_10_r_MAN_imp1
+
+saveRDS(msm_10_r_MAN_imp1, here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_r_MAN_imp1" ))
+msm_10_r_MAN_imp1 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_r_MAN_imp1" ))
+
+
+
+```
+
+
+
+
+
+```{r}
+# read model, (saved to save time)
+msm_5_r_imp1 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","msm_5_r_imp1" ))
+msm_10_r_imp1 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_r_imp1" ))
+
+msm_5_r_MAN_imp1 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","msm_5_r_MAN_imp1" ))
+msm_10_r_MAN_imp1 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_r_MAN_imp1" ))
+
+
+### TO KEEP CODE CONSISTENT
+m1 <- msm_5_r_imp1
+m1 <- m_all_imp_10_r
+m1 <- msm_5_r_MAN_imp1
+m1 <- msm_10_r_MAN_imp1
+
+#probability matrix
+dt<-  print( round( msm::pmatrix.msm( m1 ) , 2 ) )
+# label cols, rows:
+rownames(dt) = c("Not-religious time 0", "Religious time 0")
+colnames(dt) = c("Not-religious t+1","Religious t+1")
+
+#table
+dt%>%
+ kbl(caption = "Hidden Markov Model: inferred population average religious state change, years 2010-2021")%>%
+  kable_material(c("hover"))
+```
+
+
+LaTeX table
+
+```{r, eval = FALSE}
+dt %>%
+  kbl(booktabs = T,
+      format = "latex",
+      caption = "Hidden Markov Model: inferred population average religious state change, years 2010-2021")
+  
+```
+
+
+```{r, eval = FALSE}
+out %>%
+  kbl(booktabs = T,
+      format = "latex",
+      caption ="Raw sample religious state change: years 2016-2021")
+  
 ```
 
 
 ```{r, eval=FALSE}
-m3 <- readRDS(here::here("models", "simpsons-paradox-religion-three-state"))
-
-round( pmatrix.msm(m3), 2) # works
-
-three_state_mean <-data.frame(print(round( pmatrix.msm(m3, covariates = "mean"), 2)))
-three_state_mean
+# latex
+xtable(out)
 ```
 
 
-```{r, eval=FALSE}
-three_state_30 <-data.frame(print(round( pmatrix.msm(m3, covariates = list(Age = 30)), 2)))
-three_state_50 <-data.frame( print( round(pmatrix.msm(m3, covariates = list(Age = 50)), 2)))
+```{r  hmmchange, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from greater disaffiliation among young people than affiliation.", echo =FALSE}
+# Graph
+m1 <- msm_5_r_imp1
+m1 <- msm_10_r_imp1
 
-three_state_30
-three_state_50
-xtable(three_state_30)
-xtable(three_state_50)
+m1 <- msm_5_r_MAN_imp1
+m1 <- msm_10_r_MAN_imp1
 
-#round( pmatrix.msm(m3, covariates = "mean" ), 2)
+
+oz<- as.matrix( msm::pmatrix.msm( m1 ) )
+oz <- round(oz, digits = 2)
+
+
+stateNames <- c("Secular (.62)","Religious (.38)")
+row.names(oz) <- stateNames; colnames(oz) <- stateNames
+oz
+## need to transpose or else arrows go in the wrong direction
+toz <- t(oz) 
+dev.off()
+length(unique(a_imp$Id))
+m1
+#library(pracma)
+plotmat(toz,
+       # pos = c(1,2), 
+       # lwd = 1, 
+       # box.lwd = 2, 
+        cex.txt = 0.9, 
+        box.size = 0.09, 
+       # box.type = "circle", 
+        box.prop = 0.5,
+        arr.pos =  0.4, 
+        shadow.size = 0.001,
+        box.col = c("lightgreen","lightblue","orange"),
+       # arr.length=.1,
+       # arr.width=.1,
+        self.cex = .4,
+        self.shifty = -.01,
+        self.shiftx = .12,
+        main = "Hidden Markov Model confirms religious switching\nNew Zealand: N = 21936, years 2016-2021")
+
 ```
+
+
+
+
+## Graph 
+
+```{r}
+m1 <- msm_5_r_imp1
+m1 <- msm_10_r_imp1
+
+m1 <- msm_5_r_MAN_imp1
+m1 <- msm_10_r_MAN_imp1
+
+
+dev.off()
+p20 <-
+  pmatrix.msm(m1, covariates = list(Age = 20), ci = "normal")
+p20.Convert <- p20$estimates[1, 2]
+p20.Convert.L <- p20$L[1, 2]
+# get upper bound
+p20.Convert.U <- p20$U[1, 2]
+con.20 <- c(20, p20.Convert, p20.Convert.L, p20.Convert.U)
+## 30 year olds
+p30 <-
+  pmatrix.msm(m1, covariates = list(Age = 30), ci = "normal")
+p30.Convert <- p30$estimates[1, 2]
+# set lower bound
+p30.Convert.L <- p30$L[1, 2]
+# get upper bound
+p30.Convert.U <- p30$U[1, 2]
+#combine
+con.30 <- c(30, p30.Convert, p30.Convert.L, p30.Convert.U)
+## 40 year old
+p40 <-
+  pmatrix.msm(m1, covariates = list(Age = 40), ci = "normal")
+# Get Transition to Relid Estimate
+p40.Convert <- p40$estimates[1, 2]
+# set lower bound
+p40.Convert.L <- p40$L[1, 2]
+# get upper bound
+p40.Convert.U <- p40$U[1, 2]
+con.40 <- c(40, p40.Convert, p40.Convert.L, p40.Convert.U)
+## 50 year old
+p50 <-
+  pmatrix.msm(m1, covariates = list(Age = 50), ci = "normal")
+# Get Transition to Relid Estimate
+p50.Convert <- p50$estimates[1, 2]
+# set lower bound
+p50.Convert.L <- p50$L[1, 2]
+# get upper bound
+p50.Convert.U <- p50$U[1, 2]
+con.50 <- c(50, p50.Convert, p50.Convert.L, p50.Convert.U)
+## 60 year olds
+p60 <-
+  pmatrix.msm(m1, covariates = list(Age = 60), ci = "normal")
+# Get Transition to Relid Estimate
+p60.Convert <- p60$estimates[1, 2]
+# set lower bound
+p60.Convert.L <- p60$L[1, 2]
+# get upper bound
+p60.Convert.U <- p60$U[1, 2]
+con.60 <- c(60, p60.Convert, p60.Convert.L, p60.Convert.U)
+## 70 year olds
+p70 <-
+  pmatrix.msm(m1, covariates = list(Age = 70), ci = "normal")
+# Get Transition to Relid Estimate
+p70.Convert <- p70$estimates[1, 2]
+# set lower bound
+p70.Convert.L <- p70$L[1, 2]
+# get upper bound
+p70.Convert.U <- p70$U[1, 2]
+con.70 <- c(70, p70.Convert, p70.Convert.L, p70.Convert.U)
+### ## 80 year olds
+p80 <-
+  pmatrix.msm(m1, covariates = list(Age = 80), ci = "normal")
+# Get Transition to Relid Estimate
+p80.Convert <- p80$estimates[1, 2]
+# set lower bound
+p80.Convert.L <- p80$L[1, 2]
+# get upper bound
+p80.Convert.U <- p80$U[1, 2]
+con.80 <- c(80, p80.Convert, p80.Convert.L, p80.Convert.U)
+# ### ## 90 year olds
+p90 <-
+  pmatrix.msm(m1, covariates = list(Age = 90), ci = "normal")
+# # Get Transition to Relid Estimate
+p90.Convert <- p90$estimates[1, 2]
+# # set lower bound
+p90.Convert.L <- p90$L[1, 2]
+p90.Convert.U <- p90$U[1, 2]
+con.90 <- c(90, p90.Convert, p90.Convert.L, p90.Convert.U)
+# ### create data frame for conversion plot
+conplot <-
+  data.frame(rbind(con.20, con.30, con.40, con.50, con.60, con.70, con.80, con.90))
+colnames(conplot) <-
+  c("age", "conv_probability", "conv_lower", "conv_upper")
+library(ggplot2)
+#library(wesanderson)
+#wes_palette("Zissou1", type = c("discrete"))
+#library("ggsci")
+
+##### CREAT PLOT FOR DECONVERSION
+## 20 year olds
+p20 <-
+  pmatrix.msm(m1, covariates = list(Age = 20), ci = "normal")
+# Get Transition to Relid Estimate
+p20.decon <- p20$estimates[2, 1]
+p20.decon.L <- p20$L[2, 1]
+p20.decon.U <- p20$U[2, 1]
+decon.20 <- c(20, p20.decon, p20.decon.L, p20.decon.U)
+p30 <-
+  pmatrix.msm(m1, covariates = list(Age = 30), ci = "normal")
+p30.decon <- p30$estimates[2, 1]
+p30.decon.L <- p30$L[2, 1]
+p30.decon.U <- p30$U[2, 1]
+decon.30 <- c(30, p30.decon, p30.decon.L, p30.decon.U)
+p40 <-
+  pmatrix.msm(m1, covariates = list(Age = 40), ci = "normal")
+p40.decon <- p40$estimates[2, 1]
+p40.decon.L <- p40$L[2, 1]
+p40.decon.U <- p40$U[2, 1]
+decon.40 <- c(40, p40.decon, p40.decon.L, p40.decon.U)
+p50 <-
+  pmatrix.msm(m1, covariates = list(Age = 50), ci = "normal")
+p50.decon <- p50$estimates[2, 1]
+p50.decon.L <- p50$L[2, 1]
+p50.decon.U <- p50$U[2, 1]
+decon.50 <- c(50, p50.decon, p50.decon.L, p50.decon.U)
+p60 <-
+  pmatrix.msm(m1, covariates = list(Age = 60), ci = "normal")
+p60.decon <- p60$estimates[2, 1]
+p60.decon.L <- p60$L[2, 1]
+p60.decon.U <- p60$U[2, 1]
+decon.60 <- c(60, p60.decon, p60.decon.L, p60.decon.U)
+p70 <-
+  pmatrix.msm(m1, covariates = list(Age = 70), ci = "normal")
+p70.decon <- p70$estimates[2, 1]
+p70.decon.L <- p70$L[2, 1]
+p70.decon.U <- p70$U[2, 1]
+decon.70 <- c(70, p70.decon, p70.decon.L, p70.decon.U)
+p80 <-
+  pmatrix.msm(m1, covariates = list(Age = 80), ci = "normal")
+p80.decon <- p80$estimates[2, 1]
+p80.decon.L <- p80$L[2, 1]
+p80.decon.U <- p80$U[2, 1]
+decon.80 <- c(80, p80.decon, p80.decon.L, p80.decon.U)
+p90 <-
+  pmatrix.msm(m1, covariates = list(Age = 90), ci = "normal")
+p90.decon <- p90$estimates[2, 1]
+p90.decon.L <- p90$L[2, 1]
+p90.decon.U <- p90$U[2, 1]
+decon.90 <- c(90, p90.decon, p90.decon.L, p90.decon.U)
+
+### create data frame for conversion plot
+deconplot <-
+  data.frame(rbind(
+    decon.20,
+    decon.30,
+    decon.40,
+    decon.50,
+    decon.60,
+    decon.70,
+    decon.80,
+    decon.90
+  ))
+colnames(deconplot) <-
+  c("age", "decon_probability", "decon_lower", "decon_upper")
+library(ggplot2)
+
+#grid.arrange(plot.con,plot.decon, ncol=2)
+### SUPERIMPOSE
+deconplot$Group <- as.factor(rep("Disaffiliation", nrow(deconplot)))
+conplot$Group <- as.factor(rep("Affiliation", nrow(conplot)))
+deconplot2 <- deconplot %>%
+  dplyr::mutate(
+    conv_probability = decon_probability,
+    conv_lower = decon_lower,
+    conv_upper = decon_upper
+  ) %>%
+  dplyr::select(-c(decon_probability, decon_upper, decon_lower))
+
+comboplot <- rbind(conplot, deconplot2)
+
+
+
+library(ggplot2)
+library(ggsci )
+
+plot_5_r_30 <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .3))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Affiliation w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Afilliation Dynamics in New Zealand",
+  subtitle= "N = 21936, years 2016-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_aaas() + 
+  theme(legend.position = "bottom")
+
+
+plot_5_r_30
+
+
+plot_5_r_12 <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .12))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Affiliation w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Afilliation Dynamics in New Zealand",
+  subtitle= "N = 21936, years 2016-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_aaas() + 
+  theme(legend.position = "bottom")
+
+plot_5_r_12
+
+
+saveRDS(plot_5_r_12, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_5_r_12"))
+saveRDS(plot_5_r_30, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_5_r_30"))
+
+plot_5_r_12 <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plot_5_r_12")))
+plot_5_r_30 <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plot_5_r_30")))
+
+
+#### 10 Year 
+plot_10_r_30 <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .3))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Affiliation w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Afilliation Dynamics in New Zealand",
+  subtitle= "N = 4441, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_aaas() + 
+  theme(legend.position = "bottom")
+
+
+plot_10_r_30
+
+plot_10_r_12 <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .12))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Affiliation w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Afilliation Dynamics in New Zealand",
+  subtitle= "N = 4441, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_aaas() + 
+  theme(legend.position = "bottom")
+
+
+plot_10_r_30
+plot_10_r_12
+
+saveRDS(plot_10_r_30, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_r_30"))
+saveRDS(plot_10_r_12, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_r_12"))
+
+plot_10_r_30 <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_r_30")))
+plot_10_r_12 <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_r_12")))
+
+
+### MANIFEST PLOTS 
+
+#### MANIFEST 5
+
+plot_5_r_30_man <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .30))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Affiliation w/ 95 CI ") + theme_bw() + labs(title = "Manifest Markov Model: (Dis)Afilliation Dynamics in New Zealand",
+  subtitle= "N = 21936, years 2016-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_aaas() + 
+  theme(legend.position = "bottom")
+
+plot_5_r_30_man
+
+saveRDS(plot_5_r_30_man, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_5_r_30_man"))
+plot_5_r_30_man <- readRDS( here::here("_posts", "religious_simpsons_paradox", "mods", "plot_5_r_30_man"))
+
+
+#### MANIFEST 10 
+
+plot_10_r_30_man <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .3))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Affiliation w/ 95 CI ") + theme_bw() + labs(title = "Manifest Markov Model: (Dis)Afilliation Dynamics in New Zealand",
+  subtitle= "N = 4441, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_aaas() + 
+  theme(legend.position = "bottom")
+
+
+saveRDS(plot_10_r_30_man, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_r_30_man"))
+plot_10_r_30_man <- readRDS( here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_r_30_man"))
+
+
+```
+
+
+### Impute belief in God 
+
+
+Amelia Imputation Religion
+
+
+
+### All God Imputation  MOdels
+
+
+```{r  msm2, cache = TRUE, eval = FALSE}
+### MSM ANALYIS BELOW ###
+# commenting out model to save time (which I've saved in a file, below)
+# initial matrix for transitions
+library("msm")
+a_imp_5_g <- readRDS(here::here("_posts","religious_simpsons_paradox","mods", "a_imp_5_g"))
+
+a_imp_10_g <- readRDS(here::here("_posts","religious_simpsons_paradox","mods", "a_imp_10_g"))
+
+
+
+Q0 <- rbind(c(.9, .1),
+            c(.1, .9))
+
+# intensity matrix
+Q0
+
+head(a_imp_5_g)
+
+table1::table1( ~ as.factor(bg1) | yearW, data = a_imp_5_g)
+
+
+
+# Initialise
+crudeinR <-
+  msm::crudeinits.msm(bg1 ~ yearW, Id, # Id = identifier
+                      data = a_imp_5_g,
+                      qmatrix = Q0)
+
+msm_5_g_imp1  <- msm(
+  bg1 ~ yearW,
+  Id,
+  data = a_imp_5_g,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  gen.inits=TRUE,
+  ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE
+  # Not running without this assumption.
+ # gen.inits = TRUE
+)
+
+saveRDS(msm_5_g_imp1, here::here( "_posts","religious_simpsons_paradox", "mods","msm_5_g_imp1" ))
+msm_5_g_imp1 <- readRDS( here::here( "_posts","religious_simpsons_paradox", "mods","msm_5_g_imp1" ))
+
+
+print( round( msm::pmatrix.msm( msm_5_g_imp1 ) , 3 ) )
+
+
+### 10 god 
+
+# Initialise
+crudeinR <-
+  msm::crudeinits.msm(bg1 ~ yearW, Id, # Id = identifier
+                      data = a_imp_10_g,
+                      qmatrix = Q0)
+
+msm_10_g_imp1  <- msm(
+  bg1 ~ yearW,
+  Id,
+  data = a_imp_10_g,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  gen.inits=TRUE,
+  ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE
+  # Not running without this assumption.
+ # gen.inits = TRUE
+)
+msm_10_g_imp1
+saveRDS(msm_10_g_imp1, here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_g_imp1" ))
+msm_10_g_imp1 <- readRDS( here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_g_imp1" ))
+
+print( round( msm::pmatrix.msm( msm_10_g_imp1 ) , 3 ) )
+
+
+### MANIFEST MODEL GOD
+
+## 5 year 
+
+
+crudeinR <-
+  msm::crudeinits.msm(bg1 ~ yearW, Id, # Id = identifier
+                      data = a_imp_5_g,
+                      qmatrix = Q0)
+
+msm_5_g_MAN_imp1  <- msm(
+  bg1 ~ yearW,
+  Id,
+  data = a_imp_5_g,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  gen.inits=TRUE,
+ # ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE
+  # Not running without this assumption.
+ # gen.inits = TRUE
+)
+
+
+saveRDS(msm_5_g_MAN_imp1, here::here( "_posts","religious_simpsons_paradox", "mods","msm_5_g_MAN_imp1" ))
+msm_5_g_MAN_imp1 <- readRDS( here::here( "_posts","religious_simpsons_paradox", "mods","msm_5_g_MAN_imp1" ))
+
+print( round( msm::pmatrix.msm( msm_5_g_MAN_imp1 ) , 3 ) )
+
+
+
+## 10 year 
+
+
+crudeinR <-
+  msm::crudeinits.msm(bg1 ~ yearW, Id, # Id = identifier
+                      data = a_imp_10_g,
+                      qmatrix = Q0)
+
+msm_10_g_MAN_imp1  <- msm(
+  bg1 ~ yearW,
+  Id,
+  data = a_imp_10_g,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  gen.inits=TRUE,
+#  ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE
+  # Not running without this assumption.
+ # gen.inits = TRUE
+)
+msm_10_g_MAN_imp1
+saveRDS(msm_10_g_imp1, here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_g_imp1" ))
+msm_10_g_imp1 <- readRDS( here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_g_imp1" ))
+
+print( round( msm::pmatrix.msm( msm_10_g_MAN_imp1 ) , 3 ) )
+```
+
+
+Transition probabilities (averaged)
+
+
+```{r}
+# read model, (saved to save time)
+
+# note change of model name 
+# USE IMPUTED
+
+msm_5_g_imp1 <- readRDS( here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_g_imp1" ))
+msm_10_g_imp1 <- readRDS( here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_g_imp1" ))
+msm_5_g_MAN_imp1 <- readRDS( here::here( "_posts","religious_simpsons_paradox", "mods","msm_5_g_MAN_imp1" ))
+msm_10_g_MAN_imp1 <- readRDS( here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_g_MAN_imp1" ))
+
+
+m1 <- msm_5_g_imp1
+m1 <- msm_10_g_imp1
+
+
+m1 <- msm_5_g_MAN_imp1
+m1 <- msm_10_g_MAN_imp1
+
+#probability matrix
+dt<-  print( round( msm::pmatrix.msm( m1 ) , 4 ) )
+
+# label cols, rows:
+rownames(dt) = c("Not-Believe God time 0", "Believe God time 0")
+colnames(dt) = c("Not-Believe God t+1","Believe God t+1")
+
+#table
+dt%>%
+ kbl(caption = "Hidden Markov Model: inferred population average Belief in God state change, years 2010-2021")%>%
+  kable_material(c("hover"))
+```
+
+
+LaTeX table
+
+```{r, eval = FALSE}
+dt %>%
+  kbl(booktabs = T,
+      format = "latex",
+      caption = "Hidden Markov Model: inferred population average belief in God state change, years 2010-2021")
+  
+```
+
+
+
+
+```{r  hmmchange, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from greater disaffiliation among young people than affiliation.", echo =FALSE}
+# Graph
+
+m1 <- msm_5_g_imp1
+m1 <- msm_10_g_imp1
+
+m1 <- msm_5_g_MAN_imp1
+m1 <- msm_10_g_MAN_imp1
+
+oz<- as.matrix( msm::pmatrix.msm( m1 ) )
+oz <- round(oz, digits = 3)
+m1
+oz
+stateNames <- c("No Belief God (.42)","Belief God (.58)") # 10 waves
+row.names(oz) <- stateNames; colnames(oz) <- stateNames
+oz
+## need to transpose or else arrows go in the wrong direction
+toz <- t(oz) 
+
+#library(pracma)
+plotmat(toz,
+       # pos = c(1,2), 
+       # lwd = 1, 
+       # box.lwd = 2, 
+        cex.txt = 0.9, 
+        box.size = 0.09, 
+       # box.type = "circle", 
+        box.prop = 0.5,
+        arr.pos =  0.4, 
+        shadow.size = 0.001,
+        box.col = c("lightgreen","lightblue","orange"),
+       # arr.length=.1,
+       # arr.width=.1,
+        self.cex = .4,
+        self.shifty = -.01,
+        self.shiftx = .12,
+        main = "Hidden Markov Model reveals low transition to Belief in God \nNew Zealand: N = , years 2016-2021")
+
+# god_markov 12 x 9 
+```
+
+
+
+
+## Graph 
+
+
+```{r  hmmchange2, cache = TRUE, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from much greater disaffiliation among young people than affiliation.", include = TRUE, code_folding=TRUE}
+
+# note to self, this code can be improved
+### CREATE PLOT  ###  CONVERSION AGE PLOT
+## 20 year olds
+
+#m1 <-readRDS(here::here( "models","mnm-simpson-paradox-religious-change" ))
+m1 <- msm_5_g_imp1
+m1 <- msm_10_g_imp1
+m1 <- msm_5_g_MAN_imp1
+m1 <- msm_10_g_MAN_imp1
+
+p20 <-
+  pmatrix.msm(m1, covariates = list(Age = 20), ci = "normal")
+p20.Convert <- p20$estimates[1, 2]
+p20.Convert.L <- p20$L[1, 2]
+# get upper bound
+p20.Convert.U <- p20$U[1, 2]
+con.20 <- c(20, p20.Convert, p20.Convert.L, p20.Convert.U)
+## 30 year olds
+p30 <-
+  pmatrix.msm(m1, covariates = list(Age = 30), ci = "normal")
+p30.Convert <- p30$estimates[1, 2]
+# set lower bound
+p30.Convert.L <- p30$L[1, 2]
+# get upper bound
+p30.Convert.U <- p30$U[1, 2]
+#combine
+con.30 <- c(30, p30.Convert, p30.Convert.L, p30.Convert.U)
+## 40 year old
+p40 <-
+  pmatrix.msm(m1, covariates = list(Age = 40), ci = "normal")
+# Get Transition to Relid Estimate
+p40.Convert <- p40$estimates[1, 2]
+# set lower bound
+p40.Convert.L <- p40$L[1, 2]
+# get upper bound
+p40.Convert.U <- p40$U[1, 2]
+con.40 <- c(40, p40.Convert, p40.Convert.L, p40.Convert.U)
+## 50 year old
+p50 <-
+  pmatrix.msm(m1, covariates = list(Age = 50), ci = "normal")
+# Get Transition to Relid Estimate
+p50.Convert <- p50$estimates[1, 2]
+# set lower bound
+p50.Convert.L <- p50$L[1, 2]
+# get upper bound
+p50.Convert.U <- p50$U[1, 2]
+con.50 <- c(50, p50.Convert, p50.Convert.L, p50.Convert.U)
+## 60 year olds
+p60 <-
+  pmatrix.msm(m1, covariates = list(Age = 60), ci = "normal")
+# Get Transition to Relid Estimate
+p60.Convert <- p60$estimates[1, 2]
+# set lower bound
+p60.Convert.L <- p60$L[1, 2]
+# get upper bound
+p60.Convert.U <- p60$U[1, 2]
+con.60 <- c(60, p60.Convert, p60.Convert.L, p60.Convert.U)
+## 70 year olds
+p70 <-
+  pmatrix.msm(m1, covariates = list(Age = 70), ci = "normal")
+# Get Transition to Relid Estimate
+p70.Convert <- p70$estimates[1, 2]
+# set lower bound
+p70.Convert.L <- p70$L[1, 2]
+# get upper bound
+p70.Convert.U <- p70$U[1, 2]
+con.70 <- c(70, p70.Convert, p70.Convert.L, p70.Convert.U)
+### ## 80 year olds
+p80 <-
+  pmatrix.msm(m1, covariates = list(Age = 80), ci = "normal")
+# Get Transition to Relid Estimate
+p80.Convert <- p80$estimates[1, 2]
+# set lower bound
+p80.Convert.L <- p80$L[1, 2]
+# get upper bound
+p80.Convert.U <- p80$U[1, 2]
+con.80 <- c(80, p80.Convert, p80.Convert.L, p80.Convert.U)
+# ### ## 90 year olds
+p90 <-
+  pmatrix.msm(m1, covariates = list(Age = 90), ci = "normal")
+# # Get Transition to Relid Estimate
+p90.Convert <- p90$estimates[1, 2]
+# # set lower bound
+p90.Convert.L <- p90$L[1, 2]
+p90.Convert.U <- p90$U[1, 2]
+con.90 <- c(90, p90.Convert, p90.Convert.L, p90.Convert.U)
+# ### create data frame for conversion plot
+conplot <-
+  data.frame(rbind(con.20, con.30, con.40, con.50, con.60, con.70, con.80, con.90))
+colnames(conplot) <-
+  c("age", "conv_probability", "conv_lower", "conv_upper")
+library(ggplot2)
+
+con.20
+con.50
+
+##### CREAT PLOT FOR DECONVERSION
+## 20 year olds
+p20 <-
+  pmatrix.msm(m1, covariates = list(Age = 20), ci = "normal")
+# Get Transition to Relid Estimate
+p20.decon <- p20$estimates[2, 1]
+p20.decon.L <- p20$L[2, 1]
+p20.decon.U <- p20$U[2, 1]
+decon.20 <- c(20, p20.decon, p20.decon.L, p20.decon.U)
+p30 <-
+  pmatrix.msm(m1, covariates = list(Age = 30), ci = "normal")
+p30.decon <- p30$estimates[2, 1]
+p30.decon.L <- p30$L[2, 1]
+p30.decon.U <- p30$U[2, 1]
+decon.30 <- c(30, p30.decon, p30.decon.L, p30.decon.U)
+p40 <-
+  pmatrix.msm(m1, covariates = list(Age = 40), ci = "normal")
+p40.decon <- p40$estimates[2, 1]
+p40.decon.L <- p40$L[2, 1]
+p40.decon.U <- p40$U[2, 1]
+decon.40 <- c(40, p40.decon, p40.decon.L, p40.decon.U)
+p50 <-
+  pmatrix.msm(m1, covariates = list(Age = 50), ci = "normal")
+p50.decon <- p50$estimates[2, 1]
+p50.decon.L <- p50$L[2, 1]
+p50.decon.U <- p50$U[2, 1]
+decon.50 <- c(50, p50.decon, p50.decon.L, p50.decon.U)
+p60 <-
+  pmatrix.msm(m1, covariates = list(Age = 60), ci = "normal")
+p60.decon <- p60$estimates[2, 1]
+p60.decon.L <- p60$L[2, 1]
+p60.decon.U <- p60$U[2, 1]
+decon.60 <- c(60, p60.decon, p60.decon.L, p60.decon.U)
+p70 <-
+  pmatrix.msm(m1, covariates = list(Age = 70), ci = "normal")
+p70.decon <- p70$estimates[2, 1]
+p70.decon.L <- p70$L[2, 1]
+p70.decon.U <- p70$U[2, 1]
+decon.70 <- c(70, p70.decon, p70.decon.L, p70.decon.U)
+p80 <-
+  pmatrix.msm(m1, covariates = list(Age = 80), ci = "normal")
+p80.decon <- p80$estimates[2, 1]
+p80.decon.L <- p80$L[2, 1]
+p80.decon.U <- p80$U[2, 1]
+decon.80 <- c(80, p80.decon, p80.decon.L, p80.decon.U)
+p90 <-
+  pmatrix.msm(m1, covariates = list(Age = 90), ci = "normal")
+p90.decon <- p90$estimates[2, 1]
+p90.decon.L <- p90$L[2, 1]
+p90.decon.U <- p90$U[2, 1]
+decon.90 <- c(90, p90.decon, p90.decon.L, p90.decon.U)
+
+### create data frame for conversion plot
+deconplot <-
+  data.frame(rbind(
+    decon.20,
+    decon.30,
+    decon.40,
+    decon.50,
+    decon.60,
+    decon.70,
+    decon.80,
+    decon.90
+  ))
+colnames(deconplot) <-
+  c("age", "decon_probability", "decon_lower", "decon_upper")
+library(ggplot2)
+
+#library(gridExtra)
+
+#grid.arrange(plot.con,plot.decon, ncol=2)
+### SUPERIMPOSE
+deconplot$Group <- as.factor(rep("Dis-Belief", nrow(deconplot)))
+conplot$Group <- as.factor(rep("Belief", nrow(conplot)))
+deconplot2 <- deconplot %>%
+  dplyr::mutate(
+    conv_probability = decon_probability,
+    conv_lower = decon_lower,
+    conv_upper = decon_upper
+  ) %>%
+  dplyr::select(-c(decon_probability, decon_upper, decon_lower))
+
+comboplot <- rbind(conplot, deconplot2)
+#comboplot
+# get initial probabilities for title label
+#pmatrix.msm(m1)
+
+
+library(ggsci )
+
+
+
+plot_5_g_30 <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F, 
+             method = "gam",
+             formula = y ~ s(x, bs = "cs", fx = TRUE, k = 7)) +
+  scale_y_continuous(limits = c(0, .3))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Belief w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Belief in God Dynamics in New Zealand",
+  subtitle= "N = 21867, years 2016-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_npg() + 
+  theme(legend.position = "bottom")
+
+plot_5_g_30
+
+
+plot_5_g_12 <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F, 
+             method = "gam",
+             formula = y ~ s(x, bs = "cs", fx = TRUE, k = 7)) +
+  scale_y_continuous(limits = c(0, .12))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Belief w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Belief in God Dynamics in New Zealand",
+  subtitle= "N = 21867, years 2016-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_npg() + 
+  theme(legend.position = "bottom")
+
+
+saveRDS(plot_5_g_12, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_5_g_12"))
+saveRDS(plot_5_g_30, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_5_g_30"))
+
+
+
+### PLOT 10
+
+library(ggsci )
+length(unique(all_god_10$Id))
+
+
+plot_10_g_30 <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F, 
+             method = "gam",
+             formula = y ~ s(x, bs = "cs", fx = TRUE, k = 7)) +
+  scale_y_continuous(limits = c(0, .3))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Belief w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Belief in God Dynamics in New Zealand",
+  subtitle= "N = 4441, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_npg() + 
+  theme(legend.position = "bottom")
+
+plot_10_g_30
+
+
+plot_10_g_12 <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F, 
+             method = "gam",
+             formula = y ~ s(x, bs = "cs", fx = TRUE, k = 7)) +
+  scale_y_continuous(limits = c(0, .12))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Belief w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Belief in God Dynamics in New Zealand",
+  subtitle= "N = 4441, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_npg() + 
+  theme(legend.position = "bottom")
+
+library(patchwork)
+plot_10_g_12+ plot_5_g_12
+
+saveRDS(plot_10_g_12, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_g_12"))
+saveRDS(plot_10_g_30, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_g_30"))
+
+
+plot_10_g_12 <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_g_12")))
+plot_10_g_30 <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_g_30")))
+
+all_GOD_30_imp <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "all_GOD_30_imp")))
+
+
+
+all_GOD_30_imp_10yr <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "all_GOD_30_imp_10yr")))
+
+
+library(patchwork)
+all_GOD_30_imp + all_GOD_12_imp + all_GOD_30_imp_10yr
+
+
+### MANIFEST PLOTS 
+
+## 5 years
+
+plot_5_g_30_man <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F, 
+             method = "gam",
+             formula = y ~ s(x, bs = "cs", fx = TRUE, k = 7)) +
+  scale_y_continuous(limits = c(0, .3))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Belief w/ 95 CI ") + theme_bw() + labs(title = "Manifest Markov Model: (Dis)Belief in God Dynamics in New Zealand",
+  subtitle= "N = 21867, years 2016-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_npg() + 
+  theme(legend.position = "bottom")
+
+plot_5_g_30_man
+
+saveRDS(plot_5_g_30_man, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_5_g_30_man"))
+plot_5_g_30_man <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plot_5_g_30_man")))
+
+
+## 10 Years 
+plot_10_g_30_man <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F, 
+             method = "gam",
+             formula = y ~ s(x, bs = "cs", fx = TRUE, k = 7)) +
+  scale_y_continuous(limits = c(0, .3))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Belief w/ 95 CI ") + theme_bw() + labs(title = "Manifest Markov Model: (Dis)Belief in God Dynamics in New Zealand",
+  subtitle= "N = 4441, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_npg() + 
+  theme(legend.position = "bottom")
+
+plot_10_g_30_man + plot_10_g_30
+plot_5_g_30_man + plot_5_g_30
+
+
+saveRDS(plot_10_g_30_man, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_g_30_man"))
+plot_10_g_30_man <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_g_30_man")))
+
+
+```
+
+
+###  BELIEF IN A SPIRIT 
+
+
+```{r  msm2, cache = TRUE, eval = FALSE}
+### MSM ANALYIS BELOW ###
+# commenting out model to save time (which I've saved in a file, below)
+# initial matrix for transitions
+library("msm")
+
+# read data 
+a_imp_5_s <- readRDS(here::here("_posts","religious_simpsons_paradox","mods", "a_imp_5_s"))
+
+a_imp_10_s <- readRDS(here::here("_posts","religious_simpsons_paradox","mods", "a_imp_10_s"))
+
+
+Q0 <- rbind(c(.9, .1),
+            c(.1, .9))
+
+# intensity matrix
+
+
+
+# Initialise
+crudeinR <-
+  msm::crudeinits.msm(bs1 ~ yearW, Id, # Id = identifier
+                      data = a_imp_5_s,
+                      qmatrix = Q0)
+
+# model 
+msm_5_s_imp1   <- msm(
+  bs1 ~ yearW,
+  Id,
+  data = a_imp_5_s,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  gen.inits=TRUE,
+  ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE
+  # Not running without this assumption.
+ # gen.inits = TRUE
+)
+
+saveRDS(msm_5_s_imp1, here::here("_posts", "religious_simpsons_paradox", "mods", "msm_5_s_imp1"))
+
+
+print( round( msm::pmatrix.msm( msm_5_s_imp1 ) , 3 ) )
+
+
+## 10 year 
+crudeinR <-
+  msm::crudeinits.msm(bs1 ~ yearW, Id, # Id = identifier
+                      data = a_imp_10_s,
+                      qmatrix = Q0)
+
+# model 
+msm_10_s_imp1   <- msm(
+  bs1 ~ yearW,
+  Id,
+  data = a_imp_10_s,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  gen.inits=TRUE,
+  ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE
+  # Not running without this assumption.
+ # gen.inits = TRUE
+)
+
+saveRDS(msm_10_s_imp1, here::here("_posts", "religious_simpsons_paradox", "mods", "msm_10_s_imp1"))
+
+
+print( round( msm::pmatrix.msm( msm_10_s_imp1 ) , 3 ) )
+
+
+
+
+### MANIFEST MODEL SPIRIT
+
+## 5 year 
+
+
+crudeinR <-
+  msm::crudeinits.msm(bs1 ~ yearW, Id, # Id = identifier
+                      data = a_imp_5_s,
+                      qmatrix = Q0)
+
+msm_5_s_MAN_imp1  <- msm(
+  bs1 ~ yearW,
+  Id,
+  data = a_imp_5_s,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  gen.inits=TRUE,
+ # ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE
+  # Not running without this assumption.
+ # gen.inits = TRUE
+)
+msm_5_s_MAN_imp1
+
+saveRDS(msm_5_s_MAN_imp1, here::here( "_posts","religious_simpsons_paradox", "mods","msm_5_s_MAN_imp1" ))
+msm_5_s_MAN_imp1 <- readRDS( here::here( "_posts","religious_simpsons_paradox", "mods","msm_5_s_MAN_imp1" ))
+
+print( round( msm::pmatrix.msm( msm_5_s_MAN_imp1 ) , 3 ) )
+
+
+
+## 10 year 
+
+
+crudeinR <-
+  msm::crudeinits.msm(bs1 ~ yearW, Id, # Id = identifier
+                      data = a_imp_10_s,
+                      qmatrix = Q0)
+
+msm_10_s_MAN_imp1  <- msm(
+  bs1 ~ yearW,
+  Id,
+  data = a_imp_10_s,
+  covariates =  ~ Age,
+  qmatrix = crudeinR,
+  gen.inits=TRUE,
+#  ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE
+  # Not running without this assumption.
+ # gen.inits = TRUE
+)
+msm_10_s_MAN_imp1
+saveRDS(msm_10_s_MAN_imp1, here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_s_MAN_imp1" ))
+msm_10_s_MAN_imp1 <- readRDS( here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_s_MAN_imp1" ))
+
+print( round( msm::pmatrix.msm( msm_10_s_MAN_imp1 ) , 3 ) )
+```
+
+
+
+
+```{r}
+# read model, (saved to save time)
+
+# note change of model name 
+# USE IMPUTED
+msm_5_s_imp1 <-readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","msm_5_s_imp1" ))
+msm_10_s_imp1 <-readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_s_imp1" ))
+
+msm_5_s_MAN_imp1 <- readRDS( here::here( "_posts","religious_simpsons_paradox", "mods","msm_5_s_MAN_imp1" ))
+msm_10_s_MAN_imp1 <- readRDS( here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_s_MAN_imp1" ))
+
+
+
+m1 <- msm_5_s_imp1
+
+#probability matrix
+dt<-  print( round( msm::pmatrix.msm( m1 ) , 4 ) )
+
+# label cols, rows:
+rownames(dt) = c("Not-Believe God time 0", "Believe God time 0")
+colnames(dt) = c("Not-Believe God t+1","Believe God t+1")
+
+#table
+dt%>%
+ kbl(caption = "Hidden Markov Model: inferred population average Belief in God state change, years 2016-2021")%>%
+  kable_material(c("hover"))
+```
+
+
+LaTeX table
+
+```{r, eval = FALSE}
+dt %>%
+  kbl(booktabs = T,
+      format = "latex",
+      caption = "Hidden Markov Model: inferred population average belief in God state change, years 2016-2021")
+  
+```
+
+
+
+
+```{r  hmmchange, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from greater disaffiliation among young people than affiliation.", echo =FALSE}
+# Graph
+
+m1 <- msm_5_s_imp1
+m1 <- msm_10_s_imp1
+
+
+m1 <- msm_5_s_MAN_imp1
+m1 <- msm_10_s_MAN_imp1
+
+
+oz<- as.matrix( msm::pmatrix.msm( m1 ) )
+oz <- round(oz, digits = 3)
+m1
+oz
+stateNames <- c("No Belief Spirit (.70)","Belief Spirit (.30)")
+row.names(oz) <- stateNames; colnames(oz) <- stateNames
+oz
+## need to transpose or else arrows go in the wrong direction
+toz <- t(oz) 
+
+length(unique(a_impS$Id))
+
+#library(pracma)
+plotmat(toz,
+       # pos = c(1,2), 
+       # lwd = 1, 
+       # box.lwd = 2, 
+        cex.txt = 0.9, 
+        box.size = 0.09, 
+       # box.type = "circle", 
+        box.prop = 0.5,
+        arr.pos =  0.4, 
+        shadow.size = 0.001,
+        box.col = c("lightgreen","lightblue","orange"),
+       # arr.length=.1,
+       # arr.width=.1,
+        self.cex = .4,
+        self.shifty = -.01,
+        self.shiftx = .12,
+        main = "Hidden Markov Model reveals low transition to Belief in God \nNew Zealand: N = 21936, years 2016-2021")
+
+# god_markov 12 x 9 
+```
+
+
+
+## Graph 
+
+
+```{r  hmmchange2, cache = TRUE, fig.cap="Hidden Markov Model reveals religious change within people differs from the society wide-aggregate trend. As people age, they are more likely to affiliate and less likely to disaffiliate. The population gap comes from much greater disaffiliation among young people than affiliation.", include = TRUE, code_folding=TRUE}
+
+# note to self, this code can be improved
+### CREATE PLOT  ###  CONVERSION AGE PLOT
+## 20 year olds
+m1 <- msm_5_s_imp1
+m1 <- msm_10_s_imp1
+
+m1 <- msm_5_s_MAN_imp1
+m1 <- msm_10_s_MAN_imp1
+
+p20 <-
+  pmatrix.msm(m1, covariates = list(Age = 20), ci = "normal")
+p20.Convert <- p20$estimates[1, 2]
+p20.Convert.L <- p20$L[1, 2]
+# get upper bound
+p20.Convert.U <- p20$U[1, 2]
+con.20 <- c(20, p20.Convert, p20.Convert.L, p20.Convert.U)
+## 30 year olds
+p30 <-
+  pmatrix.msm(m1, covariates = list(Age = 30), ci = "normal")
+p30.Convert <- p30$estimates[1, 2]
+# set lower bound
+p30.Convert.L <- p30$L[1, 2]
+# get upper bound
+p30.Convert.U <- p30$U[1, 2]
+#combine
+con.30 <- c(30, p30.Convert, p30.Convert.L, p30.Convert.U)
+## 40 year old
+p40 <-
+  pmatrix.msm(m1, covariates = list(Age = 40), ci = "normal")
+# Get Transition to Relid Estimate
+p40.Convert <- p40$estimates[1, 2]
+# set lower bound
+p40.Convert.L <- p40$L[1, 2]
+# get upper bound
+p40.Convert.U <- p40$U[1, 2]
+con.40 <- c(40, p40.Convert, p40.Convert.L, p40.Convert.U)
+## 50 year old
+p50 <-
+  pmatrix.msm(m1, covariates = list(Age = 50), ci = "normal")
+# Get Transition to Relid Estimate
+p50.Convert <- p50$estimates[1, 2]
+# set lower bound
+p50.Convert.L <- p50$L[1, 2]
+# get upper bound
+p50.Convert.U <- p50$U[1, 2]
+con.50 <- c(50, p50.Convert, p50.Convert.L, p50.Convert.U)
+## 60 year olds
+p60 <-
+  pmatrix.msm(m1, covariates = list(Age = 60), ci = "normal")
+# Get Transition to Relid Estimate
+p60.Convert <- p60$estimates[1, 2]
+# set lower bound
+p60.Convert.L <- p60$L[1, 2]
+# get upper bound
+p60.Convert.U <- p60$U[1, 2]
+con.60 <- c(60, p60.Convert, p60.Convert.L, p60.Convert.U)
+## 70 year olds
+p70 <-
+  pmatrix.msm(m1, covariates = list(Age = 70), ci = "normal")
+# Get Transition to Relid Estimate
+p70.Convert <- p70$estimates[1, 2]
+# set lower bound
+p70.Convert.L <- p70$L[1, 2]
+# get upper bound
+p70.Convert.U <- p70$U[1, 2]
+con.70 <- c(70, p70.Convert, p70.Convert.L, p70.Convert.U)
+### ## 80 year olds
+p80 <-
+  pmatrix.msm(m1, covariates = list(Age = 80), ci = "normal")
+# Get Transition to Relid Estimate
+p80.Convert <- p80$estimates[1, 2]
+# set lower bound
+p80.Convert.L <- p80$L[1, 2]
+# get upper bound
+p80.Convert.U <- p80$U[1, 2]
+con.80 <- c(80, p80.Convert, p80.Convert.L, p80.Convert.U)
+# ### ## 90 year olds
+p90 <-
+  pmatrix.msm(m1, covariates = list(Age = 90), ci = "normal")
+# # Get Transition to Relid Estimate
+p90.Convert <- p90$estimates[1, 2]
+# # set lower bound
+p90.Convert.L <- p90$L[1, 2]
+p90.Convert.U <- p90$U[1, 2]
+con.90 <- c(90, p90.Convert, p90.Convert.L, p90.Convert.U)
+# ### create data frame for conversion plot
+conplot <-
+  data.frame(rbind(con.20, con.30, con.40, con.50, con.60, con.70, con.80, con.90))
+colnames(conplot) <-
+  c("age", "conv_probability", "conv_lower", "conv_upper")
+library(ggplot2)
+
+
+##### CREAT PLOT FOR DECONVERSION
+## 20 year olds
+p20 <-
+  pmatrix.msm(m1, covariates = list(Age = 20), ci = "normal")
+# Get Transition to Relid Estimate
+p20.decon <- p20$estimates[2, 1]
+p20.decon.L <- p20$L[2, 1]
+p20.decon.U <- p20$U[2, 1]
+decon.20 <- c(20, p20.decon, p20.decon.L, p20.decon.U)
+p30 <-
+  pmatrix.msm(m1, covariates = list(Age = 30), ci = "normal")
+p30.decon <- p30$estimates[2, 1]
+p30.decon.L <- p30$L[2, 1]
+p30.decon.U <- p30$U[2, 1]
+decon.30 <- c(30, p30.decon, p30.decon.L, p30.decon.U)
+p40 <-
+  pmatrix.msm(m1, covariates = list(Age = 40), ci = "normal")
+p40.decon <- p40$estimates[2, 1]
+p40.decon.L <- p40$L[2, 1]
+p40.decon.U <- p40$U[2, 1]
+decon.40 <- c(40, p40.decon, p40.decon.L, p40.decon.U)
+p50 <-
+  pmatrix.msm(m1, covariates = list(Age = 50), ci = "normal")
+p50.decon <- p50$estimates[2, 1]
+p50.decon.L <- p50$L[2, 1]
+p50.decon.U <- p50$U[2, 1]
+decon.50 <- c(50, p50.decon, p50.decon.L, p50.decon.U)
+p60 <-
+  pmatrix.msm(m1, covariates = list(Age = 60), ci = "normal")
+p60.decon <- p60$estimates[2, 1]
+p60.decon.L <- p60$L[2, 1]
+p60.decon.U <- p60$U[2, 1]
+decon.60 <- c(60, p60.decon, p60.decon.L, p60.decon.U)
+p70 <-
+  pmatrix.msm(m1, covariates = list(Age = 70), ci = "normal")
+p70.decon <- p70$estimates[2, 1]
+p70.decon.L <- p70$L[2, 1]
+p70.decon.U <- p70$U[2, 1]
+decon.70 <- c(70, p70.decon, p70.decon.L, p70.decon.U)
+p80 <-
+  pmatrix.msm(m1, covariates = list(Age = 80), ci = "normal")
+p80.decon <- p80$estimates[2, 1]
+p80.decon.L <- p80$L[2, 1]
+p80.decon.U <- p80$U[2, 1]
+decon.80 <- c(80, p80.decon, p80.decon.L, p80.decon.U)
+p90 <-
+  pmatrix.msm(m1, covariates = list(Age = 90), ci = "normal")
+p90.decon <- p90$estimates[2, 1]
+p90.decon.L <- p90$L[2, 1]
+p90.decon.U <- p90$U[2, 1]
+decon.90 <- c(90, p90.decon, p90.decon.L, p90.decon.U)
+
+### create data frame for conversion plot
+deconplot <-
+  data.frame(rbind(
+    decon.20,
+    decon.30,
+    decon.40,
+    decon.50,
+    decon.60,
+    decon.70,
+    decon.80,
+    decon.90
+  ))
+colnames(deconplot) <-
+  c("age", "decon_probability", "decon_lower", "decon_upper")
+library(ggplot2)
+
+
+#grid.arrange(plot.con,plot.decon, ncol=2)
+### SUPERIMPOSE
+deconplot$Group <- as.factor(rep("Dis-Belief", nrow(deconplot)))
+conplot$Group <- as.factor(rep("Belief", nrow(conplot)))
+deconplot2 <- deconplot %>%
+  dplyr::mutate(
+    conv_probability = decon_probability,
+    conv_lower = decon_lower,
+    conv_upper = decon_upper
+  ) %>%
+  dplyr::select(-c(decon_probability, decon_upper, decon_lower))
+
+comboplot <- rbind(conplot, deconplot2)
+#comboplot
+# get initial probabilities for title label
+#pmatrix.msm(m1)
+
+library(ggplot2)
+
+library("ggokabeito")   # color palette
+ 
+
+plot_5_s_30 <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .35))  +
+  labs(x = "Age", y = "Annual Probability of (Dis)Belief Spirit w/ 95 CI ") + theme_bw() +
+  labs(title = "Hidden Markov Model: (Dis)Belief in Spirit Dynamics in New Zealand",
+  subtitle= "N = 21936, years 2016-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_okabe_ito() + 
+  theme(legend.position = "bottom")
+
+plot_5_s_30 
+
+
+
+plot_5_s_12 <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .12))  +
+  labs(x = "Age", y = "Annual Probability of (Dis)Belief Spirit w/ 95 CI ") + theme_bw() +
+  labs(title = "Hidden Markov Model: (Dis)Belief in Spirit Dynamics in New Zealand",
+  subtitle= "N = 21936, years 2016-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_okabe_ito() + 
+  theme(legend.position = "bottom")
+
+plot_5_s_12
+
+saveRDS(plot_5_s_12,   here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plot_5_s_12")))
+saveRDS(plot_5_s_30,   here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plot_5_s_30")))
+
+plot_5_s_12 <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plot_5_s_12")))
+plot_5_s_30 <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plot_5_s_30")))
+
+plot_5_s_30
+
+## 10 year spirit graphs 
+
+plot_10_s_30 <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .35))  +
+  labs(x = "Age", y = "Annual Probability of (Dis)Belief Spirit w/ 95 CI ") + theme_bw() +
+  labs(title = "Hidden Markov Model: (Dis)Belief in Spirit Dynamics in New Zealand",
+  subtitle= "N = 4441, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_okabe_ito() + 
+  theme(legend.position = "bottom")
+
+plot_10_s_30 
+
+
+
+plot_10_s_12 <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .12))  +
+  labs(x = "Age", y = "Annual Probability of (Dis)Belief Spirit w/ 95 CI ") + theme_bw() +
+  labs(title = "Hidden Markov Model: (Dis)Belief in Spirit Dynamics in New Zealand",
+  subtitle= "N = 4441, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_okabe_ito() + 
+  theme(legend.position = "bottom")
+
+plot_10_s_12
+plot_10_s_30
+
+saveRDS(plot_10_s_12,   here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plot_5_s_12")))
+saveRDS(plot_10_s_30,   here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_s_30")))
+
+plot_10_s_12 <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_s_12")))
+plot_10_s_30 <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_s_30")))
+
+
+
+### MANIFEST PLOTS 
+
+## 5 years
+
+plot_5_s_30_man <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F, 
+             method = "gam",
+             formula = y ~ s(x, bs = "cs", fx = TRUE, k = 7)) +
+  scale_y_continuous(limits = c(0, .35))  +
+  labs(x = "Age", y = "Annual Probability of (Dis)Belief w/ 95 CI ") + theme_bw() + labs(title = "Manifest Markov Model: (Dis)Belief in Spirit Dynamics in New Zealand",
+  subtitle= "N = 21867, years 2016-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_okabe_ito() + 
+  theme(legend.position = "bottom")
+
+plot_5_s_30_man
+
+saveRDS(plot_5_s_30_man, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_5_s_30_man"))
+plot_5_s_30_man <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plot_5_s_30_man")))
+
+
+## 10 Years 
+plot_10_s_30_man <-
+  ggplot(
+    aes(
+      x = age,
+      y = conv_probability,
+      ymin = conv_lower,
+      ymax = conv_upper,
+      colour = Group
+    ),
+    data = comboplot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F, 
+             method = "gam",
+             formula = y ~ s(x, bs = "cs", fx = TRUE, k = 7)) +
+  scale_y_continuous(limits = c(0, .35))  +
+  labs(x = "Age", y = "Annual Probability of (Dis)Belief w/ 95 CI ") + theme_bw() + labs(title = "Manifest Markov Model: (Dis)Belief in God Dynamics in New Zealand",
+  subtitle= "N = 4441, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_okabe_ito() + 
+  theme(legend.position = "bottom")
+
+plot_10_s_30_man + plot_10_g_30_man
+
+plot_10_s_30_man + plot_10_s_30
+
+plot_5_s_30_man + plot_5_s_30
+
+plot_10_s_30_man
+
+
+saveRDS(plot_10_s_30_man, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_s_30_man"))
+plot_10_s_30_man <- readRDS(here::here(here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_s_30_man")))
+
+
+```
+
+
+#### Graphs 
+
+```{r}
+plot_5_s_30_man  + plot_5_s_30
+
+plot_10_s_30_man  +  plot_10_s_30
+
+
+plot_10_r_30 + plot_10_g_30  + plot_10_s_30 +   plot_layout(guides = 'collect')
+
+plot_5_r_30 + plot_5_g_30  + plot_5_s_30 +   plot_layout(guides = 'collect')
+
+
+(plot_10_r_12 + plot_5_r_12) /
+(plot_10_g_12 + plot_5_g_12) /
+  (plot_10_s_12 + plot_5_s_12) + 
+     plot_layout(guides = 'collect')
+
+```
+
+
+
+
 
