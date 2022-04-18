@@ -6264,7 +6264,6 @@ library("msm")
 
 # DATA 
 a_imp_5_r <- readRDS( here::here("_posts","religious_simpsons_paradox","mods", "a_imp_5_r"))
-
 a_imp_10_r <- readRDS( here::here("_posts","religious_simpsons_paradox","mods", "a_imp_10_r"))
 a_imp_10_g <- readRDS( here::here("_posts","religious_simpsons_paradox","mods", "a_imp_10_g"))
 a_imp_10_s <- readRDS( here::here("_posts","religious_simpsons_paradox","mods", "a_imp_10_s"))
@@ -6330,7 +6329,20 @@ msm_10_r_imp1  <- msm(
   gen.inits = TRUE
 )
 
+msm_10_r_MAN_imp1  <- msm(
+  Religious1 ~ yearW,
+  Id,
+  data = a_imp_10_r1,
+  covariates =  ~ Age,
+  qmatrix = crudeinR1,
+ # ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
 
+save_here(msm_10_r_MAN_imp1,"msm_10_r_MAN_imp1")
 
 # model2
 
@@ -6352,6 +6364,24 @@ msm_10_r_imp2  <- msm(
   # Not running without this assumption.
   gen.inits = TRUE
 )
+
+
+
+
+msm_10_r_MAN_imp2  <- msm(
+  Religious1 ~ yearW,
+  Id,
+  data = a_imp_10_r2,
+  covariates =  ~ Age,
+  qmatrix = crudeinR2,
+ # ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+save_here( msm_10_r_MAN_imp2, "msm_10_r_MAN_imp2")
 
 
 
@@ -6378,6 +6408,22 @@ msm_10_r_imp3  <- msm(
 
 
 
+msm_10_r_MAN_imp3  <- msm(
+  Religious1 ~ yearW,
+  Id,
+  data = a_imp_10_r3,
+  covariates =  ~ Age,
+  qmatrix = crudeinR3,
+ # ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+save_here( msm_10_r_MAN_imp3, "msm_10_r_MAN_imp3")
+
+
 # model 4
 
 crudeinR4 <-
@@ -6401,6 +6447,21 @@ msm_10_r_imp4  <- msm(
 
 
 
+msm_10_r_MAN_imp4  <- msm(
+  Religious1 ~ yearW,
+  Id,
+  data = a_imp_10_r4,
+  covariates =  ~ Age,
+  qmatrix = crudeinR4,
+ # ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+save_here( msm_10_r_MAN_imp4,"msm_10_r_MAN_imp4")
+
 # model 5
 
 crudeinR5 <-
@@ -6420,6 +6481,23 @@ msm_10_r_imp5  <- msm(
   # Not running without this assumption.
   gen.inits = TRUE
 )
+
+
+msm_10_r_MAN_imp5  <- msm(
+  Religious1 ~ yearW,
+  Id,
+  data = a_imp_10_r5,
+  covariates =  ~ Age,
+  qmatrix = crudeinR5,
+ # ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+save_here(msm_10_r_MAN_imp5, "msm_10_r_MAN_imp5")
+
 
 
 saveRDS(msm_10_r_imp1, here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_r_imp1" ))
@@ -6465,6 +6543,20 @@ msm_10_g_imp1  <- msm(
 )
 
 
+msm_10_g_MAN_imp1  <- msm(
+  bg1 ~ yearW,
+  Id,
+  data = a_imp_10_g1,
+  covariates =  ~ Age,
+  qmatrix = crudein_G1,
+ # ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+save_here( msm_10_g_MAN_imp1, "msm_10_g_MAN_imp1")
 
 # model2
 
@@ -6489,6 +6581,22 @@ msm_10_g_imp2  <- msm(
 
 
 
+msm_10_g_MAN_imp2  <- msm(
+  bg1 ~ yearW,
+  Id,
+  data = a_imp_10_g2,
+  covariates =  ~ Age,
+  qmatrix = crudein_G2,
+ # ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+save_here(msm_10_g_MAN_imp2, "msm_10_g_MAN_imp2")
+
+
 # model 3
 
 crudein_G3 <-
@@ -6511,6 +6619,20 @@ msm_10_g_imp3  <- msm(
 )
 
 
+msm_10_g_MAN_imp3  <- msm(
+  bg1 ~ yearW,
+  Id,
+  data = a_imp_10_g3,
+  covariates =  ~ Age,
+  qmatrix = crudein_G3,
+ # ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+save_here( msm_10_g_MAN_imp3, "msm_10_g_MAN_imp3")
 
 # model 4
 
@@ -6535,6 +6657,21 @@ msm_10_g_imp4  <- msm(
 
 
 
+msm_10_g_MAN_imp4  <- msm(
+  bg1 ~ yearW,
+  Id,
+  data = a_imp_10_g4,
+  covariates =  ~ Age,
+  qmatrix = crudein_G4,
+ # ematrix = rbind(c(.1, .1), c(.1, .1)),
+  #est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+save_here( msm_10_g_MAN_imp4, "msm_10_g_MAN_imp4")
+
 # model 5
 
 crudein_G5 <-
@@ -6554,6 +6691,23 @@ msm_10_g_imp5  <- msm(
   # Not running without this assumption.
   gen.inits = TRUE
 )
+
+
+msm_10_g_MAN_imp5  <- msm(
+  bg1 ~ yearW,
+  Id,
+  data = a_imp_10_g5,
+  covariates =  ~ Age,
+  qmatrix = crudein_G5,
+ # ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+save_here(msm_10_g_MAN_imp5, "msm_10_g_MAN_imp5")
+
 
 
 saveRDS(msm_10_g_imp1, here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_g_imp1" ))
@@ -6596,6 +6750,21 @@ msm_10_s_imp1  <- msm(
 )
 
 
+msm_10_s_MAN_imp1  <- msm(
+  bs1 ~ yearW,
+  Id,
+  data = a_imp_10_s1,
+  covariates =  ~ Age,
+  qmatrix = crudein_s1,
+  #ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+save_here( msm_10_s_MAN_imp1, "msm_10_s_MAN_imp1")
+
 
 # model2
 
@@ -6620,6 +6789,21 @@ msm_10_s_imp2  <- msm(
 
 
 
+msm_10_s_MAN_imp2  <- msm(
+  bs1 ~ yearW,
+  Id,
+  data = a_imp_10_s2,
+  covariates =  ~ Age,
+  qmatrix = crudein_s2,
+ # ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+save_here(msm_10_s_MAN_imp2 , "msm_10_s_MAN_imp2")
+
 # model 3
 
 crudein_s3 <-
@@ -6642,6 +6826,20 @@ msm_10_s_imp3  <- msm(
 )
 
 
+msm_10_s_MAN_imp3  <- msm(
+  bs1 ~ yearW,
+  Id,
+  data = a_imp_10_s3,
+  covariates =  ~ Age,
+  qmatrix = crudein_s3,
+ # ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+save_here(msm_10_s_MAN_imp3, "msm_10_s_MAN_imp3")
 
 # model 4
 
@@ -6664,6 +6862,20 @@ msm_10_s_imp4  <- msm(
   gen.inits = TRUE
 )
 
+msm_10_s_MAN_imp4  <- msm(
+  bs1 ~ yearW,
+  Id,
+  data = a_imp_10_s4,
+  covariates =  ~ Age,
+  qmatrix = crudein_s4,
+  #ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+save_here(msm_10_s_MAN_imp4, "msm_10_s_MAN_imp4")
 
 
 # model 5
@@ -6685,6 +6897,26 @@ msm_10_s_imp5  <- msm(
   # Not running without this assumption.
   gen.inits = TRUE
 )
+
+
+
+msm_10_s_MAN_imp5  <- msm(
+  bs1 ~ yearW,
+  Id,
+  data = a_imp_10_s5,
+  covariates =  ~ Age,
+  qmatrix = crudein_s5,
+  #ematrix = rbind(c(.1, .1), c(.1, .1)),
+  est.initprobs = TRUE,
+  exacttimes = TRUE,
+  # Not running without this assumption.
+  gen.inits = TRUE
+)
+
+save_here( msm_10_s_MAN_imp5, "msm_10_s_MAN_imp5")
+
+
+## SAVe
 
 saveRDS(msm_10_s_imp1, here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_s_imp1" ))
 saveRDS(msm_10_s_imp2, here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_s_imp2" ))
@@ -6794,19 +7026,22 @@ msm_10_r_MAN_imp1 <- readRDS(here::here( "_posts","religious_simpsons_paradox", 
 
 ```
 
-
-
-
-
 ### IMPUTATION COMPARE GRAPHS RELIGION
 
 ```{r}
-
 msm_10_r_imp1 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_r_imp1" ))
 msm_10_r_imp2 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_r_imp2" ))
 msm_10_r_imp3 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_r_imp3" ))
 msm_10_r_imp4 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_r_imp4" ))
 msm_10_r_imp5 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_r_imp5" ))
+
+m1<- msm_10_r_imp1
+m1<- msm_10_r_imp2
+m1<- msm_10_r_imp3
+m1<- msm_10_r_imp4
+m1<- msm_10_r_imp5
+
+msm_10_r_imp1
 
 
 p20 <-
@@ -6979,6 +7214,301 @@ comboplot <- rbind(conplot, deconplot2)
 
 
 
+library("ggplot2")
+library("patchwork")
+```
+
+
+# POOLED PLOTS 
+
+```{r}
+### pooled 
+plot_10_r_15_pooled <-
+  ggplot(
+    aes(
+      x = age,
+      y = pooled_mean,
+      ymin = pooled_mean - pooled_ci,
+      ymax = pooled_mean + pooled_ci,
+      colour = Group
+    ),
+    data = r_pool_plot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .15))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Affiliation w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Afilliation Pooled Imputation Model",
+  subtitle= "N = 4441, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_aaas() + 
+  theme(legend.position = "bottom")
+
+## WORKS!! 
+plot_10_r_15_pooled
+
+save_here(plot_10_r_15_pooled, "plot_10_r_15_pooled")
+
+plot_10_r_35_pooled <-
+  ggplot(
+    aes(
+      x = age,
+      y = pooled_mean,
+      ymin = pooled_mean - pooled_ci,
+      ymax = pooled_mean + pooled_ci,
+      colour = Group
+    ),
+    data = r_pool_plot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .35))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Affiliation w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Afilliation Pooled Imputation Model",
+  subtitle= "N = 4441, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_aaas() + 
+  theme(legend.position = "bottom")
+
+plot_10_r_35_pooled
+
+save_here(plot_10_r_35_pooled, "plot_10_r_35_pooled")
+
+
+
+### God pooled 
+
+
+
+plot_10_g_15_pooled <-
+  ggplot(
+    aes(
+      x = age,
+      y = pooled_mean,
+      ymin = pooled_mean - pooled_ci,
+      ymax = pooled_mean + pooled_ci,
+      colour = Group
+    ),
+    data = g_pool_plot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F, 
+             method = "gam",
+             formula = y ~ s(x, bs = "cs", fx = TRUE, k = 7)) +
+  scale_y_continuous(limits = c(0, .15))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Belief w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Belief God Pooled Imputation Model",
+  subtitle= "N = 4441, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_npg() + 
+  theme(legend.position = "bottom")
+
+plot_10_g_15_pooled
+
+save_here(plot_10_g_15_pooled,"plot_10_g_15_pooled")
+
+
+plot_10_g_35_pooled <-
+  ggplot(
+    aes(
+      x = age,
+      y = pooled_mean,
+      ymin = pooled_mean - pooled_ci,
+      ymax = pooled_mean + pooled_ci,
+      colour = Group
+    ),
+    data = g_pool_plot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F, 
+             method = "gam",
+             formula = y ~ s(x, bs = "cs", fx = TRUE, k = 7)) +
+  scale_y_continuous(limits = c(0, .35))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Belief w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Belief God Pooled Imputation Model",
+  subtitle= "N = 4441, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_npg() + 
+  theme(legend.position = "bottom")
+
+plot_10_g_35_pooled
+
+save_here(plot_10_g_35_pooled,"plot_10_g_35_pooled")
+
+
+# Spirit
+
+
+plot_10_s_15_pooled <-
+  ggplot(
+    aes(
+      x = age,
+      y = pooled_mean,
+      ymin = pooled_mean - pooled_ci,
+      ymax = pooled_mean + pooled_ci,
+      colour = Group
+    ),
+    data = s_pool_plot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F, 
+             method = "gam",
+             formula = y ~ s(x, bs = "cs", fx = TRUE, k = 7)) +
+  scale_y_continuous(limits = c(0, .15))  +
+  labs(x = "Age", y = "Annual Probability of (Dis)Belief w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Belief Spirit: Pooled Imputation Model",
+  subtitle= "N = 4441, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_okabe_ito() + 
+  theme(legend.position = "bottom")
+
+plot_10_s_15_pooled
+
+save_here(plot_10_s_15_pooled,"plot_10_s_15_pooled")
+
+
+
+
+plot_10_s_35_pooled <-
+  ggplot(
+    aes(
+      x = age,
+      y = pooled_mean,
+      ymin = pooled_mean - pooled_ci,
+      ymax = pooled_mean + pooled_ci,
+      colour = Group
+    ),
+    data = s_pool_plot
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F, 
+             method = "gam",
+             formula = y ~ s(x, bs = "cs", fx = TRUE, k = 7)) +
+  scale_y_continuous(limits = c(0, .35))  +
+  labs(x = "Age", y = "Annual Probability of (Dis)Belief w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Belief Spirit: Pooled Imputation Model",
+  subtitle= "N = 4441, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_okabe_ito() + 
+  theme(legend.position = "bottom")
+
+plot_10_s_35_pooled
+
+save_here(plot_10_s_35_pooled, "plot_10_s_35_pooled")
+```
+
+
+
+
+### Pooled manifest grpha 
+
+
+
+```{r}
+yola
+
+## Religion Manifest pooled 
+
+
+plot_10_r_35_man_pooled<-
+  ggplot(
+    aes(
+      x = age,
+      y = pooled_mean,
+      ymin = pooled_mean - pooled_ci,
+      ymax = pooled_mean + pooled_ci,
+      colour = Group
+    ),
+    data = r_pool_plot_man
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F) +
+  scale_y_continuous(limits = c(0, .35))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Affiliation w/ 95 CI ") + theme_bw() + labs(title = "Manifest Markov Model (Dis)Afilliation Imputed",
+  subtitle= "N = 4441, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_aaas() + 
+  theme(legend.position = "bottom")
+
+plot_10_r_35_man_pooled
+
+save_here(plot_10_r_35_man_pooled, "plot_10_r_35_man_pooled")
+
+## God Manifest pooled 
+
+plot_10_g_35_man_pooled <-
+  ggplot(
+    aes(
+      x = age,
+      y = pooled_mean,
+      ymin = pooled_mean - pooled_ci,
+      ymax = pooled_mean + pooled_ci,
+      colour = Group
+    ),
+    data = g_pool_plot_man
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F, 
+             method = "gam",
+             formula = y ~ s(x, bs = "cs", fx = TRUE, k = 7)) +
+  scale_y_continuous(limits = c(0, .35))  +
+  labs(x = "Age", y = "Annual Probability of Religious (Dis)Belief w/ 95 CI ") + theme_bw() + labs(title = "Manifest Markov Model: (Dis)Belief in God Imputed",
+  subtitle= "N = 4441, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_npg() + 
+  theme(legend.position = "bottom")
+plot_10_g_35_man_pooled
+
+save_here(plot_10_g_35_man_pooled, "plot_10_g_35_man_pooled")
+
+
+## Spirit manifest pooled
+
+plot_10_s_35_man_pooled <-
+  ggplot(
+    aes(
+      x = age,
+      y = pooled_mean,
+      ymin = pooled_mean - pooled_ci,
+      ymax = pooled_mean + pooled_ci,
+      colour = Group
+    ),
+    data = s_pool_plot_man
+  ) +
+  geom_point(alpha = 1, stroke = 2) +
+  geom_linerange(alpha = 1) +
+  geom_smooth(se = F, 
+             method = "gam",
+             formula = y ~ s(x, bs = "cs", fx = TRUE, k = 7)) +
+  scale_y_continuous(limits = c(0, .35))  +
+  labs(x = "Age", y = "Annual Probability of (Dis)Belief w/ 95 CI ") + theme_bw() + labs(title = "Manifest Markov Model: (Dis)Belief in Spirit Imputed",
+  subtitle= "N = 4441, years 2010-2021") +
+  #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
+  scale_color_okabe_ito() + 
+  theme(legend.position = "bottom")
+
+plot_10_s_35_man_pooled
+
+save_here(plot_10_s_35_man_pooled, "plot_10_s_35_man_pooled")
+
+
+plot_10_r_35_man_pooled + plot_10_r_35_pooled
+
+plot_10_g_35_man_pooled + plot_10_g_35_pooled
+
+plot_10_s_35_man_pooled + plot_10_s_35_pooled
+
+
+```
+
+
+
+
+
+
+```{r}
 ### IMPUTATION 1
 
 plot_10_r_12_imp1 <-
@@ -7002,7 +7532,7 @@ plot_10_r_12_imp1 <-
   scale_color_aaas() + 
   theme(legend.position = "bottom")
 
-
+plot_10_r_12_imp1
 
 ### IMPUTATION 2
 
@@ -7027,6 +7557,7 @@ plot_10_r_12_imp2 <-
   scale_color_aaas() + 
   theme(legend.position = "bottom")
 
+plot_10_r_12_imp2
 
 ### IMPUTATION 3
 
@@ -7051,11 +7582,12 @@ plot_10_r_12_imp3 <-
   scale_color_aaas() + 
   theme(legend.position = "bottom")
 
+plot_10_r_12_imp3
 
 
 ### IMPUTATION 4
 
-plot_10_r_12_imp3 <-
+plot_10_r_12_imp4 <-
   ggplot(
     aes(
       x = age,
@@ -7069,7 +7601,7 @@ plot_10_r_12_imp3 <-
   geom_point(alpha = 1, stroke = 2) +
   geom_linerange(alpha = 1) +
   geom_smooth(se = F) +
-  scale_y_continuous(limits = c(0, .12))  +
+  scale_y_continuous(limits = c(0, .13))  +
   labs(x = "Age", y = "Annual Probability of Religious (Dis)Affiliation w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Afilliation Imputation 4",
   subtitle= "N = 4441, years 2010-2021") +
   #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
@@ -7099,6 +7631,11 @@ plot_10_r_12_imp5 <-
   scale_color_aaas() + 
   theme(legend.position = "bottom")
 
+plot_10_r_12_imp1+
+plot_10_r_12_imp2 +
+plot_10_r_12_imp3 +
+plot_10_r_12_imp4 + 
+plot_10_r_12_imp5 +
 
 saveRDS(plot_10_r_12_imp1, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_r_12_imp1"))
 saveRDS(plot_10_r_12_imp2, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_r_12_imp2"))
@@ -7117,7 +7654,6 @@ plot_10_r_12_imp5 <- readRDS(here::here(here::here("_posts", "religious_simpsons
 
 ```
 
-
 ### IMPUTATION COMPARE GRAPHS GOD
 
 ```{r}
@@ -7127,6 +7663,11 @@ msm_10_g_imp3 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mod
 msm_10_g_imp4 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_g_imp4" ))
 msm_10_g_imp5 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_g_imp5" ))
 
+m1 <- msm_10_g_imp1
+m1 <- msm_10_g_imp2
+m1 <- msm_10_g_imp3
+m1 <- msm_10_g_imp4
+m1 <- msm_10_g_imp5
 
 p20 <-
   pmatrix.msm(m1, covariates = list(Age = 20), ci = "normal")
@@ -7284,8 +7825,8 @@ library(ggplot2)
 
 #grid.arrange(plot.con,plot.decon, ncol=2)
 ### SUPERIMPOSE
-deconplot$Group <- as.factor(rep("Disaffiliation", nrow(deconplot)))
-conplot$Group <- as.factor(rep("Affiliation", nrow(conplot)))
+deconplot$Group <- as.factor(rep("Disbelief", nrow(deconplot)))
+conplot$Group <- as.factor(rep("Belief", nrow(conplot)))
 deconplot2 <- deconplot %>%
   dplyr::mutate(
     conv_probability = decon_probability,
@@ -7324,6 +7865,7 @@ plot_10_g_12_imp1 <-
   scale_color_npg() + 
   theme(legend.position = "bottom")
 
+plot_10_g_12_imp1
 
 
 
@@ -7351,7 +7893,7 @@ plot_10_g_12_imp2 <-
   theme(legend.position = "bottom")
 
 
-
+plot_10_g_12_imp2
 
 plot_10_g_12_imp3 <-
   ggplot(
@@ -7376,7 +7918,7 @@ plot_10_g_12_imp3 <-
   scale_color_npg() + 
   theme(legend.position = "bottom")
 
-
+plot_10_g_12_imp3
 
 plot_10_g_12_imp4 <-
   ggplot(
@@ -7401,7 +7943,7 @@ plot_10_g_12_imp4 <-
   scale_color_npg() + 
   theme(legend.position = "bottom")
 
-
+plot_10_g_12_imp4
 
 plot_10_g_12_imp5 <-
   ggplot(
@@ -7428,6 +7970,9 @@ plot_10_g_12_imp5 <-
 
 
 
+plot_10_g_12_imp1 + plot_10_g_12_imp2 + plot_10_g_12_imp3 + plot_10_g_12_imp4 +plot_10_g_12_imp5
+
+
 saveRDS(plot_10_g_12_imp1, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_g_12_imp1"))
 saveRDS(plot_10_g_12_imp2, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_g_12_imp2"))
 saveRDS(plot_10_g_12_imp3, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_g_12_imp3"))
@@ -7445,9 +7990,7 @@ plot_10_g_12_imp5 <- readRDS(here::here(here::here("_posts", "religious_simpsons
 
 ```
 
-
-### IMPUTATION COMPARE GRAPHS SPIRIT 
-
+### IMPUTATION COMPARE GRAPHS SPIRIT
 
 ```{r}
 
@@ -7456,6 +7999,14 @@ msm_10_s_imp2 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mod
 msm_10_s_imp3 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_s_imp3" ))
 msm_10_s_imp4 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_s_imp4" ))
 msm_10_s_imp5 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_s_imp5" ))
+
+
+m1 <- msm_10_s_imp1
+m1 <- msm_10_s_imp2
+m1 <- msm_10_s_imp3
+m1 <- msm_10_s_imp4
+m1 <- msm_10_s_imp5
+
 
 
 p20 <-
@@ -7614,8 +8165,8 @@ library(ggplot2)
 
 #grid.arrange(plot.con,plot.decon, ncol=2)
 ### SUPERIMPOSE
-deconplot$Group <- as.factor(rep("Disaffiliation", nrow(deconplot)))
-conplot$Group <- as.factor(rep("Affiliation", nrow(conplot)))
+deconplot$Group <- as.factor(rep("Disbelief", nrow(deconplot)))
+conplot$Group <- as.factor(rep("Belief", nrow(conplot)))
 deconplot2 <- deconplot %>%
   dplyr::mutate(
     conv_probability = decon_probability,
@@ -7655,6 +8206,9 @@ plot_10_s_12_imp1 <-
 
 
 
+plot_10_s_12_imp1
+
+
 plot_10_s_12_imp2 <-
   ggplot(
     aes(
@@ -7676,6 +8230,8 @@ plot_10_s_12_imp2 <-
   #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
   scale_color_okabe_ito() + 
   theme(legend.position = "bottom")
+
+plot_10_s_12_imp2
 
 
 plot_10_s_12_imp3 <-
@@ -7701,6 +8257,9 @@ plot_10_s_12_imp3 <-
   theme(legend.position = "bottom")
 
 
+plot_10_s_12_imp3
+
+
 plot_10_s_12_imp4 <-
   ggplot(
     aes(
@@ -7723,6 +8282,8 @@ plot_10_s_12_imp4 <-
   scale_color_okabe_ito() + 
   theme(legend.position = "bottom")
 
+
+plot_10_s_12_imp4
 
 plot_10_s_12_imp5 <-
   ggplot(
@@ -7747,7 +8308,7 @@ plot_10_s_12_imp5 <-
   theme(legend.position = "bottom")
 
 
-
+plot_10_s_12_imp1  + plot_10_s_12_imp2 + plot_10_s_12_imp3 +plot_10_s_12_imp4 +plot_10_s_12_imp5
 
 saveRDS(plot_10_s_12_imp1, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_s_12_imp1"))
 saveRDS(plot_10_s_12_imp2, here::here("_posts", "religious_simpsons_paradox", "mods", "plot_10_s_12_imp2"))
@@ -7768,12 +8329,7 @@ plot_10_s_12_imp5 <- readRDS(here::here(here::here("_posts", "religious_simpsons
 
 ```
 
-
-
-
-### OLD GRAPHS 
-
-
+### OLD GRAPHS
 
 ```{r}
 # read model, (saved to save time)
