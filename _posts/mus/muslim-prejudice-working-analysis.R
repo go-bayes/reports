@@ -3,18 +3,8 @@
 # joseph.bulbulia@gmail.com
 # code for plots
 
-# test autoprior
-library(sjstats)
+
 # model <- sjstats::tidy_stan(tab)
-# 
-# f <- formula(Ys ~ As  *  Wave + (1|Id),  sigma ~ As)
-# 
-# 
-# outp <- sjstats::auto_prior(f, imps_bind$imputations$imp[[1]], TRUE)
-# saveRDS(outp, here::here("_posts", "mus" ,"mods", "outp"))
-# outp
-
-
 
 #libraries
 library("here") # file management
@@ -36,7 +26,7 @@ library("broom.mixed") # mixed effects models
 library("brms") # bayesian estimation
 library("rstan") # backend brms
 library("rstanarm") # graphing
-library("cmdstanr") # backend brms'
+#library("cmdstanr") # backend brms'
 #library("ipw") # inverse probability weighting
 library("tidybayes") # workign with posterior probability distributions
 library("bayesplot") # graphs
@@ -53,11 +43,11 @@ library("future")
 #library(splines)
 # rstan options
 library("brms") # bayesian estimation
-library("cmdstanr") # backend brms
+#library("cmdstanr") # backend brms
 rstan_options(auto_write = TRUE) # bayesian estimation
-options(mc.cores = parallel::detectCores ()) # use all course
+#options(mc.cores = parallel::detectCores ()) # use all core
 
-options(mc.cores = 2 ) # use all course
+#options(mc.cores = 2 ) # use all core
 
 #parallel::detectCores ()
 # cite packages
@@ -76,6 +66,8 @@ df%>%
   dplyr::filter(Wave==2019) %>%
   select(TSCORE)%>%
   summarise(max(TSCORE, na.rm=TRUE))
+
+
 # 3665 - min = 13 July 2019
 # 4125 max = 15 October 2021
 
@@ -265,7 +257,104 @@ ggsave(
 )
 
 
+### Wave 10 Only 
 
+sadi <- df %>%
+  filter(Wave == 2018 & YearMeasured==1)%>%
+  select(Warm.Muslims, TSCORE, Id) %>%
+  dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30)+ TSCORE)%>%
+ # dplyr::filter(timeline > "2018-06-06") %>%
+ # dplyr:::count(day = floor_date(timeline, "day"))%>%
+   dplyr::mutate(Attack_Condition = factor(
+    ifelse(timeline < "2019-03-15", 0, 1),
+    labels= c("Baseline","Post-attack")))%>%
+  arrange(timeline,Attack_Condition)
+
+sadi <-as.data.frame(sadi)
+head(sadi)
+min(sadi$day)
+
+
+table1::table1( ~ Attack_Condition, data = sadi )
+
+library(ggsci)
+rdd <- ggplot(sadi, aes(x = timeline, y = Warm.Muslims, color = Attack_Condition)) +
+  geom_point(alpha = .01) + 
+  stat_smooth(method = "gam") + 
+  theme(legend.position = "bottom") +
+  labs(subtitle = "RDD: gam estimator",
+       y = "Warmth to Muslims",
+       x = "NZAVS Time 10 timeline (after June 06) ") + 
+  scale_colour_npg(alpha = 1) + theme_classic() 
+  
+rdd
+
+### Graph of Timeline 
+
+sadi2 <- df %>%
+  filter(Wave == 2018 & YearMeasured == 1) %>%
+ # drop_levels() %>%
+  select(Warm.Muslims, TSCORE) %>%
+  dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30) + TSCORE) %>%
+  dplyr::filter(timeline > "2018-06-06") %>%
+  dplyr:::count(day = floor_date(timeline, "day")) %>%
+      dplyr::mutate(Attack_Condition = factor(
+        ifelse(day < "2019-03-15", 0, 1),
+        labels = c("Baseline", "Post-attack")
+      )) %>%
+      arrange(day, Attack_Condition)
+
+sadi2
+dates_vline2<- as.Date("2019-03-15")
+dates_vline2b<-which(sadi2$day %in% dates_vline2)
+
+dates_vline3<- as.Date("2019-06-15")
+dates_vline3b<-which(sadi2$day %in% dates_vline3)
+
+#dates_vline3<- as.Date("2019-06-18")
+
+lds3 <- ggplot(sadi2, aes(day, n)) + 
+  geom_col(aes(fill = Attack_Condition)) + 
+  scale_x_date(date_labels = "%b/%Y") +     #  limits = c(as.Date("2018-06-01"), as.Date("2021-10-16")))  +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
+  geom_vline(xintercept = as.numeric(sadi2$day[dates_vline2b]),
+             col = "red",
+             linetype = "dashed") +
+  geom_vline(xintercept = as.numeric(sadi2$day[dates_vline3b]),
+             col = "red",
+             linetype = "dashed") +
+  labs(x = "NZAVS Waves years 2018 - 2021 daily counts by condition",
+       y = "Count of Responses",
+     #  title = "Data Collection for RDD Analysis of Mosque Attacks",
+       subtitle = "Data Collection Wave 10 (after June 6)")+
+  scale_colour_npg(alpha =.1) + 
+  annotate(
+    geom = "text",
+    x = as.Date("2019-05-01"),
+    y = 2300,
+    label = "90 Days\nafter attacks") + 
+  theme_classic() 
+  
+
+rdd_graph <- lds3/rdd + plot_layout(guides = 'collect') + plot_annotation(tag_levels = "i", "Replication of Regression Discontinuity Analysis") 
+  
+
+rdd_graph
+
+
+
+
+# ggsave(
+#   rdd_graph,
+#   path = here::here(here::here("_posts", "mus", "figs")),
+#   width = 12,
+#   height =12,
+#   units = "in",
+#   filename = "rdd_graph.jpg",
+#   device = 'jpeg',
+#   limitsize = FALSE,
+#   dpi = 1000
+# )
 
 # time trajectory --------------------------------------------------------------
 
@@ -397,6 +486,75 @@ summary(all_d$dys)
 
 
 str(all_d$As)
+
+
+# all_d_time_10 -----------------------------------------------------------
+
+
+all_di <- df %>%
+  dplyr::select(
+    Id,
+    Age,
+    Wave,
+    Partner,
+    Parent,
+    EthnicCats,
+    Urban,
+    Edu,
+    Male,
+    Pol.Orient,
+    NZdep,
+    GenCohort,
+    Urban,
+    TSCORE,
+    EthnicCats,
+    Employed,
+    # Warm.Overweight,
+    # Warm.Elderly,
+    # Warm.MentalIllness,
+    Warm.Muslims,
+    # Warm.Immigrants,
+    # Warm.Asians,
+    # Warm.Refugees,
+    # Wave,
+    # Warm.Maori,
+    # Warm.NZEuro,
+    # Warm.Indians,
+    # Warm.Chinese,
+    # Warm.Refugees,
+    # Warm.Pacific,
+    Muslim,
+    TSCORE,
+    WSCORE,
+    YearMeasured,
+    Religious,
+    GenCohort
+  ) %>%
+  dplyr::filter(
+    Wave == 2012 & YearMeasured == 1 |
+      Wave == 2013 & YearMeasured != -1 |
+      Wave == 2014 & YearMeasured != -1 |
+      Wave == 2015 & YearMeasured != -1 |
+      Wave == 2016 & YearMeasured != -1 |
+      Wave == 2017 & YearMeasured != -1 |
+      Wave == 2018 & YearMeasured != -1 
+  ) %>% 
+  dplyr::filter(YearMeasured != -1)%>% # remove people who passed away
+  droplevels() %>%
+  dplyr::mutate(org2012 =  ifelse(Wave == 2012 & YearMeasured ==1,1,0 ))%>%
+  group_by(Id) %>%
+  dplyr::mutate(hold = mean(org2012, na.rm = TRUE)) %>%  # Hack
+  filter(hold>0) %>% # hack to enable repeate of baseline in 2019 
+  ungroup() %>%
+  arrange(Wave,Id)
+
+arrange(Wave, Id) 
+levels(all_di$Wave) <- c("Time4", "Time5", "Time6", "Time7","Time8", "Time9","Time10")
+table(all_di$Wave)
+table1::table1(~ TSCORE|Wave, data = all_di)
+
+11799-4637
+# return to analysis ------------------------------------------------------
 
 
 
@@ -1039,10 +1197,9 @@ saveRDS(imputed0, here::here("_posts","mus","mods", "imputed0"))
 
 
 length(unique(imputed0$imputations$imp1$Id))
+head(imputed0$imputations$imp1$Id)
 
-# check means, looks good!
-imputed0<- readRDS(here::here("_posts","mus","mods","imputed0"))
-str(imputed0$imputations$imp1)
+
 
 
 table1::table1(~ Ys|Wave * As, data = imputed0$imputations$imp1, overall=FALSE)
@@ -1125,6 +1282,37 @@ imputed1<- amelia(
   empri = .05*nrow(km_one)) # ridge prior see: Amelia pdf documentation p.23
 
 saveRDS(imputed1, here::here("_posts","mus","mods", "imputed1"))
+
+
+
+# traceplot 1s ------------------------------------------------------------
+
+imputed1<- readRDS(here::here("_posts","mus","mods","imputed1"))
+dev.off()
+set.seed(0)
+out1<- as.character(sample(imputed1$imputations$imp1$Id, 12, replace = FALSE))
+out1
+
+
+imputed0<- readRDS(here::here("_posts","mus","mods","imputed0"))
+dev.off()
+set.seed(0)
+out0<- as.character(sample(imputed0$imputations$imp1$Id, 12, replace = FALSE))
+out0
+
+
+# traceplot 00's
+tscsPlot(imputed0, cs = c(out0), main = "no-attack exposure",
+         var = "Ys", nr = 3,ylim = c(0,8))
+
+# traceplot 01
+tscsPlot(imputed1, cs = c(out1), main = "attack exposure",
+         var = "Ys", nr = 3,ylim = c(0,8))
+
+
+
+# check imputation of 1's -------------------------------------------------
+
 
 table1::table1(~ Ys|Wave * As, data = imputed1$imputations$imp1, overall=FALSE)
 table1::table1(~ Ys|Wave * As, data = imputed1$imputations$imp2, overall=FALSE)
@@ -1211,6 +1399,7 @@ imps_bind <- readRDS(here::here("_posts", "mus", "mods", "imps_bind"))
 # ML model ----------------------------------------------------------------
 
 # model
+library(lme4)
 m<-10
 model_all<-NULL
 for(i in 1:m) {
@@ -1290,6 +1479,7 @@ plot_3 <- fitted_lines_all %>%
 # scale_colour_okabe_ito(alpha =.5) + 
 theme_classic()
 plot_3
+
 
 
 
@@ -2404,7 +2594,7 @@ b_sample_prior_strong <- brms::brm(
 
 # sensitivity anlaysis ----------------------------------------------------
 # imagine strong time effect
-
+listbayes <- readRDS(  file = here::here("_posts", "mus", "mods", "listbayes"))
 b_sens <- brms::brm(
   bf(Ys ~  As * Wave + (1 | Id)),
   data = listbayes,
@@ -2456,6 +2646,13 @@ tab %>%
 conditional_sens2 <- plot(conditional_effects(b_sens2,  "Wave:As",  ndraws = 200, spaghetti = T), points = F)
 saveRDS(conditional_sens2,here::here("_posts","mus","mods","conditional_sens2"))
 
+conditional_sens2 <- readRDS(here::here("_posts","mus","mods","conditional_sens2"))
+
+
+# save graph
+cluster_plot_st <- readRDS( here::here("_posts", "mus", "mods", "cluster_plot_st"))
+
+
 
 bayes_sense2 <- conditional_sens2$`Wave:As` + scale_y_continuous(limits=c(4.,4.48)) +
   labs(
@@ -2479,7 +2676,7 @@ ggsave(
   dpi = 800
 )
 
-compare_traj <- bayes_b_m1 + bayes_sense2 + plot_annotation(tag_levels = "i",
+compare_traj <- cluster_plot_st + bayes_sense2 + plot_annotation(tag_levels = "i",
                                                             title = "Sensitivity analysis: assuming twice the baseline growth rate does not affect post-attack inference")  +  
   plot_layout(guides = 'collect')
 compare_traj
@@ -5370,7 +5567,10 @@ str(listbayes)
 # saveRDS(self1, here::here("_posts","mus","mods", "self1"))
 # saveRDS(model_sim_full, here::here("_posts","mus","mods", "model_sim_full"))
 # saveRDS(sim_list, here::here("_posts","mus","mods", "sim_list"))
+sim_list <- readRDS( here::here("_posts","mus","mods", "sim_list"))
+model_sim_full<- readRDS(here::here("_posts","mus","mods", "model_sim_full"))
 
+library(lme4)
 
 m<-10
 model_sim_rep <-NULL
@@ -5379,7 +5579,7 @@ for(i in 1:m) {
 }
 
 # table
-tab<-pool_parameters(model_sim_rep$model)
+tab<-parameters::pool_parameters(model_sim_rep$model)
 tab
 tab [,c(1:5)]%>%
   # print_md()%>%
@@ -5388,6 +5588,11 @@ tab [,c(1:5)]%>%
 plot(tab, show_labels = TRUE)
 
 ggeffects::ggemmeans( model_sim_rep$model[[2]], terms = c("wave","a"))  
+
+library(dplyr)
+library(tidyr)
+library(broom)
+
 
 fitted_lines_simfull <-
   tibble(.imp = 1:10) %>%
@@ -5403,13 +5608,39 @@ plot_simall <- fitted_lines_simfull %>%
               alpha = 1/10) +
   geom_line(aes(y = predicted, group =group), 
             size = 1/4) + theme_clean() +  scale_y_continuous(limits=c(4.05,4.55)) +
-  labs(subtitle="Simulatin study recovers missing counteractual trajectories from multiple imputation",
+  labs(subtitle="Multiple imputation with simulated data",
        y= "Muslim Warmth", 
        x = "Waves: 2012-2020/21, Simulated N = 47,978") +   scale_colour_npg(alpha =.5) + theme_classic()  + 
 scale_colour_npg(alpha=.5) 
 
 
-plot_simall
+plot_simall 
+
+# compare with bayesian model
+
+# cluster plot in "futures.R" 
+cluster_plot_st_sim2 <- cluster_plot_st_sim +   labs(subtitle="Bayesian model with real data",
+                             y= "Muslim Warmth", 
+                             x = "Waves: 2012-2020/21, N = 47,978") 
+  
+sim_plot <- cluster_plot_st_sim2 + plot_simall + 
+  plot_annotation(tag_levels = "i",  title = "Simulated data that assumes even greater missingness nevertheless recovers approximate data model slopes")
+
+sim_plot
+
+ggsave(
+  sim_plot,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 16,
+  height = 9,
+  units = "in",
+  filename = "sim_plot.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 1200
+)
+
+
 
 # compare with full data & expected values 
 table1::table1(~Y0 + Y1 + Y2 + Y3 + Y4 + Y5 + Y6 + Y7 + Y8, data = zdtTrial)
