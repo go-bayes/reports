@@ -281,74 +281,67 @@ ms5 <- msm_graph(msm_10_s_MAN_imp5, "Disbelief", "Belief")
 # msm_pool_VW(test,test2)
 # msm_pool_VB(test,test2)
 
-msm_se_pooled<- function(df1,df2, df3, df4, df5){
-  out <- cbind(df1$conv_probability, df2$conv_probability, df3$conv_probability, df4$conv_probability,df5$conv_probability)
-  age <- df1$age
-  Group <- df1$Group
-  col_m <- data.frame(rowMeans(out))
-  colnames(col_m) <-  "conv_probability_m"
-  col_m
-  var1 = ((df1$conv_probability - col_m) ^ 2)
-  var2 = ((df2$conv_probability - col_m) ^ 2)
-  var3 = ((df3$conv_probability - col_m) ^ 2)
-  var4 = ((df4$conv_probability - col_m) ^ 2)
-  var5 = ((df5$conv_probability - col_m) ^ 2)
-  #outest = cbind(var1, var2,var3,var4, var5)
-  #outest
-  v_b = as.data.frame( 1/(5-1) * ( var1 + var2 + var3 + var4 + var5))
-  v_b
-  se1 <- as.data.frame((df1$conv_upper - df1$conv_lower)/3.92)
-  colnames(se1) <- "se1"
-  se2 <- as.data.frame((df2$conv_upper - df2$conv_lower)/3.92)
-  colnames(se2) <- "se2"
-  se3 <- as.data.frame((df3$conv_upper - df3$conv_lower)/3.92)
-  colnames(se3) <- "se3"
-  se4 <- as.data.frame((df4$conv_upper - df4$conv_lower)/3.92)
-  colnames(se4) <- "se4"
-  se5 <- as.data.frame((df5$conv_upper - df5$conv_lower)/3.92)
-  colnames(se5) <- "se5"
-  out2 = cbind( se1 , se2, se3 , se4, se5 )
-  v_w <- as.data.frame( (out2$se1^2 + out2$se2^2 + out2$se3^2 + out2$se4^2 + out2$se5^2) /5)
-  colnames(v_w) <- "v_w"
-  v_w
-  v_total = as.data.frame(v_w + v_b + v_b/5)
-  colnames(v_total) <- "v_total"
-  se_pooled = sqrt(v_total)
-  colnames(se_pooled) <- "se_pooled"
-  se_pooled
-  pooled_ci=   se_pooled * 1.96 # (col_m  + (1.96 * (se_pooled/66.64)))
-  pooled_upper_ci =  col_m + pooled_ci
-  pooled_lower_ci =   col_m - pooled_ci
-  pool_coef = as.data.frame(cbind(col_m, pooled_lower_ci, pooled_upper_ci, se_pooled, pooled_ci))
-  colnames(pool_coef) <- c("pooled_mean","pooled_lower_ci", "pooled_upper_ci", "se_pooled", "pooled_ci")
-  pool_coef
-  pooled_out <- as.data.frame(cbind(age, Group, pool_coef))
-  pooled_out
-}
+# This isn't quite right, doesn't calculate tscore correctly
+
+# msm_se_pooled<- function(df1,df2, df3, df4, df5){
+#   out <- cbind(df1$conv_probability, df2$conv_probability, df3$conv_probability, df4$conv_probability,df5$conv_probability)
+#   age <- df1$age
+#   Group <- df1$Group
+#   col_m <- data.frame(rowMeans(out))
+#   colnames(col_m) <-  "conv_probability_m"
+#   col_m
+#   var1 = ((df1$conv_probability - col_m) ^ 2)
+#   var2 = ((df2$conv_probability - col_m) ^ 2)
+#   var3 = ((df3$conv_probability - col_m) ^ 2)
+#   var4 = ((df4$conv_probability - col_m) ^ 2)
+#   var5 = ((df5$conv_probability - col_m) ^ 2)
+#   #outest = cbind(var1, var2,var3,var4, var5)
+#   #outest
+#   v_b = as.data.frame( 1/(5-1) * ( var1 + var2 + var3 + var4 + var5))
+#   v_b
+#   se1 <- as.data.frame((df1$conv_upper - df1$conv_lower)/3.92)
+#   colnames(se1) <- "se1"
+#   se2 <- as.data.frame((df2$conv_upper - df2$conv_lower)/3.92)
+#   colnames(se2) <- "se2"
+#   se3 <- as.data.frame((df3$conv_upper - df3$conv_lower)/3.92)
+#   colnames(se3) <- "se3"
+#   se4 <- as.data.frame((df4$conv_upper - df4$conv_lower)/3.92)
+#   colnames(se4) <- "se4"
+#   se5 <- as.data.frame((df5$conv_upper - df5$conv_lower)/3.92)
+#   colnames(se5) <- "se5"
+#   out2 = cbind( se1 , se2, se3 , se4, se5 )
+#   v_w <- as.data.frame( (out2$se1^2 + out2$se2^2 + out2$se3^2 + out2$se4^2 + out2$se5^2) /(5-1))
+#   colnames(v_w) <- "v_w"
+#   v_w
+#   v_total = as.data.frame(v_w + v_b + v_b/5)
+#   colnames(v_total) <- "v_total"
+#   se_pooled = sqrt(v_total)
+#   colnames(se_pooled) <- "se_pooled"
+#   se_pooled
+#   pooled_ci=   se_pooled * 1.96 # (col_m  + (1.96 * (se_pooled/66.64)))
+#   pooled_upper_ci =  col_m + pooled_ci
+#   pooled_lower_ci =   col_m - pooled_ci
+#   pool_coef = as.data.frame(cbind(col_m, pooled_lower_ci, pooled_upper_ci, se_pooled, pooled_ci))
+#   colnames(pool_coef) <- c("pooled_mean","pooled_lower_ci", "pooled_upper_ci", "se_pooled", "pooled_ci")
+#   pool_coef
+#   pooled_out <- as.data.frame(cbind(age, Group, pool_coef))
+#   pooled_out
+# }
 
 
-r_pool_plot <- msm_se_pooled(r1,r2,r3,r4,r5)
-r_pool_plot
+## https://bookdown.org/mwheymans/bookmi/measures-of-missing-data-information.html#eq:lambda
+## RIV = Relative increase in variance  = LAMDA 
+# lambda = ( (v_b + (v_b/m) )/ v_total)
+# riv = lambda = ( (v_b + (v_b/m) )/ v_w)
+# df_old = (m -1 ) * (1 + (1/riv^2))
+# df_observed  = ( (((n-k) + 1)/ ((n-k) + 3) ) * ((n-k) * (1- lambda)) )
+# df_adjusted = ( (df_old * df_adjusted ) / (df_old + df_adjusted)  )
+# alpha = 0.05
+# t_score = qt( p=alpha/2, df= df_adjusted,lower.tail=F )
+# margin_error = t_score * se_pooled
+# 
 
-
-r_pool_plot_man <- msm_se_pooled(mr1,mr2,mr3,mr4,mr5)
-r_pool_plot_man
-
-
-g_pool_plot <- msm_se_pooled(g1,g2,g3,g4,g5)
-g_pool_plot
-
-
-g_pool_plot_man <- msm_se_pooled(mg1,mg2,mg3,mg4,mg5)
-g_pool_plot_man
-
-
-s_pool_plot <- msm_se_pooled(s1,s2,s3,s4,s5)
-s_pool_plot
-
-s_pool_plot_man <- msm_se_pooled(ms1,ms2,ms3,ms4,ms5)
-s_pool_plot_man
-
+#This correctly calculates ci's
 
 
 ## function for saving 
@@ -362,7 +355,162 @@ save_here <- function(df, name) {
 # function for reading 
 
 read_here <- function(name) {
- df = readRDS(here::here("_posts", "religious_simpsons_paradox", "mods", paste0(name, '')))
- df
+  df = readRDS(here::here("_posts", "religious_simpsons_paradox", "mods", paste0(name, '')))
+  df
 }
+
+
+msm_se_pooled_ci <- function(df1,df2, df3, df4, df5){
+  m = 5
+  n = 4441
+  k = 1
+  alpha = .05
+  out <- cbind(df1$conv_probability, df2$conv_probability, df3$conv_probability, df4$conv_probability,df5$conv_probability)
+  age <- df1$age
+  Group <- df1$Group
+  col_m <- data.frame(rowMeans(out))
+  colnames(col_m) <-  "conv_probability_m"
+  var1 = ((df1$conv_probability - col_m) ^ 2)
+  var2 = ((df2$conv_probability - col_m) ^ 2)
+  var3 = ((df3$conv_probability - col_m) ^ 2)
+  var4 = ((df4$conv_probability - col_m) ^ 2)
+  var5 = ((df5$conv_probability - col_m) ^ 2)
+  v_b = as.data.frame( 1/(m-1) * ( var1 + var2 + var3 + var4 + var5)) # var between
+  se1 <- as.data.frame((df1$conv_upper - df1$conv_lower)/3.92)
+  colnames(se1) <- "se1"
+  se2 <- as.data.frame((df2$conv_upper - df2$conv_lower)/3.92)
+  colnames(se2) <- "se2"
+  se3 <- as.data.frame((df3$conv_upper - df3$conv_lower)/3.92)
+  colnames(se3) <- "se3"
+  se4 <- as.data.frame((df4$conv_upper - df4$conv_lower)/3.92)
+  colnames(se4) <- "se4"
+  se5 <- as.data.frame((df5$conv_upper - df5$conv_lower)/3.92)
+  colnames(se5) <- "se5"
+  out2 = cbind( se1 , se2, se3 , se4, se5 )
+  v_w <- as.data.frame( (out2$se1^2 + out2$se2^2 + out2$se3^2 + out2$se4^2 + out2$se5^2) /(m))# Var withing
+  colnames(v_w) <- "v_w"
+  v_total = as.data.frame(v_w + v_b + v_b/m) # var total
+  colnames(v_total) <- "v_total"
+  se_pooled = sqrt(v_total)
+  colnames(se_pooled) <- "se_pooled"
+  #pooled_ci=   se_pooled * 1.96 # (col_m  + (1.96 * (se_pooled/66.64))) # not used 
+  lambda = ( (v_b + (v_b/m) ) / v_total)
+  riv = ( (v_b + (v_b/m) )/ v_w )
+  df_old = ( (m - 1 ) * (1 + (1/(riv^2)) ) )
+  df_observed  = ( ( ( (n-k) + 1 )/ ( (n-k) + 3) ) * ((n-k) * (1- lambda) ) )
+  df_adjusted = ( (df_old * df_observed ) / (df_old + df_observed)  )
+  colnames(df_adjusted) <- "df_adjusted"
+  df_adjusted
+  alpha = 0.05
+  t_score = as.data.frame( qt( p = alpha/2, df = df_adjusted$df_adjusted, lower.tail = F ) )
+  colnames(t_score) <- "t_score"
+  margin_error = as.data.frame ( t_score * se_pooled )
+  colnames(margin_error) <- "margin_error"
+  pool_coef = as.data.frame(cbind(col_m, se_pooled, margin_error))
+  colnames(pool_coef) <- c("pooled_mean", "se_pooled", "margin_error")
+  pooled_out <- as.data.frame(cbind(age, Group, pool_coef))
+  pooled_out
+}
+
+
+
+
+
+r_pool_plot <- msm_se_pooled_ci(r1,r2,r3,r4,r5)
+
+r_pool_plot_man <- msm_se_pooled_ci(mr1,mr2,mr3,mr4,mr5)
+
+g_pool_plot <- msm_se_pooled_ci(g1,g2,g3,g4,g5)
+
+g_pool_plot_man <- msm_se_pooled_ci(mg1,mg2,mg3,mg4,mg5)
+
+s_pool_plot <- msm_se_pooled_ci(s1,s2,s3,s4,s5)
+
+s_pool_plot_man <- msm_se_pooled_ci(ms1,ms2,ms3,ms4,ms5)
+
+
+
+markov_hidden <- function(df, outcome ) {
+# matrix for msms model on these data sets
+  q_mat <- rbind(c(.9, .1),c(.1, .9))
+  #intial values 
+  crude_inits <-
+    msm::crudeinits.msm(outcome  ~ yearW, Id, # Id = identifier
+                        data = df,
+                        qmatrix = q_mat)
+  out  <- msm(
+    outcome ~ yearW,
+    Id,
+    data = a_imp_5_r,
+    covariates =  ~ Age,
+    qmatrix = crude_inits,
+    ematrix = rbind(c(.1, .1), c(.1, .1)), 
+    est.initprobs = TRUE,
+    exacttimes = TRUE,
+    gen.inits = TRUE
+  )
+}
+
+
+
+combine_imp_r <- function(amelia_obj, m) {
+  out  <- list()
+  model <- list()
+  graph <- list()
+  name1 <- "Disbelief"
+  name2 <- "Belief"
+
+  q_mat <- rbind(c(.9, .1),c(.1, .9))
+  for (i in 1:m) {
+    out[[i]] <- amelia_obj$imputations[[i]]
+    out[[i]] %>%
+      dplyr::arrange(Id, yearW)
+  }
+  #intial values 
+  crude_inits <-
+    msm::crudeinits.msm(Religious1  ~ yearW, Id, # Id = identifier
+                        data = out[[i]],
+                        qmatrix = q_mat)
+  for (i in 1:m){
+  model[[i]]  <- msm(
+    Religious1 ~ yearW,
+    Id,
+    data = out[[i]],
+    covariates =  ~ Age,
+    qmatrix = crude_inits,
+    # ematrix = rbind(c(.1, .1), c(.1, .1)), 
+    est.initprobs = TRUE,
+    exacttimes = TRUE,
+    gen.inits = TRUE
+  )
+  }
+  return(model)
+}
+
+
+
+
+religion_man  <- combine_imp_r(dat_all_10_r, 20)
+
+for i in 1:20 {msm_graph()
+religion_man[[1]],
+religion_man[[2]],
+religion_man[[3]],
+religion_man[[4]],
+religion_man[[5]],
+religion_man[[6]],
+religion_man[[7]],
+religion_man[[8]],
+religion_man[[9]],
+religion_man[[10]],
+religion_man[[11]],
+religion_man[[12]],
+religion_man[[13]],
+religion_man[[14]],
+religion_man[[15]],
+religion_man[[16]],
+
+
+
+msm_se_pooled_ci(religion_man)
 
