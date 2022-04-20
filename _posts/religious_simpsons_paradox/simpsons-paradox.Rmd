@@ -7237,7 +7237,7 @@ plot_10_r_14_pooled <-
       ymax = pooled_mean + margin_error,
       colour = Group
     ),
-    data = r_pool_plot
+    data = new_20_imp_r
   ) +
   geom_point(alpha = 1, stroke = 2) +
   geom_linerange(alpha = 1) +
@@ -7263,7 +7263,7 @@ plot_10_r_35_pooled <-
       ymax = pooled_mean + margin_error,
       colour = Group
     ),
-    data = r_pool_plot
+    data = new_20_imp_r
   ) +
   geom_point(alpha = 1, stroke = 2) +
   geom_linerange(alpha = 1) +
@@ -7424,7 +7424,7 @@ plot_10_r_35_man_pooled<-
       ymax = pooled_mean + margin_error,
       colour = Group
     ),
-    data = r_pool_plot_man
+    data = new_20_man_imp_r
   ) +
   geom_point(alpha = 1, stroke = 2) +
   geom_linerange(alpha = 1) +

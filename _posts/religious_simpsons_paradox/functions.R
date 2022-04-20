@@ -360,12 +360,32 @@ read_here <- function(name) {
 }
 
 
-msm_se_pooled_ci <- function(df1,df2, df3, df4, df5){
-  m = 5
+msm_se_pooled_ci <- function(df1,df2, df3, df4, df5, df6, df7, df8, df9, df10, df11, df12,
+                             df13, df14, df15, df16, df17, df18, df19, df20){
+  m = 20
   n = 4441
   k = 1
   alpha = .05
-  out <- cbind(df1$conv_probability, df2$conv_probability, df3$conv_probability, df4$conv_probability,df5$conv_probability)
+  out <- cbind(df1$conv_probability, 
+               df2$conv_probability, 
+               df3$conv_probability, 
+               df4$conv_probability,
+               df5$conv_probability,
+               df6$conv_probability, 
+               df7$conv_probability, 
+               df8$conv_probability, 
+               df9$conv_probability,
+               df10$conv_probability,
+               df11$conv_probability, 
+               df12$conv_probability, 
+               df13$conv_probability, 
+               df14$conv_probability,
+               df15$conv_probability,
+               df16$conv_probability, 
+               df17$conv_probability, 
+               df18$conv_probability, 
+               df19$conv_probability,
+               df20$conv_probability)
   age <- df1$age
   Group <- df1$Group
   col_m <- data.frame(rowMeans(out))
@@ -375,8 +395,27 @@ msm_se_pooled_ci <- function(df1,df2, df3, df4, df5){
   var3 = ((df3$conv_probability - col_m) ^ 2)
   var4 = ((df4$conv_probability - col_m) ^ 2)
   var5 = ((df5$conv_probability - col_m) ^ 2)
-  v_b = as.data.frame( 1/(m-1) * ( var1 + var2 + var3 + var4 + var5)) # var between
-  se1 <- as.data.frame((df1$conv_upper - df1$conv_lower)/3.92)
+  var6 = ((df1$conv_probability - col_m) ^ 2)
+  var7 = ((df2$conv_probability - col_m) ^ 2)
+  var8 = ((df3$conv_probability - col_m) ^ 2)
+  var9 = ((df4$conv_probability - col_m) ^ 2)
+  var10 = ((df5$conv_probability - col_m) ^ 2)
+  var11 = ((df1$conv_probability - col_m) ^ 2)
+  var12 = ((df2$conv_probability - col_m) ^ 2)
+  var13 = ((df3$conv_probability - col_m) ^ 2)
+  var14 = ((df4$conv_probability - col_m) ^ 2)
+  var15 = ((df5$conv_probability - col_m) ^ 2)
+  var16 = ((df1$conv_probability - col_m) ^ 2)
+  var17 = ((df2$conv_probability - col_m) ^ 2)
+  var18 = ((df3$conv_probability - col_m) ^ 2)
+  var19 = ((df4$conv_probability - col_m) ^ 2)
+  var20 = ((df5$conv_probability - col_m) ^ 2)
+  v_b = as.data.frame(
+    1 / (m - 1) * (var1 + var2 + var3 + var4 + var5 + var6 + var7  + var8 + var9 + var10 +
+                  var11 + var12 + var13 + var14 + var15 + var16 + var17  + var18 + var19 + var20
+    )
+  ) # var between
+  se1 <- as.data.frame((df1$conv_upper - df1$conv_lower) / 3.92)
   colnames(se1) <- "se1"
   se2 <- as.data.frame((df2$conv_upper - df2$conv_lower)/3.92)
   colnames(se2) <- "se2"
@@ -386,8 +425,42 @@ msm_se_pooled_ci <- function(df1,df2, df3, df4, df5){
   colnames(se4) <- "se4"
   se5 <- as.data.frame((df5$conv_upper - df5$conv_lower)/3.92)
   colnames(se5) <- "se5"
-  out2 = cbind( se1 , se2, se3 , se4, se5 )
-  v_w <- as.data.frame( (out2$se1^2 + out2$se2^2 + out2$se3^2 + out2$se4^2 + out2$se5^2) /(m))# Var withing
+  se6 <- as.data.frame((df6$conv_upper - df6$conv_lower) / 3.92)
+  colnames(se6) <- "se6"
+  se7 <- as.data.frame((df7$conv_upper - df7$conv_lower)/3.92)
+  colnames(se7) <- "se7"
+  se8 <- as.data.frame((df8$conv_upper - df8$conv_lower)/3.92)
+  colnames(se8) <- "se8"
+  se9 <- as.data.frame((df9$conv_upper - df9$conv_lower)/3.92)
+  colnames(se9) <- "se9"
+  se10 <- as.data.frame((df10$conv_upper - df10$conv_lower)/3.92)
+  colnames(se10) <- "se10"
+  se11 <- as.data.frame((df11$conv_upper - df11$conv_lower) / 3.92)
+  colnames(se11) <- "se11"
+  se12 <- as.data.frame((df12$conv_upper - df12$conv_lower)/3.92)
+  colnames(se12) <- "se12"
+  se13 <- as.data.frame((df13$conv_upper - df13$conv_lower)/3.92)
+  colnames(se13) <- "se13"
+  se14 <- as.data.frame((df14$conv_upper - df14$conv_lower)/3.92)
+  colnames(se14) <- "se14"
+  se15 <- as.data.frame((df15$conv_upper - df15$conv_lower)/3.92)
+  colnames(se15) <- "se15"
+  se16 <- as.data.frame((df16$conv_upper - df16$conv_lower) / 3.92)
+  colnames(se16) <- "se16"
+  se17 <- as.data.frame((df17$conv_upper - df17$conv_lower)/3.92)
+  colnames(se17) <- "se17"
+  se18 <- as.data.frame((df18$conv_upper - df18$conv_lower)/3.92)
+  colnames(se18) <- "se18"
+  se19 <- as.data.frame((df19$conv_upper - df19$conv_lower)/3.92)
+  colnames(se19) <- "se19"
+  se20 <- as.data.frame((df20$conv_upper - df20$conv_lower)/3.92)
+  colnames(se20) <- "se20"
+  out2 = cbind( se1 , se2, se3 , se4, se5, se6, se7, se8, se9, se10, se11, se12, se13, se14, se15, se16,
+                se17, se18, se19, se20)
+  v_w <- as.data.frame( (out2$se1^2 + out2$se2^2 + out2$se3^2 + out2$se4^2 + out2$se5^2 +
+                           out2$se6^2 + out2$se7^2 + out2$se8^2 + out2$se9^2 + out2$se10^2 +
+                           out2$se11^2 + out2$se12^2 + out2$se13^2 + out2$se14^2 + out2$se15^2 +
+                           out2$se16^2 + out2$se17^2 + out2$se18^2 + out2$se19^2 + out2$se20^2) /(m))# Var withing
   colnames(v_w) <- "v_w"
   v_total = as.data.frame(v_w + v_b + v_b/m) # var total
   colnames(v_total) <- "v_total"
@@ -430,7 +503,7 @@ s_pool_plot_man <- msm_se_pooled_ci(ms1,ms2,ms3,ms4,ms5)
 
 
 
-markov_hidden <- function(df, outcome ) {
+markov_manifest <- function(df, outcome ) {
 # matrix for msms model on these data sets
   q_mat <- rbind(c(.9, .1),c(.1, .9))
   #intial values 
@@ -453,7 +526,7 @@ markov_hidden <- function(df, outcome ) {
 
 
 
-combine_imp_r <- function(amelia_obj, m) {
+combine_man_imp_r <- function(amelia_obj, m) {
   out  <- list()
   model <- list()
   graph <- list()
@@ -490,27 +563,75 @@ combine_imp_r <- function(amelia_obj, m) {
 
 
 
-religion_man  <- combine_imp_r(dat_all_10_r, 20)
+combine_imp_r <- function(amelia_obj, m) {
+  out  <- list()
+  model <- list()
+  graph <- list()
+  name1 <- "Disbelief"
+  name2 <- "Belief"
+  
+  q_mat <- rbind(c(.9, .1),c(.1, .9))
+  for (i in 1:m) {
+    out[[i]] <- amelia_obj$imputations[[i]]
+    out[[i]] %>%
+      dplyr::arrange(Id, yearW)
+  }
+  #intial values 
+  crude_inits <-
+    msm::crudeinits.msm(Religious1  ~ yearW, Id, # Id = identifier
+                        data = out[[i]],
+                        qmatrix = q_mat)
+  for (i in 1:m){
+    model[[i]]  <- msm(
+      Religious1 ~ yearW,
+      Id,
+      data = out[[i]],
+      covariates =  ~ Age,
+      qmatrix = crude_inits,
+      ematrix = rbind(c(.1, .1), c(.1, .1)), 
+      est.initprobs = TRUE,
+      exacttimes = TRUE,
+      gen.inits = TRUE
+    )
+  }
+  return(model)
+}
+# religion_man  - manifest outputs 
+save_here(religion_man, "religion_man")
 
-for i in 1:20 {msm_graph()
-religion_man[[1]],
-religion_man[[2]],
-religion_man[[3]],
-religion_man[[4]],
-religion_man[[5]],
-religion_man[[6]],
-religion_man[[7]],
-religion_man[[8]],
-religion_man[[9]],
-religion_man[[10]],
-religion_man[[11]],
-religion_man[[12]],
-religion_man[[13]],
-religion_man[[14]],
-religion_man[[15]],
-religion_man[[16]],
+religion_imp <- combine_imp_r(dat_all_10_r, 20)
+
+# religion impute 20 datasets
+save_here(religion_imp, "religion_imp")
+
+graphs_r<- NULL
+m<- 20
+
+for (i in 1:m) {
+  graphs_r[[i]] <- msm_graph(religion_imp[[i]],"Disaffiliation", "Affiliation")
+}
+
+## Save manifest r (as "graphs"  -- did this earlier as a test on the manual r, file) 
+save_here(graphs, "graphs_man_r")
+
+save_here(graphs_r, "graphs_r")
 
 
 
-msm_se_pooled_ci(religion_man)
+df<- NULL
+for (i in 1:m) {
+  df[[i]] <- as.data.frame(graphs_r[[i]])
+}
 
+df[[20]]
+
+
+
+new_20_imp_r <- msm_se_pooled_ci(df[[1]], df[[2]], df[[3]], df[[4]], 
+                            df[[5]], df[[6]], df[[7]], df[[8]],
+                            df[[9]], df[[10]], df[[11]], df[[12]],
+                            df[[13]], df[[14]], df[[15]], df[[16]],
+                            df[[17]], df[[18]], df[[19]], df[[20]])
+  
+
+newPool
