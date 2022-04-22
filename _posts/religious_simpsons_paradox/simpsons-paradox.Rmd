@@ -5977,7 +5977,7 @@ all_god_10 <- df %>%
   dplyr::mutate(bg1 = as.numeric(Believe.God) ) %>%
     dplyr::mutate(bs1 = as.numeric(Believe.Spirit) ) %>%
   select(Id, yearW, bg1, bs1, Religious1, EthnicCats_b, ubran_bz,,employed_bz,male_2z,employed_bz,nzdep_bz,parent_bz, 
-         partner_bz,pol_bz,lch_bz,nr_bz,ex_bz,h_bz,op_bz,cs_bz,agr_bz,Age) # remove edu_bz
+         partner_bz,pol_bz,lch_bz,nr_bz,ex_bz,h_bz,op_bz,cs_bz,agr_bz,Age,GenCohort) # remove edu_bz
 
 
 
@@ -6010,17 +6010,18 @@ dat_all_10_r <- amelia(
   all_god_10, 
   cs= c("Id"),
   ts= c("yearW"),
-  m = 5, # number of imputations
+  m = 20, # number of imputations
   ords = "Religious1",
   noms = c(
-    "EthnicCats_b"  # preserve categories
+    "EthnicCats_b", "GenCohort"  # preserve categories
   ),
  # idvars=c("Id"), # yrs not working
   lags="Religious1",
   leads="Religious1",
   # polytime = 2, # Allow polynomial
   intercs = F, # 
-  bounds = bdsR
+  bounds = bdsR,
+  empri = .05*nrow(all_god_10)
 ) # ridge prior if needed see: Amelia pdf documentation p.23
 
 saveRDS(dat_all_10_r, here::here("_posts","religious_simpsons_paradox","mods", "dat_all_10_r"))
@@ -6101,17 +6102,18 @@ dat_all_10_g  <- amelia(
   all_god_10, 
   cs= c("Id"),
   ts= c("yearW"),
-  m = 5, # number of imputations
+  m = 20, # number of imputations
   ords = "bg1",
   noms = c(
-    "EthnicCats_b"  # preserve categories
+    "EthnicCats_b", "GenCohort"  # preserve categories
   ),
  # idvars=c("Id"), # yrs not working
   lags="bg1",
   leads="bg1",
   # polytime = 2, # Allow polynomial
   intercs = F, # 
-  bounds = bdsG
+  bounds = bdsG,
+  empri = .05*nrow(all_god_10)
 ) # ridge prior if needed see: Amelia pdf documentation p.23
 
 saveRDS(dat_all_10_g, here::here("_posts","religious_simpsons_paradox","mods", "dat_all_10_g"))
@@ -6122,10 +6124,10 @@ dat_all_10_g <- readRDS(here::here("_posts","religious_simpsons_paradox","mods",
 #### TRACE 
 
 # Random samp for traceplot
-out0<- as.character(sample(dat_all_10_g$imputations$imp1$Id, 18, replace = FALSE))
+out0<- as.character(sample(dat_all_10_g$imputations$imp1$Id, 12, replace = FALSE))
 out0
 
-
+dev.off()
 # traceplot to inspect's  # chage rows with nr = 6,
 tscsPlot(dat_all_10_g, cs = c(out0), main = "bg1",
          var = "bg1",  nr = 3, ylim = c(1,2))
@@ -6181,6 +6183,7 @@ match("bs1",names(all_god_10))
 bds <- matrix(c(4, 1, 2), nrow = 1, ncol = 3)
 bds
 summary(all_god_10$bs1)
+all_god_10$GenCohort
 
 all_god_10 = as.data.frame(all_god_10)
 
@@ -6192,14 +6195,15 @@ dat_all_10_s  <- amelia(
   m = 5, # number of imputations
   ords = "bs1",
   noms = c(
-    "EthnicCats_b"  # preserve categories
+    "EthnicCats_b", "GenCohort"  # preserve categories
   ),
  # idvars=c("Id"), # yrs not working
   lags="bs1",
   leads="bs1",
   # polytime = 2, # Allow polynomial
   intercs = F, # 
-  bounds = bds
+  bounds = bds,
+  empri = .05*nrow(all_god_10)
 ) # ridge prior if needed see: Amelia pdf documentation p.23
 
 saveRDS(dat_all_10_s, here::here("_posts","religious_simpsons_paradox","mods", "dat_all_10_s"))
@@ -7219,25 +7223,26 @@ library("patchwork")
 ```
 
 
-# POOLED PLOTS 
+# POOLED PLOTS USE 
 
 ```{r}
 ### pooled 
-plot_10_r_15_pooled <-
+
+plot_10_r_14_pooled <-
   ggplot(
     aes(
       x = age,
       y = pooled_mean,
-      ymin = pooled_mean - pooled_ci,
-      ymax = pooled_mean + pooled_ci,
+      ymin = pooled_mean - margin_error,
+      ymax = pooled_mean + margin_error,
       colour = Group
     ),
-    data = r_pool_plot
+    data = new_20_imp_r
   ) +
   geom_point(alpha = 1, stroke = 2) +
   geom_linerange(alpha = 1) +
   geom_smooth(se = F) +
-  scale_y_continuous(limits = c(0, .15))  +
+  scale_y_continuous(limits = c(0, .14))  +
   labs(x = "Age", y = "Annual Probability of Religious (Dis)Affiliation w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Afilliation Pooled Imputation Model",
   subtitle= "N = 4441, years 2010-2021") +
   #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
@@ -7245,20 +7250,20 @@ plot_10_r_15_pooled <-
   theme(legend.position = "bottom")
 
 ## WORKS!! 
-plot_10_r_15_pooled
+plot_10_r_14_pooled
 
-save_here(plot_10_r_15_pooled, "plot_10_r_15_pooled")
+save_here(plot_10_r_14_pooled, "plot_10_r_14_pooled")
 
 plot_10_r_35_pooled <-
   ggplot(
     aes(
       x = age,
       y = pooled_mean,
-      ymin = pooled_mean - pooled_ci,
-      ymax = pooled_mean + pooled_ci,
+      ymin = pooled_mean - margin_error,
+      ymax = pooled_mean + margin_error,
       colour = Group
     ),
-    data = r_pool_plot
+    data = new_20_imp_r
   ) +
   geom_point(alpha = 1, stroke = 2) +
   geom_linerange(alpha = 1) +
@@ -7280,13 +7285,13 @@ save_here(plot_10_r_35_pooled, "plot_10_r_35_pooled")
 
 
 
-plot_10_g_15_pooled <-
+plot_10_g_14_pooled <-
   ggplot(
     aes(
       x = age,
       y = pooled_mean,
-      ymin = pooled_mean - pooled_ci,
-      ymax = pooled_mean + pooled_ci,
+      ymin = pooled_mean - margin_error,
+      ymax = pooled_mean + margin_error,
       colour = Group
     ),
     data = g_pool_plot
@@ -7296,16 +7301,16 @@ plot_10_g_15_pooled <-
   geom_smooth(se = F, 
              method = "gam",
              formula = y ~ s(x, bs = "cs", fx = TRUE, k = 7)) +
-  scale_y_continuous(limits = c(0, .15))  +
+  scale_y_continuous(limits = c(0, .14))  +
   labs(x = "Age", y = "Annual Probability of Religious (Dis)Belief w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Belief God Pooled Imputation Model",
   subtitle= "N = 4441, years 2010-2021") +
   #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
   scale_color_npg() + 
   theme(legend.position = "bottom")
 
-plot_10_g_15_pooled
+plot_10_g_14_pooled
 
-save_here(plot_10_g_15_pooled,"plot_10_g_15_pooled")
+save_here(plot_10_g_14_pooled,"plot_10_g_14_pooled")
 
 
 plot_10_g_35_pooled <-
@@ -7313,8 +7318,8 @@ plot_10_g_35_pooled <-
     aes(
       x = age,
       y = pooled_mean,
-      ymin = pooled_mean - pooled_ci,
-      ymax = pooled_mean + pooled_ci,
+      ymin = pooled_mean - margin_error,
+      ymax = pooled_mean + margin_error,
       colour = Group
     ),
     data = g_pool_plot
@@ -7339,13 +7344,13 @@ save_here(plot_10_g_35_pooled,"plot_10_g_35_pooled")
 # Spirit
 
 
-plot_10_s_15_pooled <-
+plot_10_s_14_pooled <-
   ggplot(
     aes(
       x = age,
       y = pooled_mean,
-      ymin = pooled_mean - pooled_ci,
-      ymax = pooled_mean + pooled_ci,
+      ymin = pooled_mean - margin_error,
+      ymax = pooled_mean + margin_error,
       colour = Group
     ),
     data = s_pool_plot
@@ -7355,16 +7360,16 @@ plot_10_s_15_pooled <-
   geom_smooth(se = F, 
              method = "gam",
              formula = y ~ s(x, bs = "cs", fx = TRUE, k = 7)) +
-  scale_y_continuous(limits = c(0, .15))  +
+  scale_y_continuous(limits = c(0, .14))  +
   labs(x = "Age", y = "Annual Probability of (Dis)Belief w/ 95 CI ") + theme_bw() + labs(title = "Hidden Markov Model: (Dis)Belief Spirit: Pooled Imputation Model",
   subtitle= "N = 4441, years 2010-2021") +
   #scale_colour_manual(values=c( "#E69F00", "#56B4E9")) +
   scale_color_okabe_ito() + 
   theme(legend.position = "bottom")
 
-plot_10_s_15_pooled
+plot_10_s_14_pooled
 
-save_here(plot_10_s_15_pooled,"plot_10_s_15_pooled")
+save_here(plot_10_s_14_pooled,"plot_10_s_14_pooled")
 
 
 
@@ -7374,8 +7379,8 @@ plot_10_s_35_pooled <-
     aes(
       x = age,
       y = pooled_mean,
-      ymin = pooled_mean - pooled_ci,
-      ymax = pooled_mean + pooled_ci,
+      ymin = pooled_mean - margin_error,
+      ymax = pooled_mean + margin_error,
       colour = Group
     ),
     data = s_pool_plot
@@ -7415,11 +7420,11 @@ plot_10_r_35_man_pooled<-
     aes(
       x = age,
       y = pooled_mean,
-      ymin = pooled_mean - pooled_ci,
-      ymax = pooled_mean + pooled_ci,
+      ymin = pooled_mean - margin_error,
+      ymax = pooled_mean + margin_error,
       colour = Group
     ),
-    data = r_pool_plot_man
+    data = new_20_man_imp_r
   ) +
   geom_point(alpha = 1, stroke = 2) +
   geom_linerange(alpha = 1) +
@@ -7442,8 +7447,8 @@ plot_10_g_35_man_pooled <-
     aes(
       x = age,
       y = pooled_mean,
-      ymin = pooled_mean - pooled_ci,
-      ymax = pooled_mean + pooled_ci,
+      ymin = pooled_mean - margin_error,
+      ymax = pooled_mean + margin_error,
       colour = Group
     ),
     data = g_pool_plot_man
@@ -7471,8 +7476,8 @@ plot_10_s_35_man_pooled <-
     aes(
       x = age,
       y = pooled_mean,
-      ymin = pooled_mean - pooled_ci,
-      ymax = pooled_mean + pooled_ci,
+      ymin = pooled_mean - margin_error,
+      ymax = pooled_mean + margin_error,
       colour = Group
     ),
     data = s_pool_plot_man
@@ -7493,13 +7498,15 @@ plot_10_s_35_man_pooled
 
 save_here(plot_10_s_35_man_pooled, "plot_10_s_35_man_pooled")
 
+plot_10_s_35_pooled
+
+plot_10_r_35_pooled + plot_10_g_35_pooled +  plot_10_s_35_pooled
 
 plot_10_r_35_man_pooled + plot_10_r_35_pooled
 
 plot_10_g_35_man_pooled + plot_10_g_35_pooled
 
 plot_10_s_35_man_pooled + plot_10_s_35_pooled
-
 
 ```
 
