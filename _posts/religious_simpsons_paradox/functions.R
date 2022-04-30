@@ -1,6 +1,6 @@
 
 #functions for pooled parameters 
-
+library(msm)
 # read data
 
 msm_10_r_imp1 <- readRDS(here::here( "_posts","religious_simpsons_paradox", "mods","msm_10_r_imp1" ))
@@ -20,6 +20,10 @@ m2
 m3
 m4
 m5
+
+
+pmatrix.msm(m1,  covariates = list(Age = 80), ci = "normal")
+
 
 ### Function for graph 
 library(msm)
@@ -106,11 +110,6 @@ msm_graph  <- function(x, l_str, u_str ){
     data.frame(rbind(con.20, con.30, con.40, con.50, con.60, con.70, con.80, con.90))
   colnames(conplot) <-
     c("age", "conv_probability", "conv_lower", "conv_upper")
-  library(ggplot2)
-  #library(wesanderson)
-  #wes_palette("Zissou1", type = c("discrete"))
-  #library("ggsci")
-  
   ##### CREAT PLOT FOR DECONVERSION
   ## 20 year olds
   p20 <-
@@ -489,17 +488,18 @@ msm_se_pooled_ci <- function(df1,df2, df3, df4, df5, df6, df7, df8, df9, df10, d
 
 
 
-r_pool_plot <- msm_se_pooled_ci(r1,r2,r3,r4,r5)
 
-r_pool_plot_man <- msm_se_pooled_ci(mr1,mr2,mr3,mr4,mr5)
-
-g_pool_plot <- msm_se_pooled_ci(g1,g2,g3,g4,g5)
-
-g_pool_plot_man <- msm_se_pooled_ci(mg1,mg2,mg3,mg4,mg5)
-
-s_pool_plot <- msm_se_pooled_ci(s1,s2,s3,s4,s5)
-
-s_pool_plot_man <- msm_se_pooled_ci(ms1,ms2,ms3,ms4,ms5)
+# r_pool_plot <- msm_se_pooled_ci(r1,r2,r3,r4,r5)
+# 
+# r_pool_plot_man <- msm_se_pooled_ci(mr1,mr2,mr3,mr4,mr5)
+# 
+# g_pool_plot <- msm_se_pooled_ci(g1,g2,g3,g4,g5)
+# 
+# g_pool_plot_man <- msm_se_pooled_ci(mg1,mg2,mg3,mg4,mg5)
+# 
+# s_pool_plot <- msm_se_pooled_ci(s1,s2,s3,s4,s5)
+# 
+# s_pool_plot_man <- msm_se_pooled_ci(ms1,ms2,ms3,ms4,ms5)
 
 
 
@@ -596,6 +596,8 @@ combine_imp_r <- function(amelia_obj, m) {
   }
   return(model)
 }
+
+
 # religion_man  - manifest outputs 
 save_here(religion_man, "religion_man")
 
