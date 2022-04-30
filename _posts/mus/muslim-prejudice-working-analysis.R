@@ -4770,23 +4770,43 @@ dag2 <- image_ggplot(image_read(here::here("_posts","mus", "mods","selection.tif
 dag3 <- image_ggplot(image_read(here::here("_posts","mus", "mods","impute.tiff")),
                      interpolate = T)
 
+
+dag4 <- image_ggplot(image_read(here::here("_posts","mus", "mods","imputation-graph.tiff")),
+                     interpolate = T)
+
+dag4
+dag5
+
+dag5 <- image_ggplot(image_read(here::here("_posts","mus", "mods","swig-graph.tiff")),
+                     interpolate = T)
+
+
 library(patchwork)
-daggraph <- (dag2 /dag1) + dag3  +
-  plot_annotation(subtitle = "Causal identification of missing potential outcomes\nand missing observations", 
+
+
+#graph for dags 
+
+daggraph <- (dag5 /dag4)  +
+  plot_annotation(title = "Missing potential outcomes and missing responses\nare both missing data problems", 
                   tag_levels = "i")
 daggraph
+
+# daggraph <- (dag2 /dag1) + dag3  +
+#   plot_annotation(title = "Causal identification of missing potential outcomes\nand missing responses", 
+#                   tag_levels = "i")
+# daggraph
 
 
 ggsave(
   daggraph,
   path = here::here("_posts","mus", "mods"),
   width = 10,
-  height = 5,
+  height = 6,
   units = "in",
-  filename = "daggraph.jpg",
+  filename = "missing2.jpg",
   device = "tiff",
   limitsize = FALSE,
-  dpi = 600
+  dpi = 400
 )
 
 
