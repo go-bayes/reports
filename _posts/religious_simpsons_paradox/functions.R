@@ -598,6 +598,12 @@ combine_imp_r <- function(amelia_obj, m) {
 }
 
 
+here::here()
+  # read data for models
+
+dat_all_10_r <- read_here("dat_all_10_r")
+
+
 # religion_man  - manifest outputs 
 save_here(religion_man, "religion_man")
 
@@ -605,6 +611,9 @@ religion_imp <- combine_imp_r(dat_all_10_r, 20)
 
 # religion impute 20 datasets
 save_here(religion_imp, "religion_imp")
+
+religion_imp <- read_here("religion_imp")
+
 
 graphs_r<- NULL
 m<- 20
@@ -614,7 +623,7 @@ for (i in 1:m) {
 }
 
 ## Save manifest r (as "graphs"  -- did this earlier as a test on the manual r, file) 
-save_here(graphs, "graphs_man_r")
+#save_here(graphs, "graphs_man_r")
 
 save_here(graphs_r, "graphs_r")
 
@@ -625,7 +634,8 @@ for (i in 1:m) {
   df[[i]] <- as.data.frame(graphs_r[[i]])
 }
 
-df[[20]]
+
+
 
 
 
