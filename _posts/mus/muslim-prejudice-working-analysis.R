@@ -3268,7 +3268,7 @@ tab [,c(1:5)]%>%
 
 plot(tab, show_labels = TRUE)
 
-<<<<<<< HEAD
+yola
 
 
 # Kurz model
