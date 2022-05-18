@@ -1604,6 +1604,98 @@ plot_trajectories(
 )  +
   facet_wrap( ~ Id)
 
+## RELID
+
+
+relwide <- spread(relwidelong, Wave, Religious)
+head(relwide)
+
+#relwide<-relwide[complete.cases(relwide), ]
+
+
+
+Relidwide <-  df %>%
+  dplyr::filter(YearMeasured == 1) %>%
+    dplyr::filter(Wave == 2018 | Wave == 2019 | Wave == 2020 ) %>%
+  dplyr::filter(!is.na(Relid)) %>%
+  dplyr::select(Id, Relid, Wave) %>%
+  group_by(Id) %>% filter(n() > 11) %>%
+  filter(n() != 0) %>%
+  ungroup(Id) %>%
+  spread(Wave, Relid)
+
+Relidwide <- Relidwide[complete.cases(Relidwide),]
+dim(Relidwide)
+
+x_var_list <- names(Relidwide[, 2:13])
+
+Relidwide
+
+library(lcsm)
+
+
+plot_trajectories(
+  data = Relidwide,
+  id_var = "Id",
+  var_list = x_var_list,
+  line_colour = "red",
+  xlab = "Years",
+  ylab = "Religious",
+  connect_missing = F,
+  scale_x_num = T,
+  scale_x_num_start = 1,
+  random_sample_frac = 0.086,
+  seed = 1234
+ # title_n = T
+)  +
+  facet_wrap( ~ Id)
+
+dev.off()
+
+
+
+
+Relidwide <-  df %>%
+  dplyr::filter(YearMeasured == 1) %>%
+  dplyr::filter(!is.na(Relid)) %>%
+  dplyr::select(Id, Relid, Wave) %>%
+  group_by(Id) %>% filter(n() > 11) %>%
+  filter(n() != 0) %>%
+  ungroup(Id) %>%
+  spread(Wave, Relid)
+
+Relidwide <- Relidwide[complete.cases(Relidwide),]
+dim(Relidwide)
+
+x_var_list <- names(Relidwide[, 2:13])
+
+Relidwide
+
+library(lcsm)
+
+
+plot_trajectories(
+  data = Relidwide,
+  id_var = "Id",
+  var_list = x_var_list,
+  line_colour = "red",
+  xlab = "Years",
+  ylab = "Religious",
+  connect_missing = F,
+  scale_x_num = T,
+  scale_x_num_start = 1,
+  random_sample_frac = 0.086,
+  seed = 1234
+ # title_n = T
+)  +
+  facet_wrap( ~ Id)
+
+dev.off()
+
+
+
+
+
 # saved as 00rel_traj 16 X 9
 
 df$Believe.God
