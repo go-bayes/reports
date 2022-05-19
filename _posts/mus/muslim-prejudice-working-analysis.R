@@ -4927,8 +4927,36 @@ dag4
 dag5 <- image_ggplot(image_read(here::here("_posts","mus", "mods","swig-graph.tiff")),
                      interpolate = T)
 
+dag5 <- image_ggplot(image_read(here::here("_posts","mus", "mods","swig-graph.tiff")),
+                     interpolate = T)
 dag5
+
+imp0plot <- image_ggplot(image_read(here::here("_posts","mus", "mods","amelia-00.jpeg")),
+                         interpolate = T)
+
+imp1plot <- image_ggplot(image_read(here::here("_posts","mus", "mods","amelia-01.jpg.jpeg")),
+                         interpolate = T)
+
+
 library(patchwork)
+
+fig1 <- (lds2 + dag5) / (dag4 + (imp1plot + imp0plot)) + plot_annotation(tag_levels = "i")
+
+fig1
+
+
+
+ggsave(
+  fig1,
+  path = here::here("_posts","mus", "figs"),
+  width = 16,
+  height = 09,
+  units = "in",
+  filename = "fig1.jpg",
+  device = "jpeg",
+  limitsize = FALSE,
+  dpi = 800
+)
 
 
 #graph for dags 
