@@ -4949,15 +4949,93 @@ fig1 <- (lds2 / dag5)  | (dag4  / imp1plot / imp0plot) +
 
 fig1
 
+library(ggpubr)
+fig1<- ggarrange(lds2, dag5, dag4, ggarrange(imp1plot , imp0plot, 
+                                             labels = c("  (i)", "(ii)")),
+          labels = c("A", "B", "C", "D"),
+          widths = c(1, 1), heights = c(2, 1),
+          ncol = 2, nrow = 2)
 
-
+fig1
 ggsave(
   fig1,
   path = here::here("_posts","mus", "figs"),
-  width = 15,
-  height = 10,
+  width = 12,
+  height= 6,
   units = "in",
   filename = "fig1.jpg",
+  device = "jpeg",
+  limitsize = FALSE,
+  dpi = 800
+)
+
+
+
+fig1<- ggarrange(lds2, dag5,
+                 labels = c("A", "B"),
+               #  widths = c(1, 1), 
+               heights = c(1.5, 2),
+                # ncol = 2, 
+               nrow = 2)
+
+fig1
+ggsave(
+  fig1,
+  path = here::here("_posts","mus", "figs"),
+  width = 10,
+  height= 10,
+  units = "in",
+  filename = "fig1.jpg",
+  device = "jpeg",
+  limitsize = FALSE,
+  dpi = 800
+)
+
+
+#USED
+
+fig2 <- ggarrange(dag4, 
+                  ggarrange(imp1plot, imp0plot, labels = c("  (i)", "(ii)")), 
+                  heights = c(2, 1.5),
+                  # ncol = 2, 
+                  nrow = 2,
+                labels = c("A", "B", "C"))
+
+fig2
+
+
+ggsave(
+  fig2,
+  path = here::here("_posts","mus", "figs"),
+  width = 10,
+  height= 6.3,
+  units = "in",
+  filename = "fig2.jpg",
+  device = "jpeg",
+  limitsize = FALSE,
+  dpi = 800
+)
+
+
+## Test
+fig2 <- ggarrange(dag4, 
+                  imp1plot, 
+                  imp0plot, 
+                  heights = c(1, 1.5, 1.5),
+                  # ncol = 2, 
+                  nrow = 3,
+                  labels = c("A", "B", "C"))
+
+fig2
+
+
+ggsave(
+  fig2,
+  path = here::here("_posts","mus", "figs"),
+  width = 8,
+  height= 8,
+  units = "in",
+  filename = "fig2.jpg",
   device = "jpeg",
   limitsize = FALSE,
   dpi = 800

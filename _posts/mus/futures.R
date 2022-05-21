@@ -749,28 +749,27 @@ p2 <-plot(hyp2, plot=F)
 hyp3 <- hypothesis(m_cluster_st, "As1 >0") 
 
 p3 <-plot(hyp3, plot=F) 
-out_h3<-p3[[1]] + labs(subtitle = "Attack causes warmth") + 
+out_h3<-p3[[1]] + labs(subtitle = "Attack causes acceptance > 0") + 
   #scale_fill_colorblind() + 
   theme_classic()
 out_h3
 
-
+library(patchwork)
 # combine graph
-bayes_hypothesis <- out_h3 +  out_h0 + out_h1 + plot_annotation(
-  #title = "Bayesian hypothesis tests",
-  tag_levels = "i")
+bayes_hypothesis <- out_h3 +  out_h0 + out_h1 
+  #title = "Bayesian hypothesis tests"
 bayes_hypothesis<- bayes_hypothesis +   plot_layout(guides = 'collect')
 bayes_hypothesis
 
 
 
 ggsave(
-  bayes_hypothesis_st,
+  bayes_hypothesis,
   path = here::here(here::here("_posts", "mus", "figs")),
   width = 16,
   height =9,
   units = "in",
-  filename = "bayes_hypothesis_st.jpg",
+  filename = "bayes_hypothesis.jpg",
   device = 'jpeg',
   limitsize = FALSE,
   dpi = 800
@@ -798,8 +797,28 @@ ggsave(
 )
 
 
+##USED THIS
 
+library(ggpubr)
+fig3<- ggarrange(areas_plot_st,dens_overlay_strong_prior, cluster_plot_st,
+                 bayes_hypothesis,
+                 labels = c("A","B","C","D"),
+                 heights = c(2, 2), # widths = c(1),
+                 ncol = 2, nrow = 2)
 
+fig3
+
+ggsave(
+  fig3,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 15,
+  height = 10,
+  units = "in",
+  filename = "fig3.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 600
+)
 
 
 

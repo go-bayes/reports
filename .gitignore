@@ -30,6 +30,7 @@ vignettes/*.pdf
 *_cache/
 models/*.rds
 **/mods/*rds
+_posts/.**/*.jpg
 _posts/**/*.html
 _posts/**/*_files/
 # data
