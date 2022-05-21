@@ -4942,6 +4942,11 @@ library(patchwork)
 
 fig1 <- (lds2 + dag5) / (dag4 + (imp1plot + imp0plot)) + plot_annotation(tag_levels = "i")
 
+fig1 <- lds2 + (dag5  / dag4)  + ( imp1plot / imp0plot) + plot_annotation(tag_levels = "i")
+
+fig1 <- (lds2 / dag5)  | (dag4  / imp1plot / imp0plot) +
+  plot_annotation(tag_levels = "i") #+  plot_layout(nrow = 2,byrow = FALSE)
+
 fig1
 
 
@@ -4949,8 +4954,8 @@ fig1
 ggsave(
   fig1,
   path = here::here("_posts","mus", "figs"),
-  width = 16,
-  height = 09,
+  width = 15,
+  height = 10,
   units = "in",
   filename = "fig1.jpg",
   device = "jpeg",
