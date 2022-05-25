@@ -397,7 +397,6 @@ prior_strong_even2 = c(
 
 
 ### MODEL THAT WE USED !!!! 
-
 system.time(
   m_cluster_st  <- brms::brm_multiple(
     bform,
@@ -413,10 +412,32 @@ system.time(
     , file = here::here("_posts", "mus", "mods", "m_cluster_st.rds")
   )
 )
+library(marginaleffects)
+
+me_out <-marginaleffects::comparisons(m_cluster_st, variables = c("As", "Wave"))
+  me_out
+
+saveRDS(
+  me_out,  file = here::here("_posts", "mus", "mods", "me_out.rds")
+)
 
 # saveRDS(
 #   m_cluster,  file = here::here("_posts", "mus", "mods", "m_cluster.rds")
 # )
+
+datagrid(newdata = mtcars, hp = c(100, 110))
+
+
+
+
+
+mod <- lm(mpg ~ hp, mtcars)
+mod
+datagrid(model = mod, hp = c(100, 110))
+dg <- datagrid(newdata = mtcars, hp = c(100, 110), grid_type = "counterfactual")
+dg <- datagrid(model = mod, hp = c(100, 110), grid_type = "counterfactual")
+dg
+
 
 #
 # get priors 
