@@ -2,16 +2,14 @@
 # notes -- m_cluster worked, took 
 
 ## This contains the model that we used !!! 
-
-
 library("brms")
 library("here")
 library("tidyverse")
 library("future")
-#library(tidyverse)
+library(tidyverse)
 library("dplyr")
 library("brms") # bayesian estimation
-#library("cmdstanr") # backend brms
+#library("cmdstanr") # backend brms, not used
 library("rstan")
 #rstan_options(threads_per_chain = 1)
 rstan_options(auto_write = TRUE) # bayesian estimation
@@ -185,7 +183,6 @@ prior_summary(m_cluster)
 stancode(m_cluster)
 
 # simulate priors ---------------------------------------------------------
-str(imp5)
 
 prior = c(
   set_prior("normal(0, 1)", class = "b")
