@@ -35,6 +35,8 @@ knitr::opts_chunk$set(
 
 
 library("tidyverse")
+library("dplyr")
+library("tidyr")
 library("easystats")
 library("patchwork")
 library("kableExtra")
@@ -47,8 +49,14 @@ library("geepack")
 library("cobalt") # check balence
 library("WeightIt")
 library("ggeffects")
+library("CMAverse")
 theme_set(theme_classic())
 ```
+
+
+
+## Regression discontinuity 
+
 
 
 Here we estimate the effects of the COVID-19 pandemic on Trust in Science at various stages of the pandemic in New Zealand.  
@@ -66,6 +74,12 @@ ord_dates_class <- c(
   "Lockdown",
   "PostLockdown")
 
+ord_prepost_class <- c(
+  "pre", 
+  "post")
+
+
+
 # 3665 days after 30 June 2009 Saturday 13 July 2019
 # 3842 days after 30 June 2009 Monday 6 January 2020
 # 3895 days after 30 June 2009 Friday 28 February 2020
@@ -73,29 +87,44 @@ ord_dates_class <- c(
 # 3954 days after 30 June 2009 Monday 27 April 2020
 # 3672 days after June 30 2009 Saturday 20 July 2019
 
+
 # prepare data
 cv <- df %>%
-  dplyr::filter(YearMeasured == 1) %>%
-  dplyr::filter(Wave == 2019) %>%
-    droplevels() %>%
-  dplyr::mutate(Covid_Timeline =
-                    as.factor(ifelse(
-                      TSCORE %in% 3896:3921, # feb 29 - march 25th
-                      "EarlyMarch",
-                      ifelse(
-                        TSCORE %in% 3922:3954,
-                        "Lockdown", #march 26- Mon 27 April 2020
-                        ifelse(
-                          TSCORE > 3954, # after april 27th 20202
-                          "PostLockdown",
-                          ifelse(
-                            TSCORE %in% 3842:3895, # jan 6 to feb 28
-                            "JanFeb",
-                            "Baseline"  # 3672 TSCORE or  20 July 2019
-                          )
-                        )
-                      )
-                    ) ))%>%
+  dplyr::filter(Wave == 2018 |
+                  Wave == 2019 |
+                  Wave == 2020) %>%  # first analysis just used 2019,
+  droplevels() %>%
+  droplevels() %>%
+  dplyr::mutate(org2019 =  ifelse(Wave == 2019 &
+                                    YearMeasured == 1, 1, 0)) %>%
+  group_by(Id) %>%
+  dplyr::mutate(hold = mean(org2019, na.rm = TRUE)) %>%  # Hack
+  filter(hold > 0) %>% # hack!
+  ungroup() %>%
+  dplyr::mutate(org2018 =  ifelse(Wave == 2018 &
+                                    YearMeasured == 1, 1, 0)) %>%
+  group_by(Id) %>%
+  dplyr::mutate(hold = mean(org2018, na.rm = TRUE)) %>%  # Hack
+  filter(hold > 0) %>% # hack!
+  ungroup(Id) %>%
+  dplyr::mutate(
+    Covid_Timeline =
+      as.factor(
+        ifelse(
+          TSCORE %in% 3896:3921,
+          # feb 29 - march 25th
+          "EarlyMarch",
+          ifelse(
+            TSCORE %in% 3922:3954,
+            "Lockdown",
+            #march 26- Mon 27 April 2020
+            ifelse(TSCORE > 3954,
+                   # after april 27th 20202
+                   "PostLockdown",
+                   ifelse(TSCORE %in% 3842:3895, # jan 6 to feb 28
+                          "JanFeb",
+                          "Baseline"))))))  %>%
+  dplyr::mutate(pre_post = as.factor(ifelse(TSCORE < 3896,  "pre", "post")) )%>%
   dplyr::select(
     Wave,
     TSCORE,
@@ -106,24 +135,829 @@ cv <- df %>%
     Id,
     Age,
     Male,
+    Euro,
     Urban,
     Edu,
     Covid_Timeline,
-    EthnicCats,
+    pre_post,
+    Euro,
     Your.Personal.Relationships,
-    Urban
+    Urban,
+   # GenCohort,
+    SUPPORT,
+    BELONG,
+    OPENNESS,
+    NEUROTICISM,
+    AGREEABLENESS,
+    EXTRAVERSION,
+    CONSCIENTIOUSNESS,
+    Hours.Work,
+    LIFEMEANING,
+    HLTH.SleepHours,
+    HLTH.Fatigue,
+    Household.INC,
+    NZ.Economic.Situation,
+    KESSLER6sum,
+    Urban,
+    Religion.Church,
+    HomeOwner,
+    Parent,
+    POLICE.TRUST,
+    Covid_Timeline,
+    Pol.PoliticianTrust,
+    Your.Future.Security,
+    Rel.Conflict,
+    Hours.Exercise
   ) %>%
-  dplyr::mutate(
-    )%>%
+  dplyr::mutate() %>%
   dplyr::mutate(Covid_Timeline = forcats::fct_relevel(Covid_Timeline, ord_dates_class)) %>%
+  dplyr::mutate(pre_post = forcats::fct_relevel(pre_post, ord_prepost_class)) %>%
   droplevels() %>%
-  drop_na() %>%
-  mutate(SCIENCE.TRUST_S = scale(SCIENCE.TRUST),
-         Sat.Government_S = scale(Sat.Government),
-         Your.Personal.Relationships_S = scale(Your.Personal.Relationships))
+  dplyr::mutate_at(c('Euro', 'Urban', "Parent", "Partner","Employed", "Male", "HomeOwner", "Edu"), as.numeric)%>%
+  dplyr::arrange(Id, Wave)
+    
+head(cv)
+Covid_Timeline_2019
+table1::table1( ~ pre_post |Wave, data = cv)
+
+table1::table1( ~ pre_post |Wave, data = cv)
+table1::table1( ~ POLICE.TRUST |Wave, data = cv)
+
+str(cv)
+cv <- as.data.frame(cv)
+
+# baseline covariates
+values <-   c(
+    "SCIENCE.TRUST",
+    "Partner",
+    "Employed",
+    "Parent",
+    "Sat.Government",
+    "Age",
+    "Male",
+    "Urban",
+    "Edu",
+    "Covid_Timeline",
+    "pre_post",
+    "Euro",
+    "Your.Personal.Relationships",
+    "Urban",
+    #"GenCohort",
+    "SUPPORT",
+    "BELONG", 
+    "OPENNESS",
+    "NEUROTICISM",
+    "AGREEABLENESS",
+    "EXTRAVERSION",
+    "CONSCIENTIOUSNESS",
+    "Hours.Work",
+    "LIFEMEANING",
+    "HLTH.SleepHours",
+    "HLTH.Fatigue",
+    "Household.INC",
+    "NZ.Economic.Situation",
+    "KESSLER6sum",
+    "Urban",
+    "SUPPORT",
+    "BELONG",
+    "Religion.Church",
+    "HomeOwner",
+    "POLICE.TRUST",
+    "Covid_Timeline",
+    "pre_post",
+    "Pol.PoliticianTrust",
+    "Your.Future.Security",
+    "Rel.Conflict",
+    "Hours.Exercise") 
+
+dat <- cv %>%
+  pivot_wider(id_cols = c("Id"), 
+              names_from = Wave, values_from = values, names_vary = "slowest")%>%
+  dplyr::select(-c("SCIENCE.TRUST_2018","Covid_Timeline_2020", "Covid_Timeline_2018","pre_post_2018", "pre_post_2020", "HomeOwner_2019", "HomeOwner_2020") ) %>% 
+   dplyr::rename(pre_post = pre_post_2019) %>%
+  dplyr::rename(Covid_Timeline = Covid_Timeline_2019) %>%
+  dplyr::select(c(matches("_2018"),  "SCIENCE.TRUST_2019", "SCIENCE.TRUST_2020", "Pol.PoliticianTrust_2020", "Sat.Government_2020", "Covid_Timeline", "pre_post", "Id"))
+ # dplyr::mutate_if(is.numeric, scale) #%>%
+ # mutate(across(everything(), as.vector))
+
+
+dat <- as.data.frame(dat)
+
+head(dat)
+table(dat$Covid_Timeline)
+
+summary(dat)
+summary(dat)
+#datm <- as.matrix(dat)
+# impute missing values 
+library(mice)
+cov_med_out<- mice::mice( datm, m = 10, seed = 0)
+
+
+## ANother approach 
+cv <- df %>%
+  dplyr::filter(Wave == 2018 |
+                  Wave == 2019 )%>%  # first analysis just used 2019,
+  droplevels() %>%
+  dplyr::mutate(org2019 =  ifelse(Wave == 2019 &
+                                    YearMeasured == 1, 1, 0)) %>%
+  group_by(Id) %>%
+  dplyr::mutate(hold = mean(org2019, na.rm = TRUE)) %>%  # Hack
+  filter(hold > 0) %>% # hack!
+  ungroup() %>%
+  dplyr::mutate(org2018 =  ifelse(Wave == 2018 &
+                                    YearMeasured == 1, 1, 0)) %>%
+  group_by(Id) %>%
+  dplyr::mutate(hold = mean(org2018, na.rm = TRUE)) %>%  # Hack
+  filter(hold > 0) %>% # hack!
+  ungroup(Id) %>%
+  dplyr::mutate(
+    Covid_Timeline =
+      as.factor(
+        ifelse(
+          TSCORE %in% 3896:3921,
+          # feb 29 - march 25th
+          "EarlyMarch",
+          ifelse(
+            TSCORE %in% 3922:3954,
+            "Lockdown",
+            #march 26- Mon 27 April 2020
+            ifelse(TSCORE > 3954,
+                   # after april 27th 20202
+                   "PostLockdown",
+                   ifelse(TSCORE %in% 3842:3895, # jan 6 to feb 28
+                          "JanFeb",
+                          "Baseline"))))))  %>%
+  dplyr::mutate(pre_post = as.factor(ifelse(TSCORE < 3896,  "pre", "post"))) %>%
+  dplyr::select(
+    Wave,
+    TSCORE,
+    SCIENCE.TRUST,
+    Partner,
+    Employed,
+    Sat.Government,
+    Id,
+    Age,
+    Male,
+    Euro,
+    Urban,
+    Edu,
+    Covid_Timeline,
+    pre_post,
+    Euro,
+    Your.Personal.Relationships,
+    Urban,
+    # GenCohort,
+    SUPPORT,
+    BELONG,
+    OPENNESS,
+    NEUROTICISM,
+    AGREEABLENESS,
+    EXTRAVERSION,
+    CONSCIENTIOUSNESS,
+    HONESTY_HUMILITY,
+    Hours.Work,
+    LIFEMEANING,
+    HLTH.SleepHours,
+    HLTH.Fatigue,
+    Household.INC,
+    NZ.Economic.Situation,
+    KESSLER6sum,
+    Urban,
+    Religion.Church,
+    HomeOwner,
+    Parent,
+    POLICE.TRUST,
+    Covid_Timeline,
+    Pol.PoliticianTrust,
+    Your.Future.Security,
+    Rel.Conflict,
+    Hours.Exercise,
+    Id,
+    Wave,
+    KESSLER6sum,
+    LIFEMEANING,
+    LIFESAT,
+    SELF.ESTEEM,
+    Respect.Self,
+    ChildrenNum,
+    PWI,
+    NWI,
+    SFHEALTH,
+    SELF.CONTROL,
+    Religion.Church,
+    Household.INC,
+    Id,
+    YearMeasured,
+    Wave,
+    Pol.Orient,
+    NZdep,
+    Male,
+    Employed,
+    Urban,
+    EthnicCats,
+    SFHEALTH,
+    NWI,
+    Partner,
+    lost_job,
+    began_relationship,
+    Hours.Work,
+    # Believe.Spirit,
+    #  Believe.God,
+    HomeOwner,
+    Religious,
+    Rumination,
+    Wave
+  ) %>% 
+  dplyr::mutate(Edu = as.numeric(Edu)) %>%
+  dplyr::mutate(Covid_Timeline = forcats::fct_relevel(Covid_Timeline, ord_dates_class)) %>%
+  dplyr::mutate(pre_post = forcats::fct_relevel(pre_post, ord_prepost_class)) %>%
+  droplevels() %>%
+  group_by(Id) %>%
+  dplyr::mutate(SFHEALTH_bz = if_else(Wave == "2018", as.numeric(scale(SFHEALTH, scale = FALSE)), NA_real_)) %>%
+  fill(SFHEALTH_bz) %>%
+   dplyr::mutate(SUPPORT_bz = if_else(Wave == "2018", as.numeric(scale(SUPPORT, scale = FALSE)), NA_real_)) %>%
+  fill(SUPPORT_bz) %>%
+  dplyr::mutate(BELONG_bz = if_else(Wave == "2018", as.numeric(scale(BELONG, scale = FALSE)), NA_real_)) %>%
+  fill(BELONG_bz) %>%
+  dplyr::mutate(LIFESAT_bz = if_else(Wave == "2018", as.numeric(scale(LIFESAT, scale = FALSE)), NA_real_)) %>%
+  fill(LIFESAT_bz) %>%
+  dplyr::mutate(PWI_bz = if_else(Wave == "2018", as.numeric(scale(PWI, scale = FALSE)), NA_real_)) %>%
+  fill(PWI_bz) %>%
+  dplyr::mutate(SELF.ESTEEM_bz = if_else(Wave == "2018", as.numeric(scale(SELF.ESTEEM, scale = FALSE)), NA_real_)) %>%
+  fill(SELF.ESTEEM_bz) %>%
+  dplyr::mutate(Respect.Self_bz = if_else(Wave == "2018", as.numeric(scale(
+    Respect.Self, scale = FALSE)), NA_real_)) %>%
+  fill(Respect.Self_bz) %>%
+  dplyr::mutate(Rumination_bz = if_else(Wave == "2018", as.numeric(scale(Rumination, scale = FALSE)), NA_real_)) %>%
+  fill(Rumination_bz) %>%
+  dplyr::mutate(ChildrenNum_bz = if_else(Wave == "2018", as.numeric(ChildrenNum), NA_real_)) %>%
+  fill(ChildrenNum_bz) %>%
+  dplyr::mutate(SELF.CONTROL_bz = if_else(Wave == "2018", as.numeric(scale(
+    SELF.CONTROL, scale = FALSE
+  )), NA_real_)) %>%
+  fill(SELF.CONTROL_bz) %>%
+  dplyr::mutate(k6_bz = if_else(Wave == "2018", as.numeric(KESSLER6sum), NA_real_)) %>%
+  fill(k6_bz) %>%
+  dplyr::mutate(HomeOwner_bz = if_else(Wave == "2018", as.numeric(HomeOwner), NA_real_)) %>%
+  fill(HomeOwner_bz) %>%
+  dplyr::mutate(LIFEMEANING_bz = if_else(Wave == "2018", as.numeric(scale(LIFEMEANING, scale = FALSE)), NA_real_)) %>%
+  fill(LIFEMEANING_bz) %>%
+  dplyr::mutate(Household.INC_bz = if_else(Wave == "2018", as.numeric(Household.INC), NA_real_)) %>%
+  fill(Household.INC_bz) %>%
+  dplyr::mutate(income19_bz = if_else(Wave == "2018", as.numeric(lead(Household.INC, n =
+                                                                        1)), NA_real_)) %>%
+  fill(income19_bz) %>%
+  dplyr::mutate(agr_bz = if_else(Wave == "2018", as.numeric(scale(
+    AGREEABLENESS, scale = FALSE
+  )), NA_real_)) %>%
+  fill(agr_bz) %>%
+  dplyr::mutate(cs_bz = if_else(Wave == "2018", as.numeric(scale(
+    CONSCIENTIOUSNESS, scale = FALSE
+  )), NA_real_)) %>%
+  fill(cs_bz) %>%
+  dplyr::mutate(op_bz = if_else(Wave == "2018", as.numeric(scale(OPENNESS, scale = FALSE)), NA_real_)) %>%
+  fill(op_bz) %>%
+  dplyr::mutate(h_bz = if_else(Wave == "2018", as.numeric(scale(
+    HONESTY_HUMILITY, scale = FALSE
+  )), NA_real_)) %>%
+  fill(h_bz) %>%
+  dplyr::mutate(ex_bz = if_else(Wave == "2018", as.numeric(scale(
+    EXTRAVERSION, scale = FALSE
+  )), NA_real_)) %>%
+  fill(ex_bz) %>%
+  dplyr::mutate(nr_bz = if_else(Wave == "2018", as.numeric(scale(NEUROTICISM, scale = FALSE)), NA_real_)) %>%
+  fill(nr_bz) %>%
+  dplyr::mutate(Religion.Church_bz = if_else(Wave == "2018", as.numeric(Religion.Church), NA_real_)) %>%
+  fill(Religion.Church_bz) %>%
+  dplyr::mutate(pol_bz = if_else(Wave == "2018", as.numeric(scale(Pol.Orient, scale = FALSE)), NA_real_)) %>%
+  fill(pol_bz) %>%
+  dplyr::mutate(partner18_bz = if_else(Wave == "2018", as.numeric(Partner, scale = FALSE), NA_real_)) %>%
+  fill(partner18_bz) %>%
+  dplyr::mutate(parent_bz = if_else(Wave == "2018", as.numeric(Parent), NA_real_)) %>%
+  fill(parent_bz) %>%
+  dplyr::mutate(nzdep_bz = if_else(Wave == "2018", as.numeric(scale(NZdep, scale = FALSE)), NA_real_)) %>%
+  fill(nzdep_bz) %>%
+  dplyr::mutate(male_2z = if_else(Wave == "2018", as.numeric(Male), NA_real_)) %>%
+  fill(male_2z)  %>%
+  dplyr::mutate(employed_bz = if_else(Wave == "2018", as.numeric(Employed), NA_real_)) %>%
+  fill(employed_bz) %>%
+  dplyr::mutate(age_bz = if_else(Wave == "2018", as.numeric(scale(Age, scale = FALSE)), NA_real_)) %>%
+  fill(age_bz) %>%
+  dplyr::mutate(edu_bz = if_else(Wave == "2018", as.numeric(scale(Edu, scale = FALSE)), NA_real_)) %>%
+  fill(edu_bz) %>%
+  dplyr::mutate(ubran_bz = if_else(Wave == "2018", as.numeric(Urban), NA_real_)) %>%
+  fill(ubran_bz) %>%
+  dplyr::mutate(Euro = if_else(Wave == "2018", as.numeric(Euro), NA_real_)) %>%
+  fill(Euro) %>%
+  dplyr::mutate(SFHEALTH_bz = if_else(Wave == "2018", as.numeric(scale(SFHEALTH, scale = FALSE)), NA_real_)) %>%
+  fill(SFHEALTH_bz) %>%
+  dplyr::mutate(NWI_bz = if_else(Wave == "2018", as.numeric(scale(NWI, scale = FALSE)), NA_real_)) %>%
+  fill(NWI_bz) %>%
+  dplyr::mutate(partner19_bz = if_else(Wave == "2019", as.numeric(Partner), NA_real_)) %>%
+  fill(partner19_bz) %>%
+  # dplyr::mutate(partnerlost_job_bz = if_else(Wave == "2018", as.numeric(partnerlost_job), NA_real_)) %>%
+  # fill(partnerlost_job_bz) %>%
+  # dplyr::mutate(lost_job_bz = if_else(Wave == "2018", as.numeric(lost_job), NA_real_)) %>%
+  # fill(lost_job_bz) %>%
+  # dplyr::mutate(began_relationship_bz = if_else(Wave == "2018", as.numeric(began_relationship), NA_real_)) %>%
+  # fill(began_relationship_bz) %>%
+  dplyr::mutate(Hours.Work_bz = if_else(Wave == "2018", as.numeric(Hours.Work), NA_real_)) %>%
+  dplyr::mutate(POLICE.TRUST_bz = if_else(Wave == "2018", as.numeric( POLICE.TRUST), NA_real_)) %>%
+  fill(POLICE.TRUST_bz) %>%
+  dplyr::mutate(Pol.PoliticianTrust_bz = if_else(Wave == "2018", as.numeric(Pol.PoliticianTrust), NA_real_)) %>%
+  fill(Pol.PoliticianTrust_bz) %>%
+  dplyr::mutate(Your.Future.Security_bz = if_else(Wave == "2018", as.numeric(Your.Future.Security), NA_real_)) %>%
+  fill(Your.Future.Security_bz) %>%
+  dplyr::mutate(Rel.Conflict_bz = if_else(Wave == "2018", as.numeric(Rel.Conflict), NA_real_)) %>%
+  fill(Rel.Conflict_bz) %>%
+  dplyr::mutate(HLTH.SleepHours_bz = if_else(Wave == "2018", as.numeric(HLTH.SleepHours), NA_real_)) %>%
+  fill(HLTH.SleepHours_bz) %>%
+  dplyr::mutate(HLTH.Fatigue_bz = if_else(Wave == "2018", as.numeric( HLTH.Fatigue), NA_real_)) %>%
+  fill( HLTH.Fatigue_bz) %>%
+  dplyr::mutate(NZ.Economic.Situation_bz= if_else(Wave == "2018", as.numeric(NZ.Economic.Situation), NA_real_)) %>%
+  fill(NZ.Economic.Situation_bz) %>%
+  dplyr::mutate(Sat.Government_bz= if_else(Wave == "2018", as.numeric(Sat.Government), NA_real_)) %>%
+  fill(Sat.Government_bz) %>%
+  dplyr::mutate(Your.Personal.Relationships_bz = if_else(Wave == "2018", as.numeric(Your.Personal.Relationships), NA_real_)) %>%
+  fill(Your.Personal.Relationships_bz) %>%
+  ungroup() %>%
+  dplyr::mutate(yearW = as.numeric(Wave) - 1) %>%
+  arrange(Id, yearW)
+
+str(cv1$male_2z)
+
+table1::table1(~ ubran_bz  , data = cv)
+
+saveRDS(cv, here::here("_posts", "covscience", "mods", "cv.rds"))
+cv$Euro
+cv1 <- cv %>%
+  dplyr::arrange(Id, Wave) %>%
+  dplyr::mutate(pre_post = as.numeric(pre_post)-1) %>%
+  dplyr::mutate(covid_timeline_lead1 = lead(Covid_Timeline, n = 1))%>%
+  dplyr::mutate(pre_post_lead1 = lead(pre_post, n = 1))%>%
+  dplyr::mutate(SCIENCE.TRUST_lead1  = as.numeric(lead(SCIENCE.TRUST, n = 1) ))%>%
+  dplyr::mutate(SCIENCE.TRUST_lead2  = as.numeric(lead(SCIENCE.TRUST, n = 2 )))%>%
+  dplyr::mutate(Pol.PoliticianTrust_lead1 =  as.numeric(lead(Pol.PoliticianTrust, n = 1) ))%>%
+  dplyr::mutate(Pol.PoliticianTrust_lead2  =  as.numeric(lead(Pol.PoliticianTrust, n = 2) ))%>%
+ dplyr::mutate(Sat.Government_lead1  = as.numeric(lead(Sat.Government, n = 1) ))%>%
+#  dplyr::mutate(Sat.Government_lead2  = as.numeric(lead(Sat.Government, n = 2 )))%>%
+  dplyr::mutate(income_base_log = as.numeric(log(Household.INC+1) ))%>%
+ # dplyr::mutate(income_log_lead1 = as.numeric(log(lead(Household.INC, n = 1)+1) ))%>%
+ # dplyr::mutate(income_log_lead2 = as.numeric(log(lead(Household.INC, n = 2)+1))) %>%  # delete to avoid leverage of extreme outliers
+  dplyr::mutate(income_log_bz = as.numeric(scale(income_base_log, scale = FALSE))) %>%  # delete to avoid leverage of extreme outliers
+# dplyr::mutate(income_logc_lead1 = as.numeric(scale(income_log_lead1, scale = FALSE))) %>%  # delete to avoid leverage of extreme outliers
+#  dplyr::mutate(BELONG_lead2 = lead(BELONG, n = 2)) %>%
+#  dplyr::mutate(SUPPORT_lead2 = lead(SUPPORT, n = 2)) %>%
+ dplyr::mutate(k6_lead1 = as.integer(lead(KESSLER6sum, n = 1))) %>%
+#  dplyr::mutate(LIFEMEANING_lead2 = as.numeric((lead(LIFEMEANING, n = 2)))) %>%
+#  dplyr::mutate(LIFESAT_lead2 = as.numeric((lead(LIFESAT, n = 2)))) %>%
+ # dplyr::mutate(SELF.ESTEEM_lead2 = as.numeric(lead(SELF.ESTEEM, n = 2))) %>%
+ # dplyr::mutate(Respect.Self_lead2 = as.numeric((lead(Respect.Self, n = 2)))) %>%
+#  dplyr::mutate(Rumination_lead2 = as.numeric(lead(Rumination, n = 2))) %>%
+#  dplyr::mutate(ChildrenNum_lead2 = as.integer(lead(ChildrenNum, n = 2))) %>%
+#  dplyr::mutate(PWI_lead2 = as.numeric((lead(PWI, n = 2)))) %>%
+#  dplyr::mutate(NWI_lead2 = as.numeric((lead(NWI, n = 2)))) %>%
+#  dplyr::mutate(SFHEALTH_lead2 = as.numeric((lead(SFHEALTH, n = 2)))) %>%
+#  dplyr::mutate(SELF.CONTROL_lead2 = as.numeric((lead(SELF.CONTROL, n = 2)))) %>%
+#  dplyr::mutate(Religion.Church_lead1 = as.numeric(lead(Religion.Church, n = 1))) %>%
+#  dplyr::mutate(POLICE.TRUST_lead2 = as.numeric((lead(POLICE.TRUST, n = 2)))) %>%
+#  dplyr::mutate(Pol.PoliticianTrust_lead2 = as.numeric((lead(Pol.PoliticianTrust_bz, n = 2))))%>%
+#  dplyr::mutate(Your.Future.Security_lead2 = as.numeric((lead(Your.Future.Security_bz, n = 2)))) %>%
+  filter(Wave == 2018) %>% 
+#  dplyr::mutate(Rel.Conflict_lead2 = as.numeric((lead(Rel.Conflict_bz, n = 2))))%>%
+#  dplyr::mutate(NZ.Economic.Situation_lead2 = as.numeric((lead(NZ.Economic.Situation_bz, n = 2)))) %>%
+ # dplyr::mutate(Your.Personal.Relationships_lead1 = as.numeric(lead(Your.Personal.Relationships_bz, n = 1)))%>%
+  droplevels() %>% # delete to avoid leverage of extreme outliers
+  dplyr::mutate(Religion.Church_bz = as.numeric(ifelse(Religion.Church_bz > 5, 5, Religion.Church_bz)))%>%
+  dplyr::mutate(Religion.Church_bz = as.numeric(scale( Religion.Church_bz)),
+    # LIFEMEANING_lead2z = as.numeric(scale(LIFEMEANING_lead2)),
+    # LIFESAT_lead2z = as.numeric(scale(LIFESAT_lead2)),
+    # SELF.ESTEEM_lead2z = as.numeric(scale(SELF.ESTEEM_lead2)),
+    # Respect.Self_lead2z = as.numeric(scale(Respect.Self_lead2)),
+    # Rumination_lead2z = as.numeric(scale(Rumination_lead2)),
+    # ChildrenNum_lead2z = as.numeric(scale(ChildrenNum_lead2)),
+    # PWI_lead2z = as.numeric(scale(PWI_lead2)),
+    # NWI_lead2z = as.numeric(scale(NWI_lead2)),
+    # SFHEALTH_lead2z = as.numeric(scale(SFHEALTH_lead2)),
+    # SELF.CONTROL_lead2z = as.numeric(scale(SELF.CONTROL_lead2)),
+    # Rumination_lead2z = as.numeric(scale(Rumination_lead2)),
+    h_bc = as.numeric(scale(h_bz, scale = FALSE)),
+    op_bc = as.numeric(scale(op_bz, scale = FALSE)), 
+    age_bz = as.numeric(scale(age_bz, scale = FALSE)),
+    cs_bc = as.numeric(scale(cs_bz, scale = FALSE)),
+    male_bz = as.numeric(scale(male_2z) / 2),
+    partner18_bz = as.numeric(scale(as.numeric(partner18_bz))),
+    partner19_bz = as.numeric(scale(as.numeric(partner19_bz))),
+    Hours.Work_log_bz = as.numeric(scale(log(Hours.Work_bz + 1))),
+    # began_relationship_bz = as.numeric(scale(began_relationship_bz)),
+    # lost_job_bz = as.numeric(scale(lost_job_bz)),
+    # partnerlost_job_bz = as.numeric(scale(partnerlost_job_bz)),
+    k6_c_lead1 = as.numeric(scale(k6_lead1, scale = T)),
+    # bg1_z = as.numeric(scale(bg1)),
+    # bs1_z = as.numeric(scale(bs1)),
+    Euro_bz = as.numeric(scale(Euro)),
+    urban_bz = as.numeric(scale(ubran_bz)),
+    nzdep_bz  = as.numeric(scale(nzdep_bz)),
+    parent_bz  = as.numeric(scale(parent_bz)),
+    pol_bz  = as.numeric(scale(pol_bz)),
+    nr_bz = as.numeric(scale(nr_bz)),
+    ex_bz = as.numeric(scale(ex_bz)),
+    h_bz = as.numeric(scale(h_bz)),
+    op_bz = as.numeric(scale(op_bz)),
+    cs_bz = as.numeric(scale(cs_bz)),
+    agr_bz = as.numeric(scale(agr_bz)),
+    Sat.Government_bz = as.numeric(scale(Sat.Government)),
+    SELF.CONTROL_bz = as.numeric(scale(SELF.CONTROL_bz)),
+    LIFEMEANING_bz = as.numeric(scale(LIFEMEANING_bz)),
+    k6_bz = as.numeric(scale(log(k6_bz + 1))),
+    LIFESAT_bz = as.numeric(scale(LIFESAT_bz)),
+    SELF.ESTEEM_bz = as.numeric(scale(SELF.ESTEEM_bz)),
+    Respect.Self_bz = as.numeric(scale(Respect.Self_bz)),
+    Rumination_bz = as.numeric(scale(Rumination_bz)),
+    ChildrenNum_bz = as.numeric(scale(ChildrenNum_bz)),
+    PWI_bz = as.numeric(scale(PWI_bz)),
+    NWI_bz = as.numeric(scale(NWI_bz)),
+    SFHEALTH_bz = as.numeric(scale(SFHEALTH_bz)),
+   # lost_job_bz = as.numeric(scale(lost_job_bz)),
+    HomeOwner_bz = as.numeric(scale(HomeOwner_bz)),
+    POLICE.TRUST_bz = as.numeric(scale(POLICE.TRUST_bz)),
+    Pol.PoliticianTrust_bz = as.numeric(scale(Pol.PoliticianTrust_bz)),
+    Rel.Conflict_bz = as.numeric(scale( Rel.Conflict_bz)),
+    NZ.Economic.Situation_bz = as.numeric(scale(NZ.Economic.Situation_bz)),
+    HLTH.SleepHours_bz = as.numeric(scale( HLTH.SleepHours_bz)),
+    HLTH.Fatigue_bz = as.numeric(scale(HLTH.Fatigue_bz)),
+   Your.Personal.Relationships_bz = as.numeric(scale(Your.Personal.Relationships_bz)),
+   Sat.Government_bz = as.numeric(scale(Sat.Government_bz))) %>%
+  dplyr::select(-ubran_bz) %>% 
+  dplyr::select(c(matches("_bz"), matches("_lead1"), "Id")) %>%
+  as.data.frame()
+
+str(cv1$pre_post_lead1)
+dim(cv1) # too many 
+table(cv$Wave)
+table(cv1$Euro_bz)
+
+cv2 <-cv1 %>%
+  dplyr::select(
+    c(
+     # Id,
+      pre_post_lead1,
+      covid_timeline_lead1,
+      nzdep_bz,
+      urban_bz,
+      male_bz,
+      k6_bz,
+      Religion.Church_bz,
+      age_bz,
+      income_log_bz,
+      Euro_bz,
+      nzdep_bz,
+      parent_bz,
+      partner18_bz,
+      pol_bz,
+      Sat.Government_bz,
+      Your.Personal.Relationships_bz,
+      Rel.Conflict_bz,
+      Religion.Church_bz,
+      HomeOwner_bz,
+      SFHEALTH_bz,
+      NWI_bz,
+      PWI_bz,
+      ChildrenNum_bz,
+      Rumination_bz,
+      LIFESAT_bz,
+      LIFEMEANING_bz,
+      nr_bz,
+      ex_bz,
+      h_bz,
+      op_bz,
+      cs_bz,
+      agr_bz,
+      NZ.Economic.Situation_bz,
+      POLICE.TRUST_bz,
+      Pol.PoliticianTrust_bz,
+      k6_bz,
+      k6_lead1,
+      Sat.Government_lead1,
+      Pol.PoliticianTrust_lead1,
+      SCIENCE.TRUST_lead1  ))
+
+
+# Impute missing values and save 
+mice_cov <- mice::mice(cv2, seed = 0 )
+saveRDS(mice_cov, here::here("_posts", "covscience", "mods", "mice_cov.rds"))
+
+dfc <- mice::complete(mice_cov)
+
+dfc$pre_post_lead1
+
+#long <- mice::complete(mice_cov, "long", inc = TRUE)
+dfc$SCIENCE.TRUST_lead1z<-  scale(dfc$SCIENCE.TRUST_lead1, scale = TRUE)
+dfc$Pol.PoliticianTrust_lead1z <-scale(dfc$Pol.PoliticianTrust_lead1, scale = TRUE)
+dfc$Sat.Government_lead1z <- scale(dfc$Sat.Government_lead1, scale = TRUE)
+dfc$k6_lead1z <- scale(dfc$k6_lead1, scale = TRUE)
+
+
+# # long$Rumination_lead2ord <- with(long, Rumination_lead2ord + 1)
+# # long$SUPPORT_lead2ord <- with(long, round(SUPPORT_lead2, digits = 0))
+# # long$LIFEMEANING_lead2ord <- with(long, round(LIFEMEANING_lead2, digits = 0))
+# 
+# long2<- long %>% mutate_if(is.matrix,as.vector)
+# long3 <- mice::as.mids(long2)
+
+cvar <-
+ c("nzdep_bz",
+    "urban_bz",
+    "Religion.Church_bz",
+    "age_bz",
+    "income_log_bz",
+    "Euro_bz",
+    "urban_bz",
+    "nzdep_bz",
+     "male_bz",
+     "k6_bz",
+    "parent_bz",
+    "partner18_bz",
+    "pol_bz",
+    "Sat.Government_bz",
+    "Your.Personal.Relationships_bz",
+    "Rel.Conflict_bz",
+    "Religion.Church_bz",
+    "HomeOwner_bz",
+    "SFHEALTH_bz",
+    "NWI_bz",
+    "PWI_bz",
+    "ChildrenNum_bz",
+    "Rumination_bz",
+    "LIFESAT_bz",
+    "LIFEMEANING_bz",
+    "nr_bz",
+    "ex_bz",
+    "h_bz",
+    "op_bz",
+    "cs_bz",
+    "agr_bz",
+    "NZ.Economic.Situation_bz",
+    "POLICE.TRUST_bz",
+    "Pol.PoliticianTrust_bz",
+    "k6_bz"
+  )
+
+c_means <- colMeans(dfc[cvar])
+c_means
+
+
+# vars
+# Sat.Government_lead1,
+# Pol.PoliticianTrust_lead1,
+# SCIENCE.TRUST_lead1,
+# Sat.Government_lead2,
+# Pol.PoliticianTrust_lead2,
+# SCIENCE.TRUST_lead2,
+
+dfc <- dfc %>%
+  mutate_if(is.matrix,as.vector)
+
+
+m1 <- cmest(data = dfc,
+            model = "ne",
+            outcome = "SCIENCE.TRUST_lead1z",
+            exposure = "pre_post_lead1",
+            mediator = "Sat.Government_lead1z",
+            basec = cvar,
+            EMint = TRUE,
+            mreg = list("linear"),
+            yreg = "linear",
+            astar = 0,
+            mval = list(c(-2, 2)),
+            basecval = NULL,
+            a = 1,
+            estimation = "imputation",
+            inference = "boot",
+            multimp = TRUE,
+            nboot = 10)
+warnings()
+
+library(ggplot2)
+summary(m1, exponentiate = F)
+cmsens(object = m1, sens = "uc")
+gh <- ggcmest(m1) 
+str(gh)
+gh$layers
+  theme_few() + coord_flip(xlim = NULL, ylim = NULL, expand = TRUE, clip = "on") + 
+  theme(axis.text.x = element_text(angle = 45)) + labs(title = "Causal mediation for the natural direct effect\nof Covid on Trust in Science", subtitle = "method = natural effect model, pre/post Covid: 2019-2020, New Zeland (NZAVS), N = 34,783")
+
+
+m2 <- cmest(data = dfc,
+            model = "ne",
+            outcome = "Sat.Government_lead1z",
+            exposure = "pre_post_lead1",
+            mediator = "SCIENCE.TRUST_lead1z",
+            basec =  cvar,
+            EMint = TRUE,
+            mreg = list("linear"),
+            yreg = "linear",
+            astar = 0,
+            basecval = NULL,
+            a = 1,
+            mval = list(c(-2, 2)),
+            estimation = "imputation",
+            inference = "boot",
+            multimp = TRUE,
+            nboot = 10)
+warnings()
+
+library(ggplot2)
+summary(m2, exponentiate = TRUE)
+cmsens(object = m2, sens = "uc")
+ggcmest(m2) +theme_few() + coord_flip(xlim = NULL, ylim = NULL, expand = TRUE, clip = "on") + 
+  theme(axis.text.x = element_text(angle = 45)) + 
+  labs(title = "Causal mediation for the natural direct effect\nof Covid on Satisfaction with Government", subtitle = "method = natural effect model, pre/post Covid: 2019-2020, New Zeland (NZAVS), N = 34,783")
+
+
+m1a <- cmest(data = dfc,
+            model = "gformula",
+            outcome = "SCIENCE.TRUST_lead1z",
+            exposure = "pre_post_lead1",
+            mediator = "Sat.Government_lead1z",
+            basec = cvar,
+            EMint = TRUE,
+            mreg = list("linear"),
+            yreg = "linear",
+            postc = "Pol.PoliticianTrust_lead1z",
+            astar = 0,
+            mval = list(c(0, 1)),
+            postcreg = list("linear"),
+            ereg = "linear",
+            basecval = NULL,
+            a = 1,
+            estimation = "imputation",
+            inference = "boot",
+            multimp = TRUE,
+            nboot = 10)
+warnings()
+
+library(ggplot2)
+summary(m1a, exponentiate = F)
+cmsens(object = m1a, sens = "uc")
+dev.off()
+
+ggcmest(m1a) +theme_few() + coord_flip(xlim = NULL, ylim = NULL, expand = TRUE, clip = "on") + 
+  theme(axis.text.x = element_text(angle = 45)) +  labs(title = "Causal mediation for the controlled direct effect\nof COVID19 on Government Satisfaction: ", subtitle = "method = Gformula, pre/post Covid: 2019-2020, New Zeland (NZAVS), N = 34,783")
+
+
+m2a <- cmest(data = dfc,
+            model = "gformula",
+            outcome = "Sat.Government_lead1z",
+            exposure = "pre_post_lead1",
+            mediator = "SCIENCE.TRUST_lead1z",
+            basec = cvar,
+            EMint = TRUE,
+            mreg = list("linear"),
+            yreg = "linear",
+            postc = "Pol.PoliticianTrust_lead1z",
+            astar = 0,
+            mval = list(c(0, 1)),
+            postcreg = list("linear"),
+            ereg = "linear",
+            basecval = NULL,
+            a = 1,
+            estimation = "imputation",
+            inference = "boot",
+            multimp = TRUE,
+            nboot = 10)
+warnings()
+
+library(ggplot2)
+summary(m2a)
+cmsens(object = m2a, sens = "uc")
+ggcmest(m2a) +theme_few() + theme(axis.text.x = element_text(angle = 45)) + labs(title = "Causal mediation for the controlled direct effect\nof Covid on Satisfaction with Government", subtitle = "method = Gformula,New Zeland (NZAVS), N = 34,783")
+
+
+
+
+ggcmest(m1a) +theme_few() + coord_flip(xlim = NULL, ylim = NULL, expand = TRUE, clip = "on") + 
+  theme(axis.text.x = element_text(angle = 45)) +  labs(title = "Causal mediation for the controlled direct effect\nof COVID19 on Government Satisfaction: ", subtitle = "method = Gformula, pre/post Covid: 2019-2020, New Zeland (NZAVS), N = 34,783")
+
+
+## Nar=te eeffect 
+m3a <- cmest(data = dfc,
+            model = "gformula",
+            outcome = "Pol.PoliticianTrust_lead1z",
+            exposure = "pre_post_lead1",
+            mediator = "SCIENCE.TRUST_lead1z",
+            basec = cvar,
+            EMint = TRUE,
+            mreg = list("linear"),
+            yreg = "linear",
+            postc = "Sat.Government_lead1z",
+            astar = 0,
+            mval = list(c(0, 1)),
+            postcreg = list("linear"),
+            ereg = "linear",
+            basecval = NULL,
+            a = 1,
+            estimation = "imputation",
+            inference = "boot",
+            multimp = TRUE,
+            nboot = 10)
+warnings()
+
+ggcmest(m1a) +theme_few() + coord_flip(xlim = NULL, ylim = NULL, expand = TRUE, clip = "on") + 
+  theme(axis.text.x = element_text(angle = 45)) +  labs(title = "Causal mediation for the controlled direct effect\nof COVID19 on Government Satisfaction: ", subtitle = "method = Gformula, pre/post Covid: 2019-2020, New Zeland (NZAVS), N = 34,783")
+
+
+summary(m3a)
+cmsens(object = m3a, sens = "uc")
+ggcmest(m3a) +theme_few() + theme(axis.text.x = element_text(angle = 45)) + labs(title = "Causal mediation for the controlled direct effect\nof Covid on Trust in Politicians", subtitle = "method = Gformula,New Zeland (NZAVS), N = 34,783")
+
+
+
+
+
+## Nar=te eeffect 
+m4a <- cmest(data = dfc,
+            model = "gformula",
+            outcome = "SCIENCE.TRUST_lead1z",
+            exposure = "pre_post_lead1",
+            mediator = "Pol.PoliticianTrust_lead1z",
+            basec = cvar,
+            EMint = TRUE,
+            mreg = list("linear"),
+            yreg = "linear",
+            postc = "Sat.Government_lead1z",
+            astar = 0,
+            mval = list(c(0, 1)),
+            postcreg = list("linear"),
+            ereg = "linear",
+            basecval = NULL,
+            a = 1,
+            estimation = "imputation",
+            inference = "boot",
+            multimp = TRUE,
+            nboot = 10)
+warnings()
+
+ggcmest(m4a) +theme_few() + coord_flip(xlim = NULL, ylim = NULL, expand = TRUE, clip = "on") + 
+  theme(axis.text.x = element_text(angle = 45)) +  labs(title = "Causal mediation for the controlled direct effect of COVID19 on\nTrust in Science (mediator Trust Politicians/L= Sat Gov.) ", subtitle = "method = Gformula, pre/post Covid: 2019-2020, New Zeland (NZAVS), N = 34,783")
+
+
+summary(m3a)
+cmsens(object = m3a, sens = "uc")
+ggcmest(m3a) +theme_few() + theme(axis.text.x = element_text(angle = 45)) + labs(title = "Causal mediation for the controlled direct effect\nof Covid on Trust in Politicians", subtitle = "method = Gformula,New Zeland (NZAVS), N = 34,783")
+
+
+
+
+# method by entropy balancing "which guarantees perfect balance on specified moments of the covariates while minimizing the entropy (a measure of dispersion) of the weights."
+w_out <- WeightIt::weightit(pre_post_lead1    ~ urban_bz + age_bz+  male_bz + 
+    Euro_bz+
+    urban_bz+
+    nzdep_bz+
+    parent_bz+
+    partner18_bz+
+    pol_bz+
+    Sat.Government_bz,
+        data = dfc, estimand = "ATE", method = "ebal")
+
+summary(w_out)
+
+
+cobalt::bal.tab(w_out, m.threshold = .05, disp.v.ratio = TRUE)
+
+#sum(w_out$ipw.weights >= 10)
+
+# create data frame
+cv19w <- cv %>% 
+  mutate(ipw = w_out$weights)
+```
+
+
+### Estimate model
+
+Model 
+
+```{r}
+SCIENCE.TRUST  <- glm(
+  SCIENCE.TRUST ~ Covid_Timeline,
+  data = cv19w,
+  weights = ipw
+)
+
 
 
 ```
+
+
+
+```
+
+# Causal Mediation 
+
+
+
+
 
 
 ## The New Zealand Attitudes and Values Study
@@ -164,7 +998,7 @@ To ensure balance across the condition in baseline covariates we use Inverse Pro
 
 #IPW data and check weights
 
-cobalt::bal.tab(Covid_Timeline ~  Age + Edu + EthnicCats + Male  + Urban,
+cobalt::bal.tab(Covid_Timeline ~  GenCohort + Edu + EthnicCats + Male  + Urban,
         data = cv, estimand = "ATE", m.threshold = .05)
 
 
@@ -173,6 +1007,9 @@ w_out <- WeightIt::weightit(Covid_Timeline ~ Age + Edu + EthnicCats + Male + Urb
         data = cv, estimand = "ATE", method = "ebal")
 
 summary(w_out)
+
+
+
 ```
 
 Inspect weights:
@@ -198,6 +1035,9 @@ SCIENCE.TRUST  <- glm(
   data = cv19w,
   weights = ipw
 )
+
+
+
 ```
 
 
@@ -649,6 +1489,12 @@ Graph of timeline
 tline + plot_annotation(title = "Histogram of Responses During COVID timeline:2019-2020", 
 subtitle = "Focal contrast is pre-pandemic baseline (n= 22093) and stringent lockdown (n = 3189")
 ```
+
+
+###  CMAverse approach
+
+
+
 
 
 
