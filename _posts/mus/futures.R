@@ -411,8 +411,8 @@ system.time(
 )
 library(marginaleffects)
 
-me_out <-marginaleffects::comparisons(m_cluster_st, variables = c("As", "Wave"))
-  me_out
+# me_out <-marginaleffects::comparisons(m_cluster_st, variables = c("As", "Wave"))
+#   me_out
 
 saveRDS(
   me_out,  file = here::here("_posts", "mus", "mods", "me_out.rds")
@@ -444,19 +444,27 @@ stancode(m_cluster_st)
 
 
 
+#
+
 # graph  ------------------------------------------------------------------
 
 
-pl_m_cluster_st<- plot(conditional_effects(m_cluster_st,  "Wave:As",  ndraws = 200, spaghetti = T))
+pl_m_cluster_st<- plot(conditional_effects(m_cluster_st,  "Wave:As",  
+                                           ndraws = 200, spaghetti = T))
 
+saveRDS(pl_m_cluster_st, here::here("_posts", "mus", "mods", "pl_m_cluster_st"))
+
+pl_m_cluster_st <- readRDS( here::here(here::here("_posts", "mus", "mods", "pl_m_cluster_st")))
+
+yola
 library(ggsci)
 plot_m_cluster_st <- pl_m_cluster_st$`Wave:As`  + scale_y_continuous(limits=c(4.1,4.5)) +
-  labs(subtitle="Predicted marginal means for prejudice by attack condition",
+  labs(title="Predicted marginal slopes for anti-Muslim prejudice\nby attack condition",
        y= "Muslim Warmth", 
        x = "Years: 2018-2020/21; N = 47948") + 
-  scale_color_npg(alpha =.5) + 
+  # scale_color_npg(alpha =.5) + 
   # scale_colour_fivethirtyeight(alpha = .5) + 
-  #scale_colour_okabe_ito(alpha =.5) + 
+  scale_colour_okabe_ito(alpha =.5) + 
   theme_classic()
 
 
@@ -475,7 +483,9 @@ tab_cluster_st
 #   summary_m_cluster_st,  file = here::here("_posts", "mus", "mods", "summary_m_cluster_st")
 # )
 
-
+readRDS(
+  summary_m_cluster_st,  file = here::here("_posts", "mus", "mods", "summary_m_cluster_st")
+ )
 
 
 tab_cluster_st
@@ -497,7 +507,7 @@ ggsave(
 )
 
 
-
+plot_m_cluster_st <- readRDS( here::here(here::here("_posts", "mus", "mods", "plot_m_cluster_st")))
 
 
 # make graphs for the stronger prior  --------------------------------
@@ -534,6 +544,8 @@ cluster_plot_st <- cluster_plot_st + labs(title = "Predicted marginal means for 
 ### USE !!! 
 cluster_plot_st
 
+cluster_plot_st<- readRDS(here::here("_posts", "mus", "figs", "cluster_plot_st"))
+
 
 # sim compare graph
 cluster_plot_st_sim <- cluster_plot_st +  scale_y_continuous(limits=c(4.05,4.55)) +
@@ -550,7 +562,7 @@ cluster_plot_st_sim
 
 ggsave(
   cluster_plot_st,
-  path = here::here(here::here("_posts", "mus", "figs")),
+  path = here::here("_posts", "mus", "figs"),
   width = 10,
   height = 5,
   units = "in",
@@ -612,7 +624,8 @@ dens_overlay_strong_prior
 color_scheme_set("brightblue")
 
 areas_plot_st <- mcmc_plot(m_cluster_st, 
-                        variable = c("b_As1", "b_Wave", "b_As1:Wave"), 
+                        #variable = c("b_As1", "b_Wave", "b_As1:Wave"), 
+                        pars = c("As1", "Wave", "As1:Wave"),
                         #regex_pars = "beta",
                         type = 'areas',
                         prob = 0.95) # 80% intervals
@@ -628,7 +641,8 @@ areas_plot_st <- readRDS( here::here("_posts", "mus", "mods", "areas_plot"))
 
 
 ### USE !!! 
-areas_plot_st
+library(patchwork)
+areas_plot_st + plot_m_cluster_st
 
 
 ggsave(
@@ -774,18 +788,18 @@ out_h3
 
 library(patchwork)
 # combine graph
-bayes_hypothesis <- out_h3 +  out_h0 + out_h1 
+bayes_hypothesis <- out_h3 +  out_h0 + out_h1 + plot_annotation(tag_levels = "A")
   #title = "Bayesian hypothesis tests"
 bayes_hypothesis<- bayes_hypothesis +   plot_layout(guides = 'collect')
-bayes_hypothesis
+bayes_hypothesis 
 
 
 
 ggsave(
   bayes_hypothesis,
   path = here::here(here::here("_posts", "mus", "figs")),
-  width = 16,
-  height =9,
+  width = 9.6,
+  height =5.4,
   units = "in",
   filename = "bayes_hypothesis.jpg",
   device = 'jpeg',
@@ -797,6 +811,24 @@ ggsave(
 
 #### FIGURE 2 USE
 dev.off()
+areas_plot_st + plot_m_cluster_st
+
+#  new fig 
+ne2_fig2 <- (  areas_plot_st + plot_m_cluster_st  ) + plot_annotation(tag_levels = "A")
+ne2_fig2
+
+ggsave(
+  ne2_fig2,
+  path = here::here(here::here("_posts", "mus", "figs")),
+  width = 9.6,
+  height = 6.4,
+  units = "in",
+  filename = "ne2_fig2.jpg",
+  device = 'jpeg',
+  limitsize = FALSE,
+  dpi = 600
+)
+
 
 #  (out_h3/ out_h0 / out_h1  )
 fig2 <- (  dens_overlay_strong_prior ) /  (areas_plot_st + cluster_plot_st  ) + plot_annotation(tag_levels = "i")
@@ -843,7 +875,8 @@ ggsave(
 
 
 # show plot
-results_main <- cluster_plot_st +(out_h3/ out_h0 / out_h1  ) + plot_annotation(tag_levels = "i") + 
+results_main <- cluster_plot_st +(out_h3/ out_h0 / out_h1  ) +
+  plot_annotation(tag_levels = "i") + 
   plot_layout(ncol = 2, widths = c(2, 1))
 results_main
 
@@ -944,7 +977,7 @@ cluster_plot <- m1_test_model_plot$`Wave:As`  + scale_y_continuous(limits=c(4.0,
   theme_classic()
 
 
-cluster_plot_title <- cluster_plot + labs(title = "Predicted marginal means for prejudice by attack condition")
+cluster_plot_title <- cluster_plot + labs(title = "Predicted marginal means for prejudice\nby attack condition")
 cluster_plot_title
 
 
