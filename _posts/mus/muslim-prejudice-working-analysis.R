@@ -257,42 +257,46 @@ ggsave(
 )
 
 
-### Wave 10 Only 
 
-sadi <- df %>%
-  filter(Wave == 2018 & YearMeasured==1)%>%
-  select(Warm.Muslims, TSCORE, Id) %>%
-  dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30)+ TSCORE)%>%
- # dplyr::filter(timeline > "2018-06-06") %>%
- # dplyr:::count(day = floor_date(timeline, "day"))%>%
-   dplyr::mutate(Attack_Condition = factor(
-    ifelse(timeline < "2019-03-15", 0, 1),
-    labels= c("Baseline","Post-attack")))%>%
-  arrange(timeline,Attack_Condition)
+### Wave 10 Only
 
-sadi <-as.data.frame(sadi)
-head(sadi)
-min(sadi$day)
+# sadi <- df %>%
+#   filter(Wave == 2018 & YearMeasured==1)%>%
+#   select(Warm.Muslims, TSCORE, Id) %>%
+#   dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30)+ TSCORE)%>%
+#  # dplyr::filter(timeline > "2018-06-06") %>%
+#  # dplyr:::count(day = floor_date(timeline, "day"))%>%
+#    dplyr::mutate(Attack_Condition = factor(
+#     ifelse(timeline < "2019-03-15", 0, 1),
+#     labels= c("Baseline","Post-attack")))%>%
+#   arrange(timeline,Attack_Condition)
+# 
+# sadi <-as.data.frame(sadi)
+# head(sadi)
+# min(sadi$day)
+# 
+# 
+# table1::table1( ~ Attack_Condition, data = sadi )
+# 
+# library(ggsci)
+# rdd <- ggplot(sadi, aes(x = timeline, y = Warm.Muslims, color = Attack_Condition)) +
+#   geom_point(alpha = .01) +
+#   stat_smooth(method = "gam") +
+#   theme(legend.position = "bottom") +
+#   labs(subtitle = "RDD: gam estimator",
+#        y = "Warmth to Muslims",
+#        x = "NZAVS Time 10 timeline (after June 06) ") +
+#   scale_colour_npg(alpha = 1) + theme_classic()
+# 
+# rdd
 
 
-table1::table1( ~ Attack_Condition, data = sadi )
-
-library(ggsci)
-rdd <- ggplot(sadi, aes(x = timeline, y = Warm.Muslims, color = Attack_Condition)) +
-  geom_point(alpha = .01) + 
-  stat_smooth(method = "gam") + 
-  theme(legend.position = "bottom") +
-  labs(subtitle = "RDD: gam estimator",
-       y = "Warmth to Muslims",
-       x = "NZAVS Time 10 timeline (after June 06) ") + 
-  scale_colour_npg(alpha = 1) + theme_classic() 
-  
-rdd
+      
 
 ### Graph of Timeline 
-
+library(dplyr)
 sadi2 <- df %>%
-  filter(Wave == 2018 & YearMeasured == 1) %>%
+  dplyr::filter(Wave == 2018 & YearMeasured == 1) %>%
  # drop_levels() %>%
   select(Warm.Muslims, TSCORE) %>%
   dplyr::mutate(timeline = make_date(year = 2009, month = 6, day = 30) + TSCORE) %>%
@@ -344,7 +348,7 @@ rdd_graph
 
 
 
-# ggsave(
+
 #   rdd_graph,
 #   path = here::here(here::here("_posts", "mus", "figs")),
 #   width = 12,
