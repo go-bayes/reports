@@ -34,7 +34,7 @@ perc = m2$coefficients["year"]
 print(sprintf('Annual increase for Pat Savage %f', perc))
 
 # regression model for citations (non-linear)
-m1 <- brm(cites ~ bs(year), 
+m1 <- brm(cites ~ bs(year),
           data = ct, 
           family = "poisson")
 
